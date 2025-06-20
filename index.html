@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoView Web</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier Prime', monospace;
+            background: #0F0F17;
+            color: #00FF9C;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border: 1px solid #00FF9C;
+            border-radius: 8px;
+            padding: 20px;
+            background: linear-gradient(135deg, #0F0F17 0%, #1A1A2E 100%);
+            box-shadow: 0 0 20px rgba(0, 255, 156, 0.3);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #00FFFF;
+            background: linear-gradient(45deg, #00FF9C, #00FFFF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .controls label {
+            color: #00FF9C;
+            font-weight: bold;
+        }
+
+        .cyber-select {
+            background: #120458;
+            border: 1px solid #00FF9C;
+            color: #00FF9C;
+            padding: 10px 15px;
+            font-family: 'Courier Prime', monospace;
+            font-weight: bold;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+
+        .cyber-select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 156, 0.5);
+            border-color: #00FFFF;
+        }
+
+        .cyber-button {
+            background: #120458;
+            border: 1px solid #00FF9C;
+            color: #00FF9C;
+            padding: 10px 20px;
+            font-family: 'Courier Prime', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .cyber-button:hover {
+            background: #2E0F89;
+            color: #00FFFF;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .cyber-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading-section {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loading-text {
+            color: #00FF9C;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #1A1A2E;
+            border: 1px solid #00FFFF;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00FF9C, #00FFFF);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 156, 0.5);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #0F0F17;
+            border: 1px solid #00FF9C;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background: #120458;
+            color: #00FFFF;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 1px solid #00FF9C;
+        }
+
+        .data-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #2E0F89;
+            background: #1A1A2E;
+        }
+
+        .data-table tr:hover {
+            background: #2E0F89;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 10px 0;
+            border-top: 1px solid #00FF9C;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .exchange-info {
+            color: #00FF9C;
+            font-size: 0.9rem;
+        }
+
+        .status-text {
+            color: #00FFFF;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #00FF9C;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .cyber-select, .cyber-button {
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+            
+            .data-table {
+                font-size: 0.8rem;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 8px 5px;
+            }
+        }
+
+        .error-message {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff0000;
+            color: #ff6666;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success-message {
+            background: rgba(0, 255, 156, 0.1);
+            border: 1px solid #00FF9C;
+            color: #00FF9C;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">CRYPTOVIEW</h1>
+        
+        <div class="controls">
+            <label for="exchangeSelect">Select Exchange:</label>
+            <select id="exchangeSelect" class="cyber-select">
+                <option value="">Loading exchanges...</option>
+            </select>
+            <button id="loadDataBtn" class="cyber-button" disabled>LOAD DATA</button>
+        </div>
+
+        <div id="loadingSection" class="loading-section hidden">
+            <div id="loadingText" class="loading-text">
+                <span class="loading-spinner"></span>
+                Loading exchanges...
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <table id="dataTable" class="data-table hidden">
+            <thead>
+                <tr>
+                    <th>BASE</th>
+                    <th>QUOTE</th>
+                    <th>PRICE (USD)</th>
+                    <th>VOLUME</th>
+                    <th>TIME</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+            </tbody>
+        </table>
+
+        <div class="status-bar">
+            <div id="exchangeInfo" class="exchange-info"></div>
+            <div id="statusText" class="status-text">Ready</div>
+        </div>
+    </div>
+
+    <script>
+        class CryptoViewWeb {
+            constructor() {
+                this.exchangeMap = new Map();
+                this.initializeElements();
+                this.setupEventListeners();
+                this.loadExchanges();
+            }
+
+            initializeElements() {
+                this.exchangeSelect = document.getElementById('exchangeSelect');
+                this.loadDataBtn = document.getElementById('loadDataBtn');
+                this.loadingSection = document.getElementById('loadingSection');
+                this.loadingText = document.getElementById('loadingText');
+                this.progressFill = document.getElementById('progressFill');
+                this.messageArea = document.getElementById('messageArea');
+                this.dataTable = document.getElementById('dataTable');
+                this.dataTableBody = document.getElementById('dataTableBody');
+                this.exchangeInfo = document.getElementById('exchangeInfo');
+                this.statusText = document.getElementById('statusText');
+            }
+
+            setupEventListeners() {
+                this.loadDataBtn.addEventListener('click', () => this.loadExchangeData());
+                this.exchangeSelect.addEventListener('change', () => {
+                    this.loadDataBtn.disabled = !this.exchangeSelect.value;
+                });
+            }
+
+            showMessage(message, type = 'info') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+                messageDiv.textContent = message;
+                this.messageArea.innerHTML = '';
+                this.messageArea.appendChild(messageDiv);
+                
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 5000);
+            }
+
+            updateStatus(message) {
+                this.statusText.textContent = message;
+            }
+
+            showLoading(text, show = true) {
+                if (show) {
+                    this.loadingSection.classList.remove('hidden');
+                    this.loadingText.innerHTML = `<span class="loading-spinner"></span>${text}`;
+                } else {
+                    this.loadingSection.classList.add('hidden');
+                }
+            }
+
+            updateProgress(percentage) {
+                this.progressFill.style.width = `${percentage}%`;
+            }
+
+            async loadExchanges() {
+                try {
+                    this.showLoading('Loading and filtering exchanges with valid data...');
+                    this.updateStatus('Loading exchanges...');
+                    
+                    const response = await fetch('https://api.coinlore.net/api/exchanges/');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const exchanges = await response.json();
+                    
+                    this.exchangeMap.clear();
+                    this.exchangeSelect.innerHTML = '<option value="">Select an exchange...</option>';
+                    
+                    let totalExchanges = Object.keys(exchanges).length;
+                    let validExchanges = 0;
+                    let checkedExchanges = 0;
+                    const validExchangeNames = [];
+
+                    this.updateStatus('Filtering exchanges with valid data...');
+
+                    for (const [id, exchange] of Object.entries(exchanges)) {
+                        if (exchange.name) {
+                            const isValid = await this.hasValidExchangeData(id);
+                            
+                            if (isValid) {
+                                this.exchangeMap.set(exchange.name, id);
+                                validExchangeNames.push(exchange.name);
+                                validExchanges++;
+                            }
+                            
+                            checkedExchanges++;
+                            
+                            const progressPercentage = (checkedExchanges / totalExchanges) * 100;
+                            this.updateProgress(progressPercentage);
+                            
+                            if (checkedExchanges % 5 === 0 || checkedExchanges === 1 || checkedExchanges === totalExchanges) {
+                                this.loadingText.innerHTML = `<span class="loading-spinner"></span>Filtering exchanges: ${validExchanges} valid out of ${checkedExchanges} checked...`;
+                                this.updateStatus(`Filtering exchanges: ${validExchanges} valid out of ${checkedExchanges} checked...`);
+                            }
+                        }
+                    }
+
+                    // Sort exchange names alphabetically
+                    validExchangeNames.sort();
+                    
+                    // Add valid exchanges to dropdown
+                    validExchangeNames.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        this.exchangeSelect.appendChild(option);
+                    });
+
+                    this.showLoading('', false);
+
+                    if (validExchangeNames.length > 0) {
+                        this.exchangeSelect.selectedIndex = 1; // Select first valid exchange
+                        this.loadDataBtn.disabled = false;
+                        this.updateStatus(`Ready - ${validExchanges} valid exchanges loaded out of ${totalExchanges} total`);
+                        this.showMessage(`Successfully loaded ${validExchanges} exchanges with valid data`, 'success');
+                    } else {
+                        this.updateStatus('No valid exchanges found');
+                        this.showMessage('No valid exchanges found', 'error');
+                    }
+
+                } catch (error) {
+                    this.showLoading('', false);
+                    this.updateStatus(`Error loading exchanges: ${error.message}`);
+                    this.showMessage(`Error loading exchanges: ${error.message}`, 'error');
+                    console.error('Error loading exchanges:', error);
+                }
+            }
+
+            async hasValidExchangeData(exchangeId) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                    
+                    const response = await fetch(`https://api.coinlore.net/api/exchange/?id=${exchangeId}`, {
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        return false;
+                    }
+                    
+                    const json = await response.text();
+                    
+                    if (!json || json.trim() === '{}' || json.trim() === '[]') {
+                        return false;
+                    }
+                    
+                    const data = JSON.parse(json);
+                    
+                    // Case 1: Object with pairs array
+                    if (data && typeof data === 'object' && data.pairs && Array.isArray(data.pairs) && data.pairs.length > 0) {
+                        return true;
+                    }
+                    
+                    // Case 2: Array with trading pair data
+                    if (Array.isArray(data) && data.length > 3) {
+                        // Check first few items for pair properties
+                        for (let i = 0; i < Math.min(3, data.length); i++) {
+                            const item = data[i];
+                            if ((item.base || item.symbol) && (item.quote || item.price || item.price_usd)) {
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            async loadExchangeData() {
+                const selectedExchange = this.exchangeSelect.value;
+                if (!selectedExchange) {
+                    this.showMessage('Please select an exchange first', 'error');
+                    return;
+                }
+
+                const exchangeId = this.exchangeMap.get(selectedExchange);
+                if (!exchangeId) {
+                    this.showMessage('Exchange ID not found', 'error');
+                    return;
+                }
+
+                this.loadDataBtn.disabled = true;
+                this.dataTable.classList.add('hidden');
+                
+                try {
+                    this.updateStatus('Loading exchange data...');
+                    
+                    const response = await fetch(`https://api.coinlore.net/api/exchange/?id=${exchangeId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const json = await response.text();
+                    
+                    if (!json || json.trim() === '{}' || json.trim() === '[]') {
+                        throw new Error('Exchange returned empty data');
+                    }
+                    
+                    const data = JSON.parse(json);
+                    
+                    if (Array.isArray(data)) {
+                        this.parseArrayFormat(data, exchangeId);
+                    } else if (data.pairs && Array.isArray(data.pairs)) {
+                        this.parseObjectFormat(data, exchangeId);
+                    } else {
+                        throw new Error('Unsupported data format');
+                    }
+
+                } catch (error) {
+                    this.updateStatus(`Error: ${error.message}`);
+                    this.showMessage(`Error loading exchange data: ${error.message}`, 'error');
+                    console.error('Error loading exchange data:', error);
+                } finally {
+                    this.loadDataBtn.disabled = false;
+                }
+            }
+
+            parseArrayFormat(data, exchangeId) {
+                const pairs = [];
+                
+                data.forEach(item => {
+                    try {
+                        const pair = {
+                            base: item.base || 'Unknown',
+                            quote: item.quote || 'Unknown',
+                            priceUsd: this.parseDecimal(item.price_usd) || this.parseDecimal(item.price) || 0,
+                            volume: this.parseDecimal(item.volume) || 0,
+                            time: item.time || Date.now() / 1000,
+                            formattedTime: this.formatTime(item.time)
+                        };
+                        pairs.push(pair);
+                    } catch (e) {
+                        // Skip invalid pairs
+                    }
+                });
+
+                this.displayPairs(pairs, `Exchange ID: ${exchangeId}`);
+            }
+
+            parseObjectFormat(data, exchangeId) {
+                const pairs = [];
+                
+                data.pairs.forEach(item => {
+                    try {
+                        const pair = {
+                            base: item.base || 'Unknown',
+                            quote: item.quote || 'Unknown',
+                            priceUsd: this.parseDecimal(item.price_usd) || this.parseDecimal(item.price) || 0,
+                            volume: this.parseDecimal(item.volume) || 0,
+                            time: item.time || Date.now() / 1000,
+                            formattedTime: this.formatTime(item.time)
+                        };
+                        pairs.push(pair);
+                    } catch (e) {
+                        // Skip invalid pairs
+                    }
+                });
+
+                let exchangeInfoText = `Exchange ID: ${exchangeId}`;
+                if (data['0']) {
+                    const info = data['0'];
+                    exchangeInfoText = `${info.name || 'Unknown'} | Founded: ${info.date_live || 'Unknown'} | URL: ${info.url || 'Unknown'}`;
+                }
+
+                this.displayPairs(pairs, exchangeInfoText);
+            }
+
+            parseDecimal(value) {
+                if (typeof value === 'number') return value;
+                if (typeof value === 'string') {
+                    const parsed = parseFloat(value);
+                    return isNaN(parsed) ? 0 : parsed;
+                }
+                return 0;
+            }
+
+            formatTime(timestamp) {
+                if (!timestamp || timestamp <= 0) {
+                    return new Date().toLocaleString() + ' (Current)';
+                }
+                
+                try {
+                    const date = new Date(timestamp * 1000);
+                    return date.toLocaleString();
+                } catch (e) {
+                    return new Date().toLocaleString() + ' (Current)';
+                }
+            }
+
+            displayPairs(pairs, exchangeInfoText) {
+                this.exchangeInfo.textContent = exchangeInfoText;
+                
+                if (pairs.length === 0) {
+                    this.updateStatus('No trading pairs available for this exchange');
+                    this.showMessage('No trading pairs found for this exchange', 'error');
+                    return;
+                }
+
+                // Clear previous data
+                this.dataTableBody.innerHTML = '';
+                
+                // Add new data
+                pairs.forEach(pair => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pair.base}</td>
+                        <td>${pair.quote}</td>
+                        <td>$${pair.priceUsd.toFixed(2)}</td>
+                        <td>${pair.volume.toLocaleString()}</td>
+                        <td>${pair.formattedTime}</td>
+                    `;
+                    this.dataTableBody.appendChild(row);
+                });
+
+                this.dataTable.classList.remove('hidden');
+                this.updateStatus(`Loaded ${pairs.length} trading pairs`);
+                this.showMessage(`Successfully loaded ${pairs.length} trading pairs`, 'success');
+            }
+        }
+
+        // CORS Proxy note: In a production environment, you might need to use a CORS proxy
+        // or set up your own backend to handle API requests due to CORS restrictions
+        
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new CryptoViewWeb();
+        });
+    </script>
+</body>
+</html>
