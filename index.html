@@ -96,6 +96,17 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        
+        #addExchangesBtn {
+            background: #1F0C5B;
+            border-color: #00FFFF;
+            color: #00FFFF;
+        }
+        
+        #addExchangesBtn:hover {
+            background: #2E1889;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+        }
 
         .loading-section {
             margin-bottom: 20px;
@@ -252,6 +263,7 @@
                 <option value="">Loading exchanges...</option>
             </select>
             <button id="loadDataBtn" class="cyber-button" disabled>LOAD DATA</button>
+            <button id="addExchangesBtn" class="cyber-button">ADD EXCHANGES</button>
         </div>
 
         <div id="loadingSection" class="loading-section hidden">
@@ -290,14 +302,17 @@
         class CryptoViewWeb {
             constructor() {
                 this.exchangeMap = new Map();
+                this.defaultExchange = 'Kraken';
+                this.allExchangesLoaded = false;
                 this.initializeElements();
                 this.setupEventListeners();
-                this.loadExchanges();
+                this.loadDefaultExchange();
             }
 
             initializeElements() {
                 this.exchangeSelect = document.getElementById('exchangeSelect');
                 this.loadDataBtn = document.getElementById('loadDataBtn');
+                this.addExchangesBtn = document.getElementById('addExchangesBtn');
                 this.loadingSection = document.getElementById('loadingSection');
                 this.loadingText = document.getElementById('loadingText');
                 this.progressFill = document.getElementById('progressFill');
@@ -310,6 +325,7 @@
 
             setupEventListeners() {
                 this.loadDataBtn.addEventListener('click', () => this.loadExchangeData());
+                this.addExchangesBtn.addEventListener('click', () => this.loadAllExchanges());
                 this.exchangeSelect.addEventListener('change', () => {
                     this.loadDataBtn.disabled = !this.exchangeSelect.value;
                 });
@@ -344,8 +360,80 @@
                 this.progressFill.style.width = `${percentage}%`;
             }
 
-            async loadExchanges() {
+            async loadDefaultExchange() {
                 try {
+                    this.updateStatus('Loading default exchange...');
+                    
+                    // Fetch all exchanges to find Kraken or a valid alternative
+                    const response = await fetch('https://api.coinlore.net/api/exchanges/');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const exchanges = await response.json();
+                    
+                    // First try to find Kraken
+                    let defaultExchangeId = null;
+                    let defaultExchangeName = null;
+                    
+                    for (const [id, exchange] of Object.entries(exchanges)) {
+                        if (exchange.name && exchange.name.toLowerCase() === 'kraken') {
+                            // Check if Kraken has valid data
+                            const hasData = await this.hasValidExchangeData(id);
+                            if (hasData) {
+                                defaultExchangeId = id;
+                                defaultExchangeName = exchange.name;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If Kraken doesn't have valid data, find the first valid exchange
+                    if (!defaultExchangeId) {
+                        this.updateStatus('Kraken not available, finding alternative...');
+                        for (const [id, exchange] of Object.entries(exchanges)) {
+                            if (exchange.name) {
+                                const hasData = await this.hasValidExchangeData(id);
+                                if (hasData) {
+                                    defaultExchangeId = id;
+                                    defaultExchangeName = exchange.name;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (defaultExchangeId && defaultExchangeName) {
+                        // Set the default exchange
+                        this.exchangeMap.set(defaultExchangeName, defaultExchangeId);
+                        this.exchangeSelect.innerHTML = `<option value="${defaultExchangeName}">${defaultExchangeName}</option>`;
+                        this.exchangeSelect.value = defaultExchangeName;
+                        this.loadDataBtn.disabled = false;
+                        this.updateStatus(`${defaultExchangeName} loaded - Click "ADD EXCHANGES" to load more`);
+                        
+                        // Automatically load the data
+                        await this.loadExchangeData();
+                    } else {
+                        throw new Error('No valid exchanges found');
+                    }
+                    
+                } catch (error) {
+                    this.updateStatus('Error loading default exchange');
+                    this.showMessage(`Error loading default exchange: ${error.message}`, 'error');
+                    console.error('Error loading default exchange:', error);
+                }
+            }
+
+            async loadAllExchanges() {
+                try {
+                    // If already loaded all exchanges, just show a message
+                    if (this.allExchangesLoaded) {
+                        this.showMessage('All available exchanges have already been loaded', 'success');
+                        return;
+                    }
+                    
+                    this.addExchangesBtn.disabled = true;
                     this.showLoading('Loading and filtering exchanges with valid data...');
                     this.updateStatus('Loading exchanges...');
                     
@@ -357,8 +445,20 @@
                     
                     const exchanges = await response.json();
                     
-                    this.exchangeMap.clear();
+                    // Preserve current selection and exchanges
+                    const currentSelection = this.exchangeSelect.value;
+                    const currentExchanges = new Map(this.exchangeMap);
+                    
+                    // Clear and rebuild select, preserving existing options
                     this.exchangeSelect.innerHTML = '<option value="">Select an exchange...</option>';
+                    
+                    // Add back currently loaded exchanges first
+                    for (const [name, id] of currentExchanges) {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        this.exchangeSelect.appendChild(option);
+                    }
                     
                     let totalExchanges = Object.keys(exchanges).length;
                     let validExchanges = 0;
@@ -369,6 +469,12 @@
 
                     for (const [id, exchange] of Object.entries(exchanges)) {
                         if (exchange.name) {
+                            // Skip if already loaded
+                            if (this.exchangeMap.has(exchange.name)) {
+                                checkedExchanges++;
+                                continue;
+                            }
+                            
                             const isValid = await this.hasValidExchangeData(id);
                             
                             if (isValid) {
@@ -403,20 +509,30 @@
                     this.showLoading('', false);
 
                     if (validExchangeNames.length > 0) {
-                        this.exchangeSelect.selectedIndex = 1; // Select first valid exchange
+                        // Keep the currently selected exchange if it exists
                         this.loadDataBtn.disabled = false;
-                        this.updateStatus(`Ready - ${validExchanges} valid exchanges loaded out of ${totalExchanges} total`);
-                        this.showMessage(`Successfully loaded ${validExchanges} exchanges with valid data`, 'success');
+                        this.updateStatus(`Ready - ${validExchanges} new valid exchanges loaded (${this.exchangeMap.size} total)`);
+                        this.showMessage(`Successfully loaded ${validExchanges} additional exchanges with valid data`, 'success');
+                        
+                        // Restore selection if it still exists
+                        if (currentSelection) {
+                            this.exchangeSelect.value = currentSelection;
+                        }
                     } else {
-                        this.updateStatus('No valid exchanges found');
-                        this.showMessage('No valid exchanges found', 'error');
+                        this.updateStatus('No additional valid exchanges found');
+                        this.showMessage('No additional valid exchanges found', 'error');
                     }
+                    
+                    // Mark that all exchanges have been loaded
+                    this.allExchangesLoaded = true;
 
                 } catch (error) {
                     this.showLoading('', false);
                     this.updateStatus(`Error loading exchanges: ${error.message}`);
                     this.showMessage(`Error loading exchanges: ${error.message}`, 'error');
                     console.error('Error loading exchanges:', error);
+                } finally {
+                    this.addExchangesBtn.disabled = false;
                 }
             }
 
