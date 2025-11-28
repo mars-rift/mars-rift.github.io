@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.coinlore.net; img-src 'self' data:; base-uri 'self'; form-action 'self';">
+    <meta name="referrer" content="no-referrer">
     <title>CryptoView Web</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
@@ -304,6 +306,16 @@
                 this.exchangeMap = new Map();
                 this.defaultExchange = 'Kraken';
                 this.allExchangesLoaded = false;
+                // Rate limiting
+                this.rateLimiter = {
+                    lastRequestTime: 0,
+                    minInterval: 500, // ms between requests
+                    requestQueue: []
+                };
+                // Request tracking for abuse prevention
+                this.requestCount = 0;
+                this.maxRequestsPerMinute = 60;
+                this.requestTimestamps = [];
                 this.initializeElements();
                 this.setupEventListeners();
                 this.loadDefaultExchange();
@@ -328,19 +340,53 @@
                 this.addExchangesBtn.addEventListener('click', () => this.loadAllExchanges());
                 this.exchangeSelect.addEventListener('change', () => {
                     this.loadDataBtn.disabled = !this.exchangeSelect.value;
+                    // Auto-load data when an exchange is selected
+                    if (this.exchangeSelect.value) {
+                        this.loadExchangeData();
+                    }
                 });
             }
 
             showMessage(message, type = 'info') {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-                messageDiv.textContent = message;
+                // Sanitize message to prevent XSS
+                messageDiv.textContent = this.sanitizeText(String(message).substring(0, 500));
                 this.messageArea.innerHTML = '';
                 this.messageArea.appendChild(messageDiv);
                 
                 setTimeout(() => {
                     messageDiv.remove();
                 }, 5000);
+            }
+
+            sanitizeText(text) {
+                // Remove any potentially dangerous characters
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.textContent || '';
+            }
+
+            isRateLimited() {
+                const now = Date.now();
+                // Clean old timestamps (older than 1 minute)
+                this.requestTimestamps = this.requestTimestamps.filter(ts => now - ts < 60000);
+                
+                // Check if we've exceeded the rate limit
+                if (this.requestTimestamps.length >= this.maxRequestsPerMinute) {
+                    this.showMessage('Rate limit exceeded. Please wait a moment before trying again.', 'error');
+                    return true;
+                }
+                
+                // Check minimum interval between requests
+                if (now - this.rateLimiter.lastRequestTime < this.rateLimiter.minInterval) {
+                    return true;
+                }
+                
+                // Record this request
+                this.requestTimestamps.push(now);
+                this.rateLimiter.lastRequestTime = now;
+                return false;
             }
 
             updateStatus(message) {
@@ -362,10 +408,23 @@
 
             async loadDefaultExchange() {
                 try {
+                    if (this.isRateLimited()) {
+                        return;
+                    }
+                    
                     this.updateStatus('Loading default exchange...');
                     
                     // Fetch all exchanges to find Kraken or a valid alternative
-                    const response = await fetch('https://api.coinlore.net/api/exchanges/');
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    
+                    const response = await fetch('https://api.coinlore.net/api/exchanges/', {
+                        signal: controller.signal,
+                        mode: 'cors',
+                        cache: 'default'
+                    });
+                    
+                    clearTimeout(timeoutId);
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -433,11 +492,24 @@
                         return;
                     }
                     
+                    if (this.isRateLimited()) {
+                        return;
+                    }
+                    
                     this.addExchangesBtn.disabled = true;
                     this.showLoading('Loading and filtering exchanges with valid data...');
                     this.updateStatus('Loading exchanges...');
                     
-                    const response = await fetch('https://api.coinlore.net/api/exchanges/');
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    
+                    const response = await fetch('https://api.coinlore.net/api/exchanges/', {
+                        signal: controller.signal,
+                        mode: 'cors',
+                        cache: 'default'
+                    });
+                    
+                    clearTimeout(timeoutId);
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -593,6 +665,16 @@
                     this.showMessage('Exchange ID not found', 'error');
                     return;
                 }
+                
+                // Validate exchangeId is numeric and safe
+                if (!/^\d+$/.test(String(exchangeId))) {
+                    this.showMessage('Invalid exchange ID format', 'error');
+                    return;
+                }
+                
+                if (this.isRateLimited()) {
+                    return;
+                }
 
                 this.loadDataBtn.disabled = true;
                 this.dataTable.classList.add('hidden');
@@ -600,7 +682,16 @@
                 try {
                     this.updateStatus('Loading exchange data...');
                     
-                    const response = await fetch(`https://api.coinlore.net/api/exchange/?id=${exchangeId}`);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    
+                    const response = await fetch(`https://api.coinlore.net/api/exchange/?id=${encodeURIComponent(exchangeId)}`, {
+                        signal: controller.signal,
+                        mode: 'cors',
+                        cache: 'default'
+                    });
+                    
+                    clearTimeout(timeoutId);
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -634,11 +725,20 @@
             parseArrayFormat(data, exchangeId) {
                 const pairs = [];
                 
-                data.forEach(item => {
+                // Limit number of pairs to prevent memory issues
+                const maxPairs = 1000;
+                const itemsToProcess = data.slice(0, maxPairs);
+                
+                itemsToProcess.forEach(item => {
                     try {
+                        // Validate item structure
+                        if (!item || typeof item !== 'object') {
+                            return;
+                        }
+                        
                         const pair = {
-                            base: item.base || 'Unknown',
-                            quote: item.quote || 'Unknown',
+                            base: this.sanitizeText(String(item.base || 'Unknown').substring(0, 20)),
+                            quote: this.sanitizeText(String(item.quote || 'Unknown').substring(0, 20)),
                             priceUsd: this.parseDecimal(item.price_usd) || this.parseDecimal(item.price) || 0,
                             volume: this.parseDecimal(item.volume) || 0,
                             time: item.time || Date.now() / 1000,
@@ -650,17 +750,26 @@
                     }
                 });
 
-                this.displayPairs(pairs, `Exchange ID: ${exchangeId}`);
+                this.displayPairs(pairs, `Exchange ID: ${this.sanitizeText(String(exchangeId))}`);
             }
 
             parseObjectFormat(data, exchangeId) {
                 const pairs = [];
                 
-                data.pairs.forEach(item => {
+                // Limit number of pairs to prevent memory issues
+                const maxPairs = 1000;
+                const itemsToProcess = data.pairs.slice(0, maxPairs);
+                
+                itemsToProcess.forEach(item => {
                     try {
+                        // Validate item structure
+                        if (!item || typeof item !== 'object') {
+                            return;
+                        }
+                        
                         const pair = {
-                            base: item.base || 'Unknown',
-                            quote: item.quote || 'Unknown',
+                            base: this.sanitizeText(String(item.base || 'Unknown').substring(0, 20)),
+                            quote: this.sanitizeText(String(item.quote || 'Unknown').substring(0, 20)),
                             priceUsd: this.parseDecimal(item.price_usd) || this.parseDecimal(item.price) || 0,
                             volume: this.parseDecimal(item.volume) || 0,
                             time: item.time || Date.now() / 1000,
@@ -672,20 +781,34 @@
                     }
                 });
 
-                let exchangeInfoText = `Exchange ID: ${exchangeId}`;
+                let exchangeInfoText = `Exchange ID: ${this.sanitizeText(String(exchangeId))}`;
                 if (data['0']) {
                     const info = data['0'];
-                    exchangeInfoText = `${info.name || 'Unknown'} | Founded: ${info.date_live || 'Unknown'} | URL: ${info.url || 'Unknown'}`;
+                    const name = this.sanitizeText(String(info.name || 'Unknown').substring(0, 100));
+                    const dateLive = this.sanitizeText(String(info.date_live || 'Unknown').substring(0, 50));
+                    const url = this.sanitizeText(String(info.url || 'Unknown').substring(0, 200));
+                    exchangeInfoText = `${name} | Founded: ${dateLive} | URL: ${url}`;
                 }
 
                 this.displayPairs(pairs, exchangeInfoText);
             }
 
             parseDecimal(value) {
-                if (typeof value === 'number') return value;
+                if (typeof value === 'number') {
+                    // Validate number is finite and reasonable
+                    if (!isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+                        return 0;
+                    }
+                    return value;
+                }
                 if (typeof value === 'string') {
-                    const parsed = parseFloat(value);
-                    return isNaN(parsed) ? 0 : parsed;
+                    // Limit string length to prevent processing huge strings
+                    const sanitized = value.substring(0, 50);
+                    const parsed = parseFloat(sanitized);
+                    if (isNaN(parsed) || !isFinite(parsed) || Math.abs(parsed) > Number.MAX_SAFE_INTEGER) {
+                        return 0;
+                    }
+                    return parsed;
                 }
                 return 0;
             }
@@ -715,16 +838,30 @@
                 // Clear previous data
                 this.dataTableBody.innerHTML = '';
                 
-                // Add new data
+                // Add new data using safe DOM methods instead of innerHTML
                 pairs.forEach(pair => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${pair.base}</td>
-                        <td>${pair.quote}</td>
-                        <td>$${pair.priceUsd.toFixed(2)}</td>
-                        <td>${pair.volume.toLocaleString()}</td>
-                        <td>${pair.formattedTime}</td>
-                    `;
+                    
+                    const baseCell = document.createElement('td');
+                    baseCell.textContent = pair.base;
+                    row.appendChild(baseCell);
+                    
+                    const quoteCell = document.createElement('td');
+                    quoteCell.textContent = pair.quote;
+                    row.appendChild(quoteCell);
+                    
+                    const priceCell = document.createElement('td');
+                    priceCell.textContent = `$${pair.priceUsd.toFixed(2)}`;
+                    row.appendChild(priceCell);
+                    
+                    const volumeCell = document.createElement('td');
+                    volumeCell.textContent = pair.volume.toLocaleString();
+                    row.appendChild(volumeCell);
+                    
+                    const timeCell = document.createElement('td');
+                    timeCell.textContent = pair.formattedTime;
+                    row.appendChild(timeCell);
+                    
                     this.dataTableBody.appendChild(row);
                 });
 
