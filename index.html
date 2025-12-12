@@ -304,7 +304,7 @@
         class CryptoViewWeb {
             constructor() {
                 this.exchangeMap = new Map();
-                this.defaultExchange = 'Kraken';
+                this.defaultExchange = 'Binance';
                 this.allExchangesLoaded = false;
                 // Rate limiting
                 this.rateLimiter = {
@@ -432,12 +432,12 @@
                     
                     const exchanges = await response.json();
                     
-                    // First try to find Kraken
+                    // First try to find Binance
                     let defaultExchangeId = null;
                     let defaultExchangeName = null;
                     
                     for (const [id, exchange] of Object.entries(exchanges)) {
-                        if (exchange.name && exchange.name.toLowerCase() === 'kraken') {
+                        if (exchange.name && exchange.name.toLowerCase() === 'binance') {
                             // Check if Kraken has valid data
                             const hasData = await this.hasValidExchangeData(id);
                             if (hasData) {
@@ -448,9 +448,9 @@
                         }
                     }
                     
-                    // If Kraken doesn't have valid data, find the first valid exchange
+                    // If Binance doesn't have valid data, find the first valid exchange
                     if (!defaultExchangeId) {
-                        this.updateStatus('Kraken not available, finding alternative...');
+                        this.updateStatus('Binance not available, finding alternative...');
                         for (const [id, exchange] of Object.entries(exchanges)) {
                             if (exchange.name) {
                                 const hasData = await this.hasValidExchangeData(id);
