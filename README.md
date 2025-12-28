@@ -16,12 +16,14 @@ A modern, cyberpunk-styled cryptocurrency exchange viewer built with pure HTML5,
 - **Dark theme** optimized for extended viewing sessions
 
 ### 🔧 **Core Functionality**
+- **Persistent State Management**: localStorage-based persistence keeps your loaded exchanges across page refreshes
 - **Smart Exchange Filtering**: Automatically filters and displays only exchanges with valid trading data
 - **Real-time Progress Tracking**: Visual progress bar shows filtering progress with live updates
 - **Trading Pair Display**: Clean table view of BASE/QUOTE pairs with pricing and volume data
 - **Exchange Information**: Detailed exchange metadata including founding date and website
 - **Error Handling**: Comprehensive error messages and validation
 - **Status Updates**: Real-time status information and loading indicators
+- **Intelligent Caching**: 7-day cache expiration with automatic fallback to defaults
 
 ### 📊 **Data Features**
 - **Multiple Data Formats**: Supports both array and object-based API responses
@@ -100,15 +102,19 @@ The application is fully responsive and optimized for mobile devices:
 
 ### **1. Initial Load**
 When you first open the application:
-- The system automatically loads all available exchanges
-- Each exchange is validated for useful trading data
-- Progress is shown with a visual progress bar
-- Only exchanges with valid data are added to the dropdown
+- The system checks localStorage for previously loaded exchanges
+- If found (and less than 7 days old), exchanges are instantly restored
+- If not found, the system automatically loads a default exchange (Binance)
+- Click "ADD EXCHANGES" to load all available exchanges with valid data
+- Progress is shown with a visual progress bar during bulk loading
+- All loaded exchanges persist across page refreshes
 
 ### **2. Selecting an Exchange**
 - Choose from the filtered list of valid exchanges
 - Exchanges are sorted alphabetically for easy browsing
 - The "LOAD DATA" button becomes enabled once an exchange is selected
+- Your selection is automatically saved and restored on page refresh
+- Data for the selected exchange loads automatically when changed
 
 ### **3. Viewing Trading Data**
 - Click "LOAD DATA" to fetch trading pairs
@@ -194,10 +200,12 @@ const EXCHANGE_DATA_API = 'https://api.coinlore.net/api/exchange/?id=';
 
 ## 🛡️ Security Considerations
 
-- **No sensitive data storage**: All data is fetched in real-time
+- **localStorage usage**: Stores exchange list and preferences locally (non-sensitive data only)
+- **Auto-expiration**: Cached data expires after 7 days to prevent stale information
 - **HTTPS recommended**: Use HTTPS in production for secure API calls
 - **Input validation**: All API responses are validated before processing
 - **Error boundaries**: Comprehensive error handling prevents crashes
+- **Cache clearing**: Clearing browser data resets to default state
 
 ## 🌟 Future Enhancements
 
@@ -207,6 +215,7 @@ const EXCHANGE_DATA_API = 'https://api.coinlore.net/api/exchange/?id=';
 - **Export functionality** for trading data
 - **PWA support** for offline functionality
 - **Dark/Light theme toggle**
+- **IndexedDB migration** for larger datasets and better performance
 
 ## 📄 License
 

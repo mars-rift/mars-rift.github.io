@@ -306,6 +306,7 @@
                 this.exchangeMap = new Map();
                 this.defaultExchange = 'Binance';
                 this.allExchangesLoaded = false;
+                this.storageKey = 'cryptoview_exchanges';
                 // Rate limiting
                 this.rateLimiter = {
                     lastRequestTime: 0,
@@ -318,7 +319,7 @@
                 this.requestTimestamps = [];
                 this.initializeElements();
                 this.setupEventListeners();
-                this.loadDefaultExchange();
+                this.loadFromStorage();
             }
 
             initializeElements() {
@@ -335,11 +336,94 @@
                 this.statusText = document.getElementById('statusText');
             }
 
+            saveToStorage() {
+                try {
+                    const data = {
+                        exchangeMap: Array.from(this.exchangeMap.entries()),
+                        allExchangesLoaded: this.allExchangesLoaded,
+                        selectedExchange: this.exchangeSelect.value,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem(this.storageKey, JSON.stringify(data));
+                } catch (error) {
+                    console.warn('Failed to save to localStorage:', error);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    if (stored) {
+                        const data = JSON.parse(stored);
+                        
+                        // Check if data is recent (within last 7 days)
+                        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+                        if (data.timestamp && (Date.now() - data.timestamp) < maxAge) {
+                            // Restore exchange map
+                            if (data.exchangeMap && Array.isArray(data.exchangeMap)) {
+                                this.exchangeMap = new Map(data.exchangeMap);
+                                this.allExchangesLoaded = data.allExchangesLoaded || false;
+                                
+                                // Populate dropdown with saved exchanges
+                                this.populateExchangeDropdown(data.selectedExchange);
+                                
+                                // Auto-load data for the selected exchange
+                                if (data.selectedExchange) {
+                                    this.loadExchangeData();
+                                }
+                                
+                                this.updateStatus(`Restored ${this.exchangeMap.size} exchanges from cache`);
+                                return;
+                            }
+                        } else {
+                            // Data is too old, clear it
+                            localStorage.removeItem(this.storageKey);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to load from localStorage:', error);
+                    // Clear potentially corrupted data
+                    try {
+                        localStorage.removeItem(this.storageKey);
+                    } catch (e) {}
+                }
+                
+                // If loading from storage failed or no data exists, load default
+                this.loadDefaultExchange();
+            }
+
+            populateExchangeDropdown(selectedExchange = null) {
+                // Sort exchanges alphabetically
+                const sortedExchanges = Array.from(this.exchangeMap.keys()).sort();
+                
+                // Clear and rebuild dropdown
+                this.exchangeSelect.innerHTML = '<option value="">Select an exchange...</option>';
+                
+                sortedExchanges.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    this.exchangeSelect.appendChild(option);
+                });
+                
+                // Restore selection if provided
+                if (selectedExchange && this.exchangeMap.has(selectedExchange)) {
+                    this.exchangeSelect.value = selectedExchange;
+                    this.loadDataBtn.disabled = false;
+                } else if (sortedExchanges.length > 0) {
+                    // Select first exchange if no previous selection
+                    this.exchangeSelect.value = sortedExchanges[0];
+                    this.loadDataBtn.disabled = false;
+                }
+            }
+
             setupEventListeners() {
                 this.loadDataBtn.addEventListener('click', () => this.loadExchangeData());
                 this.addExchangesBtn.addEventListener('click', () => this.loadAllExchanges());
                 this.exchangeSelect.addEventListener('change', () => {
                     this.loadDataBtn.disabled = !this.exchangeSelect.value;
+                    // Save the selected exchange
+                    this.saveToStorage();
                     // Auto-load data when an exchange is selected
                     if (this.exchangeSelect.value) {
                         this.loadExchangeData();
@@ -466,10 +550,11 @@
                     if (defaultExchangeId && defaultExchangeName) {
                         // Set the default exchange
                         this.exchangeMap.set(defaultExchangeName, defaultExchangeId);
-                        this.exchangeSelect.innerHTML = `<option value="${defaultExchangeName}">${defaultExchangeName}</option>`;
-                        this.exchangeSelect.value = defaultExchangeName;
-                        this.loadDataBtn.disabled = false;
+                        this.populateExchangeDropdown(defaultExchangeName);
                         this.updateStatus(`${defaultExchangeName} loaded - Click "ADD EXCHANGES" to load more`);
+                        
+                        // Save to storage
+                        this.saveToStorage();
                         
                         // Automatically load the data
                         await this.loadExchangeData();
@@ -597,6 +682,9 @@
                     
                     // Mark that all exchanges have been loaded
                     this.allExchangesLoaded = true;
+                    
+                    // Save to storage
+                    this.saveToStorage();
 
                 } catch (error) {
                     this.showLoading('', false);
