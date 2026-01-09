@@ -940,9 +940,15 @@
                 if (data['0']) {
                     const info = data['0'];
                     const name = this.sanitizeText(String(info.name || 'Unknown').substring(0, 100));
-                    const dateLive = this.sanitizeText(String(info.date_live || 'Unknown').substring(0, 50));
+                    const dateLive = info.date_live ? this.sanitizeText(String(info.date_live).substring(0, 50)) : null;
                     const url = this.sanitizeText(String(info.url || 'Unknown').substring(0, 200));
-                    exchangeInfoText = `${name} | Founded: ${dateLive} | URL: ${url}`;
+                    
+                    // Build info text conditionally - only show founded date if available
+                    exchangeInfoText = name;
+                    if (dateLive) {
+                        exchangeInfoText += ` | Founded: ${dateLive}`;
+                    }
+                    exchangeInfoText += ` | URL: ${url}`;
                 }
 
                 this.displayPairs(pairs, exchangeInfoText);
