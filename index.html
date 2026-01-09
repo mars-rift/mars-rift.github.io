@@ -253,6 +253,73 @@
             margin: 10px 0;
             text-align: center;
         }
+
+        /* Page Navigator Sphere */
+        .nav-sphere {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(18, 4, 88, 0.85), rgba(46, 15, 137, 0.85));
+            border: 2px solid #00FF9C;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 156, 0.4);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .nav-sphere.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .nav-sphere:hover {
+            background: linear-gradient(135deg, rgba(46, 24, 137, 0.95), rgba(94, 31, 188, 0.95));
+            border-color: #00FFFF;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            transform: scale(1.1);
+        }
+
+        .nav-sphere:active {
+            transform: scale(0.95);
+        }
+
+        .nav-sphere svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: #00FF9C;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.3s ease;
+        }
+
+        .nav-sphere:hover svg {
+            stroke: #00FFFF;
+        }
+
+        @media (max-width: 768px) {
+            .nav-sphere {
+                bottom: 20px;
+                right: 20px;
+                width: 48px;
+                height: 48px;
+            }
+            
+            .nav-sphere svg {
+                width: 20px;
+                height: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -965,6 +1032,38 @@
         // Initialize the application when the page loads
         document.addEventListener('DOMContentLoaded', () => {
             new CryptoViewWeb();
+        });
+
+        // Scroll-to-top sphere functionality
+        const navSphere = document.createElement('button');
+        navSphere.className = 'nav-sphere';
+        navSphere.setAttribute('aria-label', 'Scroll to top');
+        navSphere.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+        `;
+        document.body.appendChild(navSphere);
+
+        // Show/hide sphere based on scroll position
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                if (window.scrollY > 300) {
+                    navSphere.classList.add('visible');
+                } else {
+                    navSphere.classList.remove('visible');
+                }
+            }, 100);
+        });
+
+        // Smooth scroll to top on click
+        navSphere.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         });
     </script>
 </body>
