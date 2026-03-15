@@ -320,6 +320,47 @@
                 height: 20px;
             }
         }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(18, 4, 88, 0.92);
+            border: 1px solid #00FF9C;
+            color: #00FF9C;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 2000;
+            box-shadow: 0 0 14px rgba(0, 255, 156, 0.25);
+            backdrop-filter: blur(4px);
+        }
+
+        .toast.toast--error {
+            border-color: #ff6666;
+            color: #ff6666;
+            box-shadow: 0 0 14px rgba(255, 0, 0, 0.2);
+        }
+
+        .toast.toast--visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .toast {
+                white-space: normal;
+                max-width: 90vw;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -511,6 +552,30 @@
                 }, 5000);
             }
 
+            showToast(message, type = 'success', duration = 3500) {
+                // Remove any existing toast
+                const existing = document.getElementById('cryptoToast');
+                if (existing) {
+                    existing.remove();
+                }
+
+                const toast = document.createElement('div');
+                toast.id = 'cryptoToast';
+                toast.className = 'toast' + (type === 'error' ? ' toast--error' : '');
+                toast.textContent = this.sanitizeText(String(message).substring(0, 200));
+                document.body.appendChild(toast);
+
+                // Trigger animation on next frame
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => toast.classList.add('toast--visible'));
+                });
+
+                setTimeout(() => {
+                    toast.classList.remove('toast--visible');
+                    setTimeout(() => toast.remove(), 320);
+                }, duration);
+            }
+
             sanitizeText(text) {
                 // Remove any potentially dangerous characters
                 const div = document.createElement('div');
@@ -589,7 +654,7 @@
                     
                     for (const [id, exchange] of Object.entries(exchanges)) {
                         if (exchange.name && exchange.name.toLowerCase() === 'binance') {
-                            // Check if Kraken has valid data
+                            // Check if Binance has valid data
                             const hasData = await this.hasValidExchangeData(id);
                             if (hasData) {
                                 defaultExchangeId = id;
@@ -736,7 +801,7 @@
                         // Keep the currently selected exchange if it exists
                         this.loadDataBtn.disabled = false;
                         this.updateStatus(`Ready - ${validExchanges} new valid exchanges loaded (${this.exchangeMap.size} total)`);
-                        this.showMessage(`Successfully loaded ${validExchanges} additional exchanges with valid data`, 'success');
+                        this.showToast(`${validExchanges} new exchanges loaded (${this.exchangeMap.size} total)`);
                         
                         // Restore selection if it still exists
                         if (currentSelection) {
@@ -1028,7 +1093,7 @@
 
                 this.dataTable.classList.remove('hidden');
                 this.updateStatus(`Loaded ${pairs.length} trading pairs`);
-                this.showMessage(`Successfully loaded ${pairs.length} trading pairs`, 'success');
+                this.showToast(`✓ ${pairs.length} pairs loaded`);
             }
         }
 
