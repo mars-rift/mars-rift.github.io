@@ -173,11 +173,13 @@
             background-color: rgba(255, 0, 51, 0.9);
             box-shadow: 0 0 6px #ff0033;
             transition: transform 0.08s ease-out;
+            pointer-events: none;
         }
 
         #hitmarker {
             opacity: 0;
             transition: opacity 0.08s ease-out;
+            pointer-events: none;
         }
 
         /* Wave Banner Animation */
@@ -231,26 +233,26 @@
             <div class="neon-box px-4 py-2 rounded-lg text-right">
                 <div class="text-xs uppercase tracking-widest text-red-400 font-semibold">Hostiles Active</div>
                 <div id="hud-hostiles" class="font-neon text-xl sm:text-2xl font-bold text-red-500">0</div>
-                <div class="text-[11px] text-neutral-400 mt-0.5">[M] Mute Audio | [ESC] Pause</div>
+                <div id="hud-mute-hint" class="text-[11px] text-neutral-400 mt-0.5">[M] Mute Audio | [ESC] Pause</div>
             </div>
         </div>
 
         <!-- Center Screen Crosshair & Notifications -->
         <div class="relative flex items-center justify-center flex-1">
             <!-- Dynamic Crosshair -->
-            <div id="crosshair" class="relative w-8 h-8 flex items-center justify-center">
-                <div class="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#ff0033]"></div>
+            <div id="crosshair" class="relative w-8 h-8 flex items-center justify-center pointer-events-none">
+                <div class="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#ff0033] pointer-events-none"></div>
                 <!-- Top -->
-                <div id="ch-top" class="crosshair-line w-0.5 h-2.5 -top-1"></div>
+                <div id="ch-top" class="crosshair-line w-0.5 h-2.5 left-1/2 -translate-x-1/2 top-0"></div>
                 <!-- Bottom -->
-                <div id="ch-bottom" class="crosshair-line w-0.5 h-2.5 -bottom-1"></div>
+                <div id="ch-bottom" class="crosshair-line w-0.5 h-2.5 left-1/2 -translate-x-1/2 bottom-0"></div>
                 <!-- Left -->
-                <div id="ch-left" class="crosshair-line h-0.5 w-2.5 -left-1"></div>
+                <div id="ch-left" class="crosshair-line h-0.5 w-2.5 top-1/2 -translate-y-1/2 left-0"></div>
                 <!-- Right -->
-                <div id="ch-right" class="crosshair-line h-0.5 w-2.5 -right-1"></div>
+                <div id="ch-right" class="crosshair-line h-0.5 w-2.5 top-1/2 -translate-y-1/2 right-0"></div>
 
                 <!-- Hitmarker X -->
-                <svg id="hitmarker" class="absolute w-7 h-7 text-white drop-shadow-[0_0_6px_#ff0033]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <svg id="hitmarker" class="absolute w-7 h-7 text-white drop-shadow-[0_0_6px_#ff0033] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="4" y1="4" x2="9" y2="9"></line>
                     <line x1="20" y1="4" x2="15" y2="9"></line>
                     <line x1="4" y1="20" x2="9" y2="15"></line>
@@ -499,6 +501,14 @@
                 this.muted = !this.muted;
                 if (this.ambientGain && this.ctx) {
                     this.ambientGain.gain.setTargetAtTime(this.muted ? 0 : 0.14, this.ctx.currentTime, 0.1);
+                }
+                const muteHint = document.getElementById('hud-mute-hint');
+                if (muteHint) {
+                    if (this.muted) {
+                        muteHint.innerHTML = '<span class="text-red-500 font-bold">[M] Audio: MUTED</span> | [ESC] Pause';
+                    } else {
+                        muteHint.innerHTML = '[M] Mute Audio | [ESC] Pause';
+                    }
                 }
                 return this.muted;
             }
@@ -1012,8 +1022,14 @@
         const particles = [];
         const bulletTracers = [];
 
-        // Shared zombie materials for performance (cloned on hit flash)
+        // Shared zombie materials and geometries for zero GPU memory bloat
         const zombieEyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+        const zombieTorsoGeo = new THREE.BoxGeometry(0.75, 1.05, 0.42);
+        const zombieCoreGeo = new THREE.BoxGeometry(0.35, 0.4, 0.44);
+        const zombieHeadGeo = new THREE.BoxGeometry(0.5, 0.52, 0.5);
+        const zombieEyeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.05);
+        const zombieArmGeo = new THREE.BoxGeometry(0.22, 0.22, 0.85);
+        const zombieLegGeo = new THREE.BoxGeometry(0.28, 0.75, 0.3);
 
         function createZombieMesh(type) {
             const root = new THREE.Group();
@@ -1044,49 +1060,46 @@
                 emissive: 0x000000
             });
 
-            // Torso
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.05, 0.42), clothesMat);
+            // Torso (shared geometry)
+            const torso = new THREE.Mesh(zombieTorsoGeo, clothesMat);
             torso.position.y = 1.25;
             root.add(torso);
 
-            // Glowing exposed rib/core detail
-            const coreStrip = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.44), zombieEyeMat);
+            // Glowing exposed rib/core detail (shared geometry)
+            const coreStrip = new THREE.Mesh(zombieCoreGeo, zombieEyeMat);
             coreStrip.position.y = 1.3;
             root.add(coreStrip);
 
-            // Head (tagged for headshot detection!)
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.52, 0.5), skinMat);
+            // Head (shared geometry, tagged for headshot detection!)
+            const head = new THREE.Mesh(zombieHeadGeo, skinMat);
             head.position.y = 2.08;
             head.userData.isHead = true;
             root.add(head);
 
-            // Glowing red eyes
-            const eyeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.05);
-            const leftEye = new THREE.Mesh(eyeGeo, zombieEyeMat);
+            // Glowing red eyes (shared geometry)
+            const leftEye = new THREE.Mesh(zombieEyeGeo, zombieEyeMat);
             leftEye.position.set(-0.12, 0.05, 0.24);
             head.add(leftEye);
 
-            const rightEye = new THREE.Mesh(eyeGeo, zombieEyeMat);
+            const rightEye = new THREE.Mesh(zombieEyeGeo, zombieEyeMat);
             rightEye.position.set(0.12, 0.05, 0.24);
             head.add(rightEye);
 
-            // Outstretched Zombie Arms
-            const armGeo = new THREE.BoxGeometry(0.22, 0.22, 0.85);
-            const leftArm = new THREE.Mesh(armGeo, skinMat);
+            // Outstretched Zombie Arms (shared geometry)
+            const leftArm = new THREE.Mesh(zombieArmGeo, skinMat);
             leftArm.position.set(-0.52, 1.55, 0.35);
             root.add(leftArm);
 
-            const rightArm = new THREE.Mesh(armGeo, skinMat);
+            const rightArm = new THREE.Mesh(zombieArmGeo, skinMat);
             rightArm.position.set(0.52, 1.55, 0.35);
             root.add(rightArm);
 
-            // Legs
-            const legGeo = new THREE.BoxGeometry(0.28, 0.75, 0.3);
-            const leftLeg = new THREE.Mesh(legGeo, clothesMat);
+            // Legs (shared geometry)
+            const leftLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
             leftLeg.position.set(-0.2, 0.38, 0);
             root.add(leftLeg);
 
-            const rightLeg = new THREE.Mesh(legGeo, clothesMat);
+            const rightLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
             rightLeg.position.set(0.2, 0.38, 0);
             root.add(rightLeg);
 
@@ -1105,6 +1118,36 @@
             };
         }
 
+        function disposeZombie(z) {
+            if (!z) return;
+            if (z.mesh) {
+                scene.remove(z.mesh);
+            }
+            if (z.parts) {
+                if (z.parts.skinMat) z.parts.skinMat.dispose();
+                if (z.parts.clothesMat) z.parts.clothesMat.dispose();
+            }
+        }
+
+        function clearParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                scene.remove(p.mesh);
+                if (p.mesh.material) p.mesh.material.dispose();
+            }
+            particles.length = 0;
+        }
+
+        function clearBulletTracers() {
+            for (let i = 0; i < bulletTracers.length; i++) {
+                const t = bulletTracers[i];
+                scene.remove(t.line);
+                if (t.line.geometry) t.line.geometry.dispose();
+                if (t.line.material) t.line.material.dispose();
+            }
+            bulletTracers.length = 0;
+        }
+
         function spawnZombie(waveNum) {
             // Decide zombie type based on current wave
             const roll = Math.random();
@@ -1114,15 +1157,26 @@
 
             const parts = createZombieMesh(type);
 
-            // Spawn around the player at a safe distance inside the arena
+            // Spawn around the player at a safe distance inside the arena without spawning inside pillars
             let spawnX = 0, spawnZ = 0;
-            for (let attempt = 0; attempt < 15; attempt++) {
+            for (let attempt = 0; attempt < 30; attempt++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 28 + Math.random() * 24;
                 spawnX = THREE.MathUtils.clamp(camera.position.x + Math.cos(angle) * dist, -54, 54);
                 spawnZ = THREE.MathUtils.clamp(camera.position.z + Math.sin(angle) * dist, -54, 54);
                 const dToPlayer = Math.hypot(spawnX - camera.position.x, spawnZ - camera.position.z);
-                if (dToPlayer > 20) break;
+                if (dToPlayer <= 20) continue;
+
+                // Ensure spawn coordinate does not collide with arena obstacle pillars
+                let insidePillar = false;
+                for (let j = 0; j < obstacles.length; j++) {
+                    const obs = obstacles[j];
+                    if (Math.hypot(spawnX - obs.x, spawnZ - obs.z) < obs.radius + 1.5) {
+                        insidePillar = true;
+                        break;
+                    }
+                }
+                if (!insidePillar) break;
             }
 
             parts.root.position.set(spawnX, 0, spawnZ);
@@ -1305,6 +1359,21 @@
         const hudStaminaText = document.getElementById('hud-stamina-text');
         const hudAmmo = document.getElementById('hud-ammo');
         const ammoStatus = document.getElementById('ammo-status');
+        const chTop = document.getElementById('ch-top');
+        const chBottom = document.getElementById('ch-bottom');
+        const chLeft = document.getElementById('ch-left');
+        const chRight = document.getElementById('ch-right');
+        const hudMuteHint = document.getElementById('hud-mute-hint');
+
+        // Zero-allocation scratch math structures for smooth 60fps simulation
+        const _forward = new THREE.Vector3();
+        const _right = new THREE.Vector3();
+        const _moveDir = new THREE.Vector3();
+        const _toPlayer = new THREE.Vector3();
+        const _knockDir = new THREE.Vector3();
+        const _muzzlePos = new THREE.Vector3();
+        const _tracerEnd = new THREE.Vector3();
+        const _raycastTargets = [];
 
         let lastPauseTime = 0;
 
@@ -1338,6 +1407,9 @@
 
         function resumeGame() {
             if (state.mode !== 'PLAYING' || !state.isPaused) return;
+            if (sound.ctx && sound.ctx.state === 'suspended') {
+                sound.ctx.resume().catch(() => {});
+            }
             state.isPaused = false;
             resetKeys();
             state.isDraggingLook = false;
@@ -1355,13 +1427,11 @@
             resetKeys();
             state.isDraggingLook = false;
 
-            // Clear remaining zombies & particles
-            zombies.forEach(z => scene.remove(z.mesh));
+            // Cleanly dispose remaining zombies, particles & bullet tracers
+            zombies.forEach(disposeZombie);
             zombies.length = 0;
-            particles.forEach(p => scene.remove(p.mesh));
-            particles.length = 0;
-            bulletTracers.forEach(t => scene.remove(t.line));
-            bulletTracers.length = 0;
+            clearParticles();
+            clearBulletTracers();
 
             removeHealthJewel();
 
@@ -1604,13 +1674,11 @@
         function startGame() {
             sound.init();
 
-            // Clear existing zombies & particles
-            zombies.forEach(z => scene.remove(z.mesh));
+            // Cleanly dispose existing zombies, particles & bullet tracers
+            zombies.forEach(disposeZombie);
             zombies.length = 0;
-            particles.forEach(p => scene.remove(p.mesh));
-            particles.length = 0;
-            bulletTracers.forEach(t => scene.remove(t.line));
-            bulletTracers.length = 0;
+            clearParticles();
+            clearBulletTracers();
 
             removeHealthJewel();
 
@@ -1621,6 +1689,7 @@
             state.mode = 'PLAYING';
             state.isPaused = false;
             resetKeys();
+            state.isDraggingLook = false;
             state.health = 100;
             state.stamina = 100;
             state.ammo = MAX_AMMO;
@@ -1647,9 +1716,12 @@
         function triggerGameOver() {
             state.mode = 'GAMEOVER';
             state.isPaused = false;
+            resetKeys();
+            state.isDraggingLook = false;
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
+            removeHealthJewel();
             hud.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
             gameoverScreen.classList.remove('hidden');
@@ -1740,30 +1812,37 @@
 
             // Auto reload when last round fired
             updateHUD();
+            if (state.ammo <= 0) {
+                setTimeout(() => {
+                    if (state.ammo <= 0 && !state.isReloading && state.mode === 'PLAYING' && !state.isPaused) {
+                        startReload();
+                    }
+                }, 220);
+            }
 
             // Raycast from center of camera
             raycaster.setFromCamera(screenCenter, camera);
 
-            // Collect all active zombie meshes + arena obstacles
-            const targets = [...shootableWalls];
-            zombies.forEach(z => {
-                if (!z.dying) {
-                    targets.push(z.mesh);
+            // Collect all active zombie meshes + arena obstacles (reusing scratch array)
+            _raycastTargets.length = 0;
+            for (let i = 0; i < shootableWalls.length; i++) {
+                _raycastTargets.push(shootableWalls[i]);
+            }
+            for (let i = 0; i < zombies.length; i++) {
+                if (!zombies[i].dying) {
+                    _raycastTargets.push(zombies[i].mesh);
                 }
-            });
+            }
 
-            const intersects = raycaster.intersectObjects(targets, true);
+            const intersects = raycaster.intersectObjects(_raycastTargets, true);
 
-            // Calculate world position of gun muzzle for tracer
-            const muzzleWorldPos = new THREE.Vector3();
-            muzzleFlashGroup.getWorldPosition(muzzleWorldPos);
-
-            let tracerEnd = new THREE.Vector3();
-            raycaster.ray.at(60, tracerEnd);
+            // Calculate world position of gun muzzle for tracer (zero allocation)
+            muzzleFlashGroup.getWorldPosition(_muzzlePos);
+            raycaster.ray.at(60, _tracerEnd);
 
             if (intersects.length > 0) {
                 const hit = intersects[0];
-                tracerEnd.copy(hit.point);
+                _tracerEnd.copy(hit.point);
 
                 const hitZombie = hit.object.userData.zombie;
                 if (hitZombie && !hitZombie.dying) {
@@ -1771,13 +1850,12 @@
                     const damage = isHeadshot ? 110 : 40;
                     hitZombie.hp -= damage;
                     hitZombie.hitFlashTimer = 0.12;
+                    hitZombie.parts.skinMat.emissive.setHex(0xff0033);
+                    hitZombie.parts.clothesMat.emissive.setHex(0x88001b);
 
-                    // Knockback slightly
-                    const knockDir = new THREE.Vector3()
-                        .subVectors(hitZombie.mesh.position, camera.position)
-                        .setY(0)
-                        .normalize();
-                    hitZombie.mesh.position.addScaledVector(knockDir, isHeadshot ? 0.55 : 0.28);
+                    // Knockback slightly (zero allocation)
+                    _knockDir.subVectors(hitZombie.mesh.position, camera.position).setY(0).normalize();
+                    hitZombie.mesh.position.addScaledVector(_knockDir, isHeadshot ? 0.55 : 0.28);
 
                     // Flash hitmarker
                     hitmarker.style.opacity = '1';
@@ -1809,14 +1887,14 @@
                 }
             }
 
-            spawnBulletTracer(muzzleWorldPos, tracerEnd);
+            spawnBulletTracer(_muzzlePos, _tracerEnd);
         }
 
         function setCrosshairSpread(px) {
-            document.getElementById('ch-top').style.transform = `translateY(${-px}px)`;
-            document.getElementById('ch-bottom').style.transform = `translateY(${px}px)`;
-            document.getElementById('ch-left').style.transform = `translateX(${-px}px)`;
-            document.getElementById('ch-right').style.transform = `translateX(${px}px)`;
+            chTop.style.transform = `translate(-50%, ${-px}px)`;
+            chBottom.style.transform = `translate(-50%, ${px}px)`;
+            chLeft.style.transform = `translate(${-px}px, -50%)`;
+            chRight.style.transform = `translate(${px}px, -50%)`;
         }
 
         /********************************************************************
@@ -1934,6 +2012,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
 
         /********************************************************************
@@ -1983,17 +2062,18 @@
             const dt = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
 
-            // 1. Player Movement (WASD + Sprint)
-            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
-            const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
+            // 1. Player Movement (WASD + Sprint - Zero Allocation)
+            const yaw = camera.rotation.y;
+            _forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+            _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
-            const moveDir = new THREE.Vector3();
-            if (keys.KeyW || keys.ArrowUp) moveDir.add(forward);
-            if (keys.KeyS || keys.ArrowDown) moveDir.sub(forward);
-            if (keys.KeyD || keys.ArrowRight) moveDir.add(right);
-            if (keys.KeyA || keys.ArrowLeft) moveDir.sub(right);
+            _moveDir.set(0, 0, 0);
+            if (keys.KeyW || keys.ArrowUp) _moveDir.add(_forward);
+            if (keys.KeyS || keys.ArrowDown) _moveDir.sub(_forward);
+            if (keys.KeyD || keys.ArrowRight) _moveDir.add(_right);
+            if (keys.KeyA || keys.ArrowLeft) _moveDir.sub(_right);
 
-            const isMoving = moveDir.lengthSq() > 0;
+            const isMoving = _moveDir.lengthSq() > 0;
             const wantsSprint = (keys.ShiftLeft || keys.ShiftRight) && isMoving && state.stamina > 5;
 
             let moveSpeed = 7.5;
@@ -2008,8 +2088,8 @@
             hudStaminaText.textContent = state.stamina < 15 ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
 
             if (isMoving) {
-                moveDir.normalize();
-                camera.position.addScaledVector(moveDir, moveSpeed * dt);
+                _moveDir.normalize();
+                camera.position.addScaledVector(_moveDir, moveSpeed * dt);
                 resolveArenaCollisions(camera.position, 0.85);
                 state.bobTimer += dt * (wantsSprint ? 15 : 10);
             } else {
@@ -2081,11 +2161,10 @@
                 // Hit flash reset
                 if (z.hitFlashTimer > 0) {
                     z.hitFlashTimer -= dt;
-                    z.parts.skinMat.emissive.setHex(0xff0033);
-                    z.parts.clothesMat.emissive.setHex(0x88001b);
-                } else {
-                    z.parts.skinMat.emissive.setHex(0x000000);
-                    z.parts.clothesMat.emissive.setHex(0x000000);
+                    if (z.hitFlashTimer <= 0) {
+                        z.parts.skinMat.emissive.setHex(0x000000);
+                        z.parts.clothesMat.emissive.setHex(0x000000);
+                    }
                 }
 
                 // Death collapse animation
@@ -2094,24 +2173,24 @@
                     z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
                     z.mesh.position.y = -z.deathProgress * 0.35;
                     if (z.deathProgress >= 1.4) {
-                        scene.remove(z.mesh);
+                        disposeZombie(z);
                         zombies.splice(i, 1);
                         updateHUD();
                     }
                     continue;
                 }
 
-                // Move toward player
-                const toPlayer = new THREE.Vector3(
+                // Move toward player (Zero Allocation)
+                _toPlayer.set(
                     camera.position.x - z.mesh.position.x,
                     0,
                     camera.position.z - z.mesh.position.z
                 );
-                const dist = toPlayer.length();
+                const dist = _toPlayer.length();
 
                 if (dist > 0.01) {
-                    toPlayer.normalize();
-                    z.mesh.position.addScaledVector(toPlayer, z.speed * dt);
+                    _toPlayer.divideScalar(dist);
+                    z.mesh.position.addScaledVector(_toPlayer, z.speed * dt);
                     resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
 
                     // Face the player
