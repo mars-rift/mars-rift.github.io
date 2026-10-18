@@ -147,11 +147,18 @@
             pointer-events: none;
         }
 
-        /* Vignette & Damage Flash */
+        /* Vignette & Damage / Heal Flash */
         #damage-overlay {
             background: radial-gradient(circle, rgba(255,0,40,0) 35%, rgba(220,0,30,0.85) 100%);
             opacity: 0;
             transition: opacity 0.12s ease-out;
+            pointer-events: none;
+        }
+
+        #heal-overlay {
+            background: radial-gradient(circle, rgba(0,255,200,0) 35%, rgba(0,255,180,0.65) 100%);
+            opacity: 0;
+            transition: opacity 0.2s ease-out;
             pointer-events: none;
         }
 
@@ -197,6 +204,9 @@
 
     <!-- Red Screen Damage Flash Overlay -->
     <div id="damage-overlay" class="absolute inset-0 z-20"></div>
+
+    <!-- Neon Emerald Health Restored Flash Overlay -->
+    <div id="heal-overlay" class="absolute inset-0 z-20"></div>
 
     <!-- ================= IN-GAME HUD ================= -->
     <div id="hud" class="hidden absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-5 sm:p-8">
@@ -261,14 +271,7 @@
             <!-- Wave Announcement Center Banner -->
             <div id="wave-banner-container" class="absolute top-1/4 pointer-events-none text-center"></div>
 
-            <!-- Click to Resume Overlay when Pointer Lock is released -->
-            <div id="resume-lock-prompt" class="hidden pointer-events-auto neon-box px-8 py-6 rounded-xl text-center max-w-md mx-auto">
-                <div class="font-neon text-xl font-bold text-white mb-2 tracking-wider">SIMULATION PAUSED</div>
-                <p class="text-sm text-neutral-300 mb-5">Click below to lock cursor and resume combat, or drag mouse to look if pointer lock is restricted.</p>
-                <button id="resume-btn" class="neon-button font-neon px-6 py-2.5 rounded-lg text-sm font-bold tracking-widest uppercase">
-                    RESUME COMBAT
-                </button>
-            </div>
+
         </div>
 
         <!-- Bottom Bar: Health, Stamina & Ammo -->
@@ -351,6 +354,14 @@
                         <span class="text-neutral-300">Tactical Sprint</span>
                         <span class="key-badge">SHIFT</span>
                     </div>
+                    <div class="flex items-center justify-between bg-red-950/20 px-3 py-2 rounded-lg border border-red-900/30">
+                        <span class="text-neutral-300">Pause / Resume</span>
+                        <span class="key-badge">ESC</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-red-950/20 px-3 py-2 rounded-lg border border-red-900/30">
+                        <span class="text-neutral-300">Mute Audio</span>
+                        <span class="key-badge">M</span>
+                    </div>
                 </div>
             </div>
 
@@ -361,6 +372,53 @@
 
             <div class="mt-5 text-xs text-neutral-500">
                 100% Procedural 3D Graphics &amp; Web Audio Synthesizer • Static GitHub Pages Ready
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= PAUSE MODAL OVERLAY ================= -->
+    <div id="resume-lock-prompt" class="hidden absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm pointer-events-auto">
+        <div class="neon-box max-w-md w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden">
+            <!-- Decorative top neon bar -->
+            <div class="w-20 h-1 bg-red-600 mx-auto mb-4 shadow-[0_0_12px_#ff0033]"></div>
+
+            <p class="font-neon text-xs tracking-[0.35em] text-red-500 uppercase font-bold mb-1">
+                COMBAT SUSPENDED
+            </p>
+            <div class="font-neon neon-title text-2xl sm:text-3xl font-black text-white mb-2 tracking-wider uppercase">
+                SIMULATION PAUSED
+            </div>
+            <p class="text-sm text-neutral-300 mb-6 leading-relaxed">
+                All hostiles and telemetry are frozen.<br>
+                Press <span class="key-badge">ESC</span> or click below to resume combat.
+            </p>
+
+            <!-- Quick Telemetry in Pause Menu -->
+            <div class="grid grid-cols-3 gap-2 mb-6">
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+                    <div class="text-[10px] uppercase tracking-wider text-red-400">Wave</div>
+                    <div id="pause-wave" class="font-neon text-lg font-bold text-white">01</div>
+                </div>
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+                    <div class="text-[10px] uppercase tracking-wider text-red-400">Score</div>
+                    <div id="pause-score" class="font-neon text-lg font-bold text-white">0000</div>
+                </div>
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+                    <div class="text-[10px] uppercase tracking-wider text-red-400">Kills</div>
+                    <div id="pause-kills" class="font-neon text-lg font-bold text-red-500">0</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="resume-btn" class="neon-button font-neon px-8 py-3 rounded-lg text-sm font-bold tracking-widest uppercase">
+                    RESUME COMBAT
+                </button>
+                <button id="pause-restart-btn" class="neon-button font-neon px-6 py-3 rounded-lg text-xs font-bold tracking-widest uppercase text-red-400 border-red-900/80 hover:border-red-500">
+                    RESTART
+                </button>
+                <button id="pause-home-btn" class="neon-button font-neon px-6 py-3 rounded-lg text-xs font-bold tracking-widest uppercase text-neutral-300 border-neutral-800 hover:border-red-500">
+                    HOME
+                </button>
             </div>
         </div>
     </div>
@@ -399,9 +457,14 @@
                 </div>
             </div>
 
-            <button id="restart-btn" class="neon-button font-neon text-base sm:text-lg font-black px-10 py-4 rounded-xl tracking-[0.2em] uppercase w-full sm:w-auto">
-                PLAY AGAIN
-            </button>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <button id="restart-btn" class="neon-button font-neon text-base sm:text-lg font-black px-8 py-4 rounded-xl tracking-[0.2em] uppercase w-full sm:w-auto">
+                    PLAY AGAIN
+                </button>
+                <button id="home-btn" class="neon-button font-neon text-base sm:text-lg font-black px-8 py-4 rounded-xl tracking-[0.2em] uppercase w-full sm:w-auto text-neutral-200 hover:text-white">
+                    HOME
+                </button>
+            </div>
         </div>
     </div>
 
@@ -653,6 +716,29 @@
                 gain.connect(this.ctx.destination);
                 osc.start(now);
                 osc.stop(now + 0.33);
+            }
+
+            // Crystalline neon health chime (ascending dual-harmonic sparkle)
+            playHealthPickup() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+
+                const notes = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6 arpeggio chime
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.055);
+
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.setValueAtTime(0.28, now + i * 0.055);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.055 + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.055);
+                    osc.stop(now + i * 0.055 + 0.36);
+                });
             }
         }
 
@@ -1121,12 +1207,42 @@
             bulletTracers.push({ line, life: 0.07 });
         }
 
+        const jewelSparkleGeo = new THREE.OctahedronGeometry(0.12, 0);
+
+        function spawnHealSparkleParticles(position, count = 24) {
+            for (let i = 0; i < count; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: Math.random() > 0.4 ? 0x00ffcc : 0xffffff,
+                    transparent: true,
+                    opacity: 1
+                });
+                const mesh = new THREE.Mesh(jewelSparkleGeo, mat);
+                mesh.position.copy(position);
+                mesh.position.y += (Math.random() - 0.5) * 0.4;
+
+                const speed = 2.5 + Math.random() * 5.5;
+                const angle = Math.random() * Math.PI * 2;
+                const elev = (Math.random() - 0.3) * Math.PI * 0.5;
+
+                const velocity = new THREE.Vector3(
+                    Math.cos(angle) * Math.cos(elev) * speed,
+                    Math.sin(elev) * speed + 3.2,
+                    Math.sin(angle) * Math.cos(elev) * speed
+                );
+
+                const life = 0.65 + Math.random() * 0.4;
+                scene.add(mesh);
+                particles.push({ mesh, velocity, life, maxLife: life });
+            }
+        }
+
         /********************************************************************
          * 7. GAME STATE, CONTROLS & COMBAT LOGIC
          ********************************************************************/
         const MAX_AMMO = 15;
         const state = {
             mode: 'TITLE', // TITLE, PLAYING, GAMEOVER
+            isPaused: false,
             health: 100,
             stamina: 100,
             ammo: MAX_AMMO,
@@ -1168,7 +1284,10 @@
         const hud = document.getElementById('hud');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const homeBtn = document.getElementById('home-btn');
         const resumeBtn = document.getElementById('resume-btn');
+        const pauseRestartBtn = document.getElementById('pause-restart-btn');
+        const pauseHomeBtn = document.getElementById('pause-home-btn');
         const resumeLockPrompt = document.getElementById('resume-lock-prompt');
         const damageOverlay = document.getElementById('damage-overlay');
         const hitmarker = document.getElementById('hitmarker');
@@ -1187,6 +1306,254 @@
         const hudAmmo = document.getElementById('hud-ammo');
         const ammoStatus = document.getElementById('ammo-status');
 
+        let lastPauseTime = 0;
+
+        function resetKeys() {
+            for (const k in keys) {
+                keys[k] = false;
+            }
+        }
+
+        function updatePauseTelemetry() {
+            const pauseWave = document.getElementById('pause-wave');
+            const pauseScore = document.getElementById('pause-score');
+            const pauseKills = document.getElementById('pause-kills');
+            if (pauseWave) pauseWave.textContent = String(state.wave).padStart(2, '0');
+            if (pauseScore) pauseScore.textContent = String(state.score).padStart(4, '0');
+            if (pauseKills) pauseKills.textContent = state.kills;
+        }
+
+        function pauseGame() {
+            if (state.mode !== 'PLAYING' || state.isPaused) return;
+            state.isPaused = true;
+            lastPauseTime = performance.now();
+            resetKeys();
+            state.isDraggingLook = false;
+            updatePauseTelemetry();
+            resumeLockPrompt.classList.remove('hidden');
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+        }
+
+        function resumeGame() {
+            if (state.mode !== 'PLAYING' || !state.isPaused) return;
+            state.isPaused = false;
+            resetKeys();
+            state.isDraggingLook = false;
+            resumeLockPrompt.classList.add('hidden');
+            lastTime = performance.now();
+            requestGamePointerLock();
+        }
+
+        function returnToTitle() {
+            state.mode = 'TITLE';
+            state.isPaused = false;
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            resetKeys();
+            state.isDraggingLook = false;
+
+            // Clear remaining zombies & particles
+            zombies.forEach(z => scene.remove(z.mesh));
+            zombies.length = 0;
+            particles.forEach(p => scene.remove(p.mesh));
+            particles.length = 0;
+            bulletTracers.forEach(t => scene.remove(t.line));
+            bulletTracers.length = 0;
+
+            removeHealthJewel();
+
+            gameoverScreen.classList.add('hidden');
+            resumeLockPrompt.classList.add('hidden');
+            hud.classList.add('hidden');
+            reloadPrompt.classList.add('hidden');
+            damageOverlay.style.opacity = '0';
+            if (healOverlay) healOverlay.style.opacity = '0';
+            titleScreen.classList.remove('hidden');
+        }
+
+        /********************************************************************
+         * NEON DIAMOND HEALTH JEWEL SYSTEM
+         ********************************************************************/
+        let healthJewel = null;
+        const healOverlay = document.getElementById('heal-overlay');
+
+        function showHealOverlay() {
+            if (!healOverlay) return;
+            healOverlay.style.opacity = '0.75';
+            clearTimeout(healOverlay._timer);
+            healOverlay._timer = setTimeout(() => {
+                healOverlay.style.opacity = '0';
+            }, 280);
+        }
+
+        function removeHealthJewel() {
+            if (!healthJewel) return;
+            scene.remove(healthJewel.group);
+            healthJewel.group.traverse(child => {
+                if (child.isMesh || child.isLineSegments) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                        else child.material.dispose();
+                    }
+                }
+            });
+            healthJewel = null;
+        }
+
+        function findSafeJewelPosition() {
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const x = (Math.random() - 0.5) * 80; // [-40, 40]
+                const z = (Math.random() - 0.5) * 80;
+
+                // Don't spawn immediately adjacent to player start
+                if (Math.hypot(x, z) < 8) continue;
+
+                // Check distance against all arena pillars
+                let collides = false;
+                for (let i = 0; i < obstacles.length; i++) {
+                    const obs = obstacles[i];
+                    if (Math.hypot(x - obs.x, z - obs.z) < obs.radius + 3.0) {
+                        collides = true;
+                        break;
+                    }
+                }
+
+                if (!collides) {
+                    return { x, z };
+                }
+            }
+            return { x: 18, z: 18 };
+        }
+
+        function spawnHealthJewel() {
+            removeHealthJewel();
+
+            const pos = findSafeJewelPosition();
+            const group = new THREE.Group();
+            group.position.set(pos.x, 1.4, pos.z);
+
+            // 1. Faceted Neon Diamond Crystal (Classic Octahedron Gem Geometry)
+            const jewelGeo = new THREE.OctahedronGeometry(0.72, 0);
+            jewelGeo.scale(1.0, 1.45, 1.0);
+            const jewelMat = new THREE.MeshStandardMaterial({
+                color: 0x00ffcc,
+                emissive: 0x00ffaa,
+                emissiveIntensity: 0.95,
+                roughness: 0.18,
+                metalness: 0.85,
+                flatShading: true
+            });
+            const diamondMesh = new THREE.Mesh(jewelGeo, jewelMat);
+            group.add(diamondMesh);
+
+            // 2. High-contrast Neon Edge Lines for gem facets
+            const edgesGeo = new THREE.EdgesGeometry(jewelGeo);
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+            const edgesMesh = new THREE.LineSegments(edgesGeo, edgesMat);
+            diamondMesh.add(edgesMesh);
+
+            // 3. Inner Pulsing Core
+            const coreGeo = new THREE.OctahedronGeometry(0.36, 0);
+            coreGeo.scale(0.9, 1.3, 0.9);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 });
+            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            diamondMesh.add(coreMesh);
+
+            // 4. Floating Gyroscopic Orbital Rings
+            const ringGeo = new THREE.TorusGeometry(1.22, 0.038, 8, 36);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+            const ring1 = new THREE.Mesh(ringGeo, ringMat);
+            ring1.rotation.x = Math.PI / 3;
+            group.add(ring1);
+
+            const ring2 = new THREE.Mesh(ringGeo, ringMat);
+            ring2.rotation.x = -Math.PI / 3;
+            group.add(ring2);
+
+            // 5. Floor Beacon Halo
+            const floorRingGeo = new THREE.RingGeometry(0.4, 0.95, 28);
+            const floorRingMat = new THREE.MeshBasicMaterial({
+                color: 0x00ffcc,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.65
+            });
+            const floorRing = new THREE.Mesh(floorRingGeo, floorRingMat);
+            floorRing.rotation.x = -Math.PI / 2;
+            floorRing.position.y = -1.35;
+            group.add(floorRing);
+
+            // 6. Dynamic Point Light casting glow on surrounding floor & pillars
+            const jewelLight = new THREE.PointLight(0x00ffcc, 3.2, 18);
+            jewelLight.position.set(0, 0, 0);
+            group.add(jewelLight);
+
+            scene.add(group);
+
+            healthJewel = {
+                group,
+                diamondMesh,
+                coreMesh,
+                ring1,
+                ring2,
+                floorRing,
+                jewelMat,
+                jewelLight,
+                baseY: 1.4,
+                position: new THREE.Vector3(pos.x, 1.4, pos.z),
+                update(dt, now) {
+                    const t = now * 0.001;
+
+                    // Diamond rotation & levitation bobbing
+                    diamondMesh.rotation.y += dt * 1.6;
+                    diamondMesh.rotation.x = Math.sin(t * 1.8) * 0.15;
+                    group.position.y = this.baseY + Math.sin(t * 2.8) * 0.22;
+                    this.position.y = group.position.y;
+
+                    // Gyroscopic rings spin
+                    ring1.rotation.z += dt * 2.0;
+                    ring1.rotation.y += dt * 0.8;
+                    ring2.rotation.z -= dt * 1.7;
+                    ring2.rotation.x += dt * 1.1;
+
+                    // Pulsing floor halo
+                    floorRing.scale.setScalar(1.0 + Math.sin(t * 3.5) * 0.18);
+                    floorRing.material.opacity = 0.45 + Math.sin(t * 3.5) * 0.25;
+
+                    // Emissive glow pulsing
+                    jewelMat.emissiveIntensity = 0.75 + Math.sin(t * 4.0) * 0.35;
+                    jewelLight.intensity = 2.4 + Math.sin(t * 4.0) * 0.6;
+                }
+            };
+        }
+
+        function collectHealthJewel() {
+            if (!healthJewel || state.mode !== 'PLAYING') return;
+
+            const pickupPos = healthJewel.position.clone();
+            removeHealthJewel();
+
+            // Replenish vital integrity by 50%
+            state.health = Math.min(100, state.health + 50);
+            updateHUD();
+
+            // Dynamic glow on health bar
+            hudHealthBar.style.boxShadow = '0 0 22px #00ffcc';
+            setTimeout(() => {
+                hudHealthBar.style.boxShadow = '0 0 12px #ff0033';
+            }, 600);
+
+            // Audio & visual feedback
+            sound.playHealthPickup();
+            showKillFeed('+50% VITAL INTEGRITY RESTORED!', true);
+            showHealOverlay();
+            spawnHealSparkleParticles(pickupPos, 24);
+        }
+
         function requestGamePointerLock() {
             try {
                 if (renderer.domElement.requestPointerLock) {
@@ -1201,9 +1568,9 @@
             state.pointerLocked = (document.pointerLockElement === renderer.domElement);
             if (state.mode === 'PLAYING') {
                 if (!state.pointerLocked) {
-                    resumeLockPrompt.classList.remove('hidden');
-                } else {
-                    resumeLockPrompt.classList.add('hidden');
+                    if (!state.isPaused) {
+                        pauseGame();
+                    }
                 }
             }
         });
@@ -1222,6 +1589,15 @@
             state.waveZombiesRemainingToSpawn = 6 + waveNumber * 4;
             state.spawnTimer = 0.5;
             announceWave(waveNumber);
+
+            // Clean up any uncollected jewel from previous wave
+            removeHealthJewel();
+
+            // 50% chance to appear per level from 3rd level on
+            if (waveNumber >= 3 && Math.random() < 0.5) {
+                spawnHealthJewel();
+            }
+
             updateHUD();
         }
 
@@ -1236,11 +1612,15 @@
             bulletTracers.forEach(t => scene.remove(t.line));
             bulletTracers.length = 0;
 
+            removeHealthJewel();
+
             // Reset player state
             camera.position.set(0, 1.75, 0);
             camera.rotation.set(0, 0, 0);
 
             state.mode = 'PLAYING';
+            state.isPaused = false;
+            resetKeys();
             state.health = 100;
             state.stamina = 100;
             state.ammo = MAX_AMMO;
@@ -1260,15 +1640,18 @@
 
             startWave(1);
             updateHUD();
+            lastTime = performance.now();
             requestGamePointerLock();
         }
 
         function triggerGameOver() {
             state.mode = 'GAMEOVER';
+            state.isPaused = false;
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
             hud.classList.add('hidden');
+            resumeLockPrompt.classList.add('hidden');
             gameoverScreen.classList.remove('hidden');
 
             document.getElementById('final-score').textContent = state.score.toLocaleString();
@@ -1302,17 +1685,19 @@
             }
         }
 
-        function showKillFeed(text) {
+        function showKillFeed(text, isHeal = false) {
             killBanner.textContent = text;
-            killBanner.style.opacity = '1';
+            killBanner.className = isHeal
+                ? 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-emerald-400 drop-shadow-[0_0_10px_#00ffcc] opacity-100 transition-opacity duration-200'
+                : 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-red-400 opacity-100 transition-opacity duration-200';
             clearTimeout(killBanner._timeout);
             killBanner._timeout = setTimeout(() => {
                 killBanner.style.opacity = '0';
-            }, 900);
+            }, isHeal ? 1400 : 900);
         }
 
         function startReload() {
-            if (state.isReloading || state.ammo === MAX_AMMO || state.mode !== 'PLAYING') return;
+            if (state.isReloading || state.ammo === MAX_AMMO || state.mode !== 'PLAYING' || state.isPaused) return;
             state.isReloading = true;
             state.reloadTimer = 1.15;
             reloadPrompt.classList.remove('hidden');
@@ -1325,7 +1710,7 @@
         const screenCenter = new THREE.Vector2(0, 0);
 
         function shootWeapon() {
-            if (state.mode !== 'PLAYING') return;
+            if (state.mode !== 'PLAYING' || state.isPaused) return;
             const now = performance.now();
             if (now - state.lastShootTime < 135) return; // Fire rate cap
 
@@ -1438,13 +1823,32 @@
          * 8. INPUT LISTENERS (Keyboard, Mouse Look, Shooting)
          ********************************************************************/
         window.addEventListener('keydown', (e) => {
-            if (e.code in keys) keys[e.code] = true;
-
-            if (e.code === 'KeyR' && state.mode === 'PLAYING') {
-                startReload();
-            }
             if (e.code === 'KeyM') {
                 sound.toggleMute();
+                return;
+            }
+
+            if (e.code === 'Escape') {
+                if (state.mode === 'PLAYING') {
+                    const now = performance.now();
+                    if (state.isPaused) {
+                        if (now - lastPauseTime > 250) {
+                            resumeGame();
+                        }
+                    } else {
+                        pauseGame();
+                    }
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            if (state.mode !== 'PLAYING' || state.isPaused) return;
+
+            if (e.code in keys) keys[e.code] = true;
+
+            if (e.code === 'KeyR') {
+                startReload();
             }
         });
 
@@ -1453,7 +1857,7 @@
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (state.mode !== 'PLAYING') return;
+            if (state.mode !== 'PLAYING' || state.isPaused) return;
 
             if (state.pointerLocked) {
                 const sensitivity = 0.0022;
@@ -1473,14 +1877,13 @@
         });
 
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (state.mode !== 'PLAYING') return;
+            if (state.mode !== 'PLAYING' || state.isPaused) return;
 
             if (!state.pointerLocked) {
                 requestGamePointerLock();
                 state.isDraggingLook = true;
                 state.lastMouseX = e.clientX;
                 state.lastMouseY = e.clientY;
-                resumeLockPrompt.classList.add('hidden');
             }
 
             if (e.button === 0) {
@@ -1494,9 +1897,37 @@
 
         startBtn.addEventListener('click', startGame);
         restartBtn.addEventListener('click', startGame);
-        resumeBtn.addEventListener('click', () => {
-            resumeLockPrompt.classList.add('hidden');
-            requestGamePointerLock();
+
+        if (homeBtn) {
+            homeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                returnToTitle();
+            });
+        }
+
+        if (pauseRestartBtn) {
+            pauseRestartBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                startGame();
+            });
+        }
+
+        if (pauseHomeBtn) {
+            pauseHomeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                returnToTitle();
+            });
+        }
+
+        resumeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resumeGame();
+        });
+
+        window.addEventListener('blur', () => {
+            if (state.mode === 'PLAYING' && !state.isPaused) {
+                pauseGame();
+            }
         });
 
         window.addEventListener('resize', () => {
@@ -1533,9 +1964,6 @@
         function animate(now) {
             requestAnimationFrame(animate);
 
-            const dt = Math.min((now - lastTime) / 1000, 0.1);
-            lastTime = now;
-
             // Idle rotating camera on Title / Game Over screen
             if (state.mode !== 'PLAYING') {
                 const t = now * 0.00025;
@@ -1544,6 +1972,16 @@
                 renderer.render(scene, camera);
                 return;
             }
+
+            // Paused: Keep frame time synchronized, render current scene, do not advance simulation
+            if (state.isPaused) {
+                lastTime = now;
+                renderer.render(scene, camera);
+                return;
+            }
+
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
 
             // 1. Player Movement (WASD + Sprint)
             const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camera.rotation.y);
@@ -1609,6 +2047,16 @@
                 if (state.muzzleTimer <= 0) {
                     muzzleFlashGroup.visible = false;
                     muzzleLight.intensity = 0;
+                }
+            }
+
+            // 2b. Update Neon Diamond Health Jewel & Player Pickup Check
+            if (healthJewel) {
+                healthJewel.update(dt, now);
+                const dx = camera.position.x - healthJewel.position.x;
+                const dz = camera.position.z - healthJewel.position.z;
+                if (Math.hypot(dx, dz) < 2.2) {
+                    collectHealthJewel();
                 }
             }
 

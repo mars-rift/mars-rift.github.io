@@ -17,6 +17,7 @@ Designed specifically for effortless static hosting, the entire game—including
 * **&nbsp;Locational Hit Detection:** Raycasted shooting mechanics distinguish between body shots (`40 DMG`) and headshots (`110 DMG` \+ bonus score multiplier \+ dynamic hitmarkers).  
 * **&nbsp;100% Procedural Audio Engine:** Built-in Web Audio API synthesizer generates gunshots, mechanical reloads, empty-clip clicks, guttural zombie groans, flesh impacts, and a dark dissonant horror drone without loading a single `.mp3` or `.wav` file.  
 * **&nbsp;Multi-Class Horde AI:** Zombies dynamically path toward the player, navigate around arena pillars, avoid stacking on each other, and scale in speed and numbers with each wave.  
+* **&nbsp;Neon Diamond Health Jewels:** From Wave 3 onward, rare crystalline health jewels have a 50% chance to appear per level. Projecting an ethereal cyan vertical beacon and gyroscopic orbital rings, collecting a jewel replenishes `+50%` Vital Integrity accompanied by harmonic chimes and radiant sparkle bursts.  
 * **&nbsp;Zero-Dependency Static Architecture:** Contained inside a single `index.html` file utilizing CDN links for Three.js and Tailwind CSS—making it instant to fork, host, or embed.
 
 ## 🎮 Tactical Controls
