@@ -479,28 +479,95 @@
             constructor() {
                 this.ctx = null;
                 this.muted = false;
+                this.masterGain = null;
+                this.sfxGain = null;
                 this.ambientGain = null;
+                this.limiter = null;
                 this.ambientInitialized = false;
+                this.noiseBuffers = [];
+                this.lastGroanTime = 0;
             }
 
             init() {
                 if (!this.ctx) {
                     const AudioCtx = window.AudioContext || window.webkitAudioContext;
                     this.ctx = new AudioCtx();
+
+                    // 1. Master Dynamics Compressor (Limiter) to eliminate digital clipping and popping on simultaneous sounds
+                    this.limiter = this.ctx.createDynamicsCompressor();
+                    this.limiter.threshold.setValueAtTime(-1.0, this.ctx.currentTime);
+                    this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
+                    this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+                    this.limiter.attack.setValueAtTime(0.002, this.ctx.currentTime);
+                    this.limiter.release.setValueAtTime(0.05, this.ctx.currentTime);
+                    this.limiter.connect(this.ctx.destination);
+
+                    // 2. Master Gain (Mute & Master Level bus)
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.setValueAtTime(this.muted ? 0 : 1.0, this.ctx.currentTime);
+                    this.masterGain.connect(this.limiter);
+
+                    // 3. Sub-buses for SFX and Ambient
+                    this.sfxGain = this.ctx.createGain();
+                    this.sfxGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+                    this.sfxGain.connect(this.masterGain);
+
+                    this.ambientGain = this.ctx.createGain();
+                    this.ambientGain.gain.setValueAtTime(0.14, this.ctx.currentTime);
+                    this.ambientGain.connect(this.masterGain);
+
+                    // 4. Pre-bake noise buffer pool (Zero allocation during gameplay to prevent GC pauses)
+                    this.buildNoiseBufferPool();
                 }
+
                 if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+                    this.ctx.resume().catch(() => {});
                 }
+
                 if (!this.ambientInitialized) {
                     this.startAmbientDrone();
                     this.ambientInitialized = true;
                 }
             }
 
+            // Pre-generates variations of gun noise bursts once at startup
+            // Eliminates Float32Array allocations and Math.random() loops during shooting
+            buildNoiseBufferPool() {
+                const sampleRate = this.ctx.sampleRate || 44100;
+                const bufferSize = Math.floor(sampleRate * 0.22);
+                this.noiseBuffers = [];
+                for (let b = 0; b < 5; b++) {
+                    const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+                    const data = buffer.getChannelData(0);
+                    const decayFactor = 0.038 + b * 0.003;
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * decayFactor));
+                    }
+                    this.noiseBuffers.push(buffer);
+                }
+            }
+
+            // Cleanly register Web Audio node disconnections on source end
+            // Completely fixes the Web Audio graph node accumulation leak that causes audio thread stutter & clicks
+            registerCleanup(source, ...nodes) {
+                let cleaned = false;
+                const cleanup = () => {
+                    if (cleaned) return;
+                    cleaned = true;
+                    try { source.disconnect(); } catch (e) {}
+                    for (let i = 0; i < nodes.length; i++) {
+                        try { nodes[i].disconnect(); } catch (e) {}
+                    }
+                };
+                source.onended = cleanup;
+                // Failsafe timer in case onended is delayed by background tab throttling
+                setTimeout(cleanup, 2200);
+            }
+
             toggleMute() {
                 this.muted = !this.muted;
-                if (this.ambientGain && this.ctx) {
-                    this.ambientGain.gain.setTargetAtTime(this.muted ? 0 : 0.14, this.ctx.currentTime, 0.1);
+                if (this.masterGain && this.ctx) {
+                    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 1.0, this.ctx.currentTime, 0.03);
                 }
                 const muteHint = document.getElementById('hud-mute-hint');
                 if (muteHint) {
@@ -513,14 +580,16 @@
                 return this.muted;
             }
 
+            duckAmbient(duck) {
+                if (!this.ambientGain || !this.ctx) return;
+                const target = duck ? 0.04 : 0.14;
+                this.ambientGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.1);
+            }
+
             // Dark eerie sub-bass & dissonant horror pad
             startAmbientDrone() {
-                if (!this.ctx) return;
+                if (!this.ctx || !this.ambientGain) return;
                 const now = this.ctx.currentTime;
-
-                this.ambientGain = this.ctx.createGain();
-                this.ambientGain.gain.setValueAtTime(this.muted ? 0 : 0.14, now);
-                this.ambientGain.connect(this.ctx.destination);
 
                 // Sub drone oscillator 1
                 const osc1 = this.ctx.createOscillator();
@@ -557,36 +626,38 @@
                 lfo.start();
             }
 
-            // Punchy synthesized rifle gunshot
+            // Punchy synthesized rifle gunshot with zero garbage allocation & zero DC pops
             playGunshot() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
 
-                // 1. White noise explosion burst
-                const bufferSize = this.ctx.sampleRate * 0.22;
-                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                const output = noiseBuffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.045));
+                // 1. Noise burst from pre-baked pool
+                if (this.noiseBuffers && this.noiseBuffers.length > 0) {
+                    const noiseBuffer = this.noiseBuffers[Math.floor(Math.random() * this.noiseBuffers.length)];
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = noiseBuffer;
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(1100, now);
+                    filter.frequency.exponentialRampToValueAtTime(220, now + 0.18);
+                    filter.Q.setValueAtTime(0.9, now);
+
+                    const noiseGain = this.ctx.createGain();
+                    // Micro-attack and smooth exponential+linear release to eliminate DC pops
+                    noiseGain.gain.setValueAtTime(0.0001, now);
+                    noiseGain.gain.linearRampToValueAtTime(0.65, now + 0.003);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.19);
+                    noiseGain.gain.linearRampToValueAtTime(0, now + 0.21);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(noiseGain);
+                    noiseGain.connect(this.sfxGain);
+
+                    this.registerCleanup(whiteNoise, filter, noiseGain);
+                    whiteNoise.start(now);
+                    whiteNoise.stop(now + 0.22);
                 }
-
-                const whiteNoise = this.ctx.createBufferSource();
-                whiteNoise.buffer = noiseBuffer;
-
-                const filter = this.ctx.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.setValueAtTime(1100, now);
-                filter.frequency.exponentialRampToValueAtTime(220, now + 0.18);
-                filter.Q.setValueAtTime(0.9, now);
-
-                const noiseGain = this.ctx.createGain();
-                noiseGain.gain.setValueAtTime(0.75, now);
-                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-
-                whiteNoise.connect(filter);
-                filter.connect(noiseGain);
-                noiseGain.connect(this.ctx.destination);
-                whiteNoise.start(now);
 
                 // 2. Low-end punch kick
                 const punchOsc = this.ctx.createOscillator();
@@ -595,11 +666,15 @@
                 punchOsc.frequency.setValueAtTime(190, now);
                 punchOsc.frequency.exponentialRampToValueAtTime(38, now + 0.11);
 
-                punchGain.gain.setValueAtTime(0.85, now);
-                punchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                punchGain.gain.setValueAtTime(0.0001, now);
+                punchGain.gain.linearRampToValueAtTime(0.7, now + 0.003);
+                punchGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+                punchGain.gain.linearRampToValueAtTime(0, now + 0.12);
 
                 punchOsc.connect(punchGain);
-                punchGain.connect(this.ctx.destination);
+                punchGain.connect(this.sfxGain);
+
+                this.registerCleanup(punchOsc, punchGain);
                 punchOsc.start(now);
                 punchOsc.stop(now + 0.12);
             }
@@ -614,11 +689,15 @@
                 osc.frequency.setValueAtTime(1600, now);
                 osc.frequency.exponentialRampToValueAtTime(600, now + 0.035);
 
-                gain.gain.setValueAtTime(0.25, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.22, now + 0.002);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.038);
+                gain.gain.linearRampToValueAtTime(0, now + 0.04);
 
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxGain);
+
+                this.registerCleanup(osc, gain);
                 osc.start(now);
                 osc.stop(now + 0.04);
             }
@@ -634,10 +713,15 @@
                 click1.type = 'triangle';
                 click1.frequency.setValueAtTime(520, now);
                 click1.frequency.setValueAtTime(340, now + 0.04);
-                gain1.gain.setValueAtTime(0.3, now);
-                gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                gain1.gain.setValueAtTime(0.0001, now);
+                gain1.gain.linearRampToValueAtTime(0.25, now + 0.003);
+                gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.095);
+                gain1.gain.linearRampToValueAtTime(0, now + 0.1);
+
                 click1.connect(gain1);
-                gain1.connect(this.ctx.destination);
+                gain1.connect(this.sfxGain);
+                this.registerCleanup(click1, gain1);
                 click1.start(now);
                 click1.stop(now + 0.1);
 
@@ -647,11 +731,16 @@
                 click2.type = 'sawtooth';
                 click2.frequency.setValueAtTime(380, now + 0.85);
                 click2.frequency.setValueAtTime(880, now + 0.92);
-                gain2.gain.setValueAtTime(0.001, now);
-                gain2.gain.setValueAtTime(0.35, now + 0.85);
-                gain2.gain.exponentialRampToValueAtTime(0.01, now + 1.05);
+
+                gain2.gain.setValueAtTime(0.0001, now);
+                gain2.gain.setValueAtTime(0.0001, now + 0.848);
+                gain2.gain.linearRampToValueAtTime(0.28, now + 0.852);
+                gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.04);
+                gain2.gain.linearRampToValueAtTime(0, now + 1.05);
+
                 click2.connect(gain2);
-                gain2.connect(this.ctx.destination);
+                gain2.connect(this.sfxGain);
+                this.registerCleanup(click2, gain2);
                 click2.start(now + 0.85);
                 click2.stop(now + 1.05);
             }
@@ -667,19 +756,27 @@
                 osc.frequency.setValueAtTime(isHeadshot ? 950 : 280, now);
                 osc.frequency.exponentialRampToValueAtTime(isHeadshot ? 220 : 90, now + 0.09);
 
-                gain.gain.setValueAtTime(isHeadshot ? 0.45 : 0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(isHeadshot ? 0.38 : 0.25, now + 0.003);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+                gain.gain.linearRampToValueAtTime(0, now + 0.095);
 
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxGain);
+                this.registerCleanup(osc, gain);
                 osc.start(now);
                 osc.stop(now + 0.095);
             }
 
-            // Guttural zombie groan / roar
+            // Guttural zombie groan with concurrency limiter to prevent audio clutter & clipping
             playZombieGroan(pitchMultiplier = 1.0) {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
+
+                // Concurrency limiter prevents cacophony and audio clipping in high-density waves
+                if (now - this.lastGroanTime < 0.12) return;
+                this.lastGroanTime = now;
+
                 const osc = this.ctx.createOscillator();
                 const filter = this.ctx.createBiquadFilter();
                 const gain = this.ctx.createGain();
@@ -696,14 +793,16 @@
                 filter.frequency.linearRampToValueAtTime(200, now + 0.75);
                 filter.Q.setValueAtTime(3.5, now);
 
-                gain.gain.setValueAtTime(0.01, now);
-                gain.gain.linearRampToValueAtTime(0.26, now + 0.12);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.22, now + 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.78);
+                gain.gain.linearRampToValueAtTime(0, now + 0.8);
 
                 osc.connect(filter);
                 filter.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxGain);
 
+                this.registerCleanup(osc, filter, gain);
                 osc.start(now);
                 osc.stop(now + 0.8);
             }
@@ -719,11 +818,14 @@
                 osc.frequency.setValueAtTime(135, now);
                 osc.frequency.exponentialRampToValueAtTime(32, now + 0.3);
 
-                gain.gain.setValueAtTime(0.7, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.55, now + 0.004);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.31);
+                gain.gain.linearRampToValueAtTime(0, now + 0.33);
 
                 osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                gain.connect(this.sfxGain);
+                this.registerCleanup(osc, gain);
                 osc.start(now);
                 osc.stop(now + 0.33);
             }
@@ -735,19 +837,24 @@
 
                 const notes = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6 arpeggio chime
                 notes.forEach((freq, i) => {
+                    const noteTime = now + i * 0.055;
+                    const stopTime = noteTime + 0.35;
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.055);
+                    osc.frequency.setValueAtTime(freq, noteTime);
 
-                    gain.gain.setValueAtTime(0.001, now);
-                    gain.gain.setValueAtTime(0.28, now + i * 0.055);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.055 + 0.35);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.setValueAtTime(0.0001, noteTime);
+                    gain.gain.linearRampToValueAtTime(0.24, noteTime + 0.004);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime - 0.01);
+                    gain.gain.linearRampToValueAtTime(0, stopTime);
 
                     osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + i * 0.055);
-                    osc.stop(now + i * 0.055 + 0.36);
+                    gain.connect(this.sfxGain);
+                    this.registerCleanup(osc, gain);
+                    osc.start(noteTime);
+                    osc.stop(stopTime);
                 });
             }
         }
@@ -1399,6 +1506,7 @@
             resetKeys();
             state.isDraggingLook = false;
             updatePauseTelemetry();
+            sound.duckAmbient(true);
             resumeLockPrompt.classList.remove('hidden');
             if (document.pointerLockElement) {
                 document.exitPointerLock();
@@ -1410,6 +1518,7 @@
             if (sound.ctx && sound.ctx.state === 'suspended') {
                 sound.ctx.resume().catch(() => {});
             }
+            sound.duckAmbient(false);
             state.isPaused = false;
             resetKeys();
             state.isDraggingLook = false;
@@ -1421,6 +1530,7 @@
         function returnToTitle() {
             state.mode = 'TITLE';
             state.isPaused = false;
+            sound.duckAmbient(false);
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
