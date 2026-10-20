@@ -28,15 +28,28 @@ Designed specifically for effortless static hosting, the entire game—including
 
 ## 🎮 Tactical Controls
 
+### Desktop Controls
+
 | **Input** | **Action** | **Notes** |
 | :--- | :--- | :--- |
 | **W A S D / Arrows** | **Move / Strafe** | Navigate around neon pillars to break line-of-sight |
 | **Mouse** | **Look / Aim** | Uses Pointer Lock API (includes click-and-drag fallback) |
 | **Left Mouse Button** | **Fire Weapon** | Fires the NX-9 Pulse Carbine (`15` rounds per magazine) |
+| **Shift / Space / RMB** | **Tactical Sprint** | Boosts speed while consuming thruster stamina. Choose trigger key (`SHIFT`, `SPACE`, `RMB`, or `ALL`) in the Tactical Controls Briefing & Pause menu |
 | **R** | **Reload** | Replenishes magazine from infinite reserve (`1.15s` duration) |
-| **Shift** | **Tactical Sprint** | Increases movement speed while draining Sprint Thruster stamina |
 | **M** | **Mute / Unmute** | Toggles audio with live HUD status indicator |
-| **ESC** | **Pause / Resume** | Freezes simulation and opens tactical telemetry modal |
+| **ESC** | **Pause / Resume** | Freezes simulation and opens tactical telemetry & settings modal |
+
+### 📱 Mobile & Touch Controls
+
+| **Touch Input** | **Action** | **Notes** |
+| :--- | :--- | :--- |
+| **Virtual Analog Joystick** | **Move / Strafe** | Bottom-left thumbstick with smooth 360° analog movement & auto-center |
+| **Touch Look Zone** | **Look / Aim** | Drag anywhere on the right half of the screen to aim with pitch clamping |
+| **FIRE Button** | **Shoot Weapon** | Tap for precision single shots or hold for rapid continuous fire |
+| **SPRINT Button** | **Tactical Sprint** | Tap to engage/disengage Sprint Thrusters on mobile |
+| **RELOAD Button** | **Reload Carbine** | Tap to initiate tactical magazine swap |
+| **PAUSE & MUTE Buttons** | **HUD Controls** | Top-right on-screen buttons to pause simulation or toggle audio on touch devices |
 
 ---
 
