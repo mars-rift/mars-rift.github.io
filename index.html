@@ -272,7 +272,7 @@
             -webkit-touch-callout: none;
         }
 
-        /* Strict visibility rules for mobile HUD buttons and controls */
+        /* Strict visibility rules for mobile & tablet HUD buttons and controls */
         #mobile-top-btns,
         #mobile-controls {
             display: none !important;
@@ -284,6 +284,10 @@
 
         body.is-mobile-device #mobile-controls {
             display: block !important;
+        }
+
+        body.is-mobile-device #mobile-controls.hidden {
+            display: none !important;
         }
 
         body.is-mobile-device #hud-mute-hint {
@@ -315,9 +319,13 @@
             backdrop-filter: blur(4px);
         }
 
-        /* On mobile screens, elevate bottom HUD so virtual joystick and fire buttons don't block it */
-        @media (max-width: 768px) {
-            .mobile-hud-spacing {
+        /* On mobile & tablet screens, elevate bottom HUD so virtual joystick and fire buttons don't block it */
+        body.is-mobile-device .mobile-hud-spacing {
+            margin-bottom: 6.5rem !important;
+        }
+
+        @media (max-width: 640px) {
+            body.is-mobile-device .mobile-hud-spacing {
                 margin-bottom: 7.5rem !important;
             }
         }
@@ -422,10 +430,10 @@
             <div id="wave-banner-container" class="absolute top-1/4 pointer-events-none text-center"></div>
         </div>
 
-        <!-- Mobile Virtual Joystick & Touch Controls Layer -->
+        <!-- Mobile & Tablet Virtual Joystick & Touch Controls Layer -->
         <div id="mobile-controls" class="hidden absolute inset-0 pointer-events-none select-none z-30 touch-none">
-            <!-- Touch Look / Aim Zone (Right half of screen) -->
-            <div id="touch-look-zone" class="absolute top-0 right-0 w-1/2 h-full pointer-events-auto touch-none"></div>
+            <!-- Fullscreen Touch Strafe & Look Zone (covers screen outside joystick & action buttons) -->
+            <div id="touch-look-zone" class="absolute inset-0 pointer-events-auto touch-none"></div>
 
             <!-- Virtual Analog Joystick (Bottom Left) -->
             <div id="joystick-zone"
@@ -439,7 +447,7 @@
                     <div class="absolute bottom-1.5 w-0.5 h-2 bg-red-400/70"></div>
                     <div class="absolute left-1.5 h-0.5 w-2 bg-red-400/70"></div>
                     <div class="absolute right-1.5 h-0.5 w-2 bg-red-400/70"></div>
-                    <div class="absolute bottom-2 text-[9px] font-neon tracking-widest text-red-400 uppercase">MOVE
+                    <div class="absolute bottom-2 text-[9px] font-neon tracking-widest text-red-400 uppercase">MOVE / TURN
                     </div>
 
                     <!-- Draggable Thumbstick Knob -->
@@ -619,7 +627,7 @@
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-sm"></span>
                         TACTICAL CONTROLS BRIEFING
                     </span>
-                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP &amp; MOBILE
+                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP, TABLET &amp; MOBILE
                         READY</span>
                 </div>
                 <div class="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
@@ -656,9 +664,9 @@
                     <div
                         class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
                         <span class="text-neutral-300 flex items-center gap-1.5">
-                            <span>📱 Mobile Input</span>
+                            <span>📱 Touch &amp; iPad</span>
                         </span>
-                        <span class="text-[10px] font-neon text-red-400 font-bold">TOUCH &amp; JOYSTICK</span>
+                        <span class="text-[10px] font-neon text-red-400 font-bold">STICK MOVE/TURN &amp; TOUCH STRAFE</span>
                     </div>
                 </div>
             </div>
@@ -712,7 +720,7 @@
             </div>
             <p class="text-sm text-neutral-300 mb-5 leading-relaxed">
                 All hostiles and telemetry are frozen.<br>
-                Press <span class="key-badge">ESC</span> or click below to resume combat.
+                Press <span class="key-badge">ESC</span> or tap below to resume combat.
             </p>
 
             <!-- Quick Telemetry in Pause Menu -->
@@ -1899,7 +1907,8 @@
             joystickX: 0,
             joystickY: 0,
             joystickSprint: false,
-            touchSprint: false
+            touchSprint: false,
+            touchStrafeX: 0
         };
 
         const keys = {
@@ -1988,6 +1997,7 @@
             state.joystickY = 0;
             state.joystickSprint = false;
             state.touchSprint = false;
+            state.touchStrafeX = 0;
             if (touchBtnSprint) {
                 touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
             }
@@ -2389,6 +2399,7 @@
             titleScreen.classList.add('hidden');
             gameoverScreen.classList.add('hidden');
             hud.classList.remove('hidden');
+            if (mobileControls) mobileControls.classList.remove('hidden');
             updateMobileControlsVisibility();
             resumeLockPrompt.classList.add('hidden');
             reloadPrompt.classList.add('hidden');
@@ -2436,10 +2447,10 @@
                 ammoStatus.textContent = 'RELOADING MAGAZINE...';
                 ammoStatus.className = 'text-xs text-red-400 font-bold mt-0.5 animate-pulse';
             } else if (state.ammo === 0) {
-                ammoStatus.textContent = 'EMPTY! PRESS [R] TO RELOAD';
+                ammoStatus.textContent = state.isTouchMode ? 'EMPTY! TAP RELOAD' : 'EMPTY! PRESS [R] TO RELOAD';
                 ammoStatus.className = 'text-xs text-red-500 font-bold mt-0.5 animate-pulse';
             } else {
-                ammoStatus.textContent = 'Press [R] to Reload';
+                ammoStatus.textContent = state.isTouchMode ? 'Tap RELOAD' : 'Press [R] to Reload';
                 ammoStatus.className = 'text-xs text-neutral-400 mt-0.5';
             }
         }
@@ -2802,9 +2813,14 @@
         function isMobileDevice() {
             const ua = navigator.userAgent || navigator.vendor || window.opera || '';
             const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-            const isCoarseOnly = window.matchMedia && window.matchMedia('(pointer: coarse) and not (pointer: fine)').matches;
-            const isMobileScreen = (window.innerWidth <= 768) && (('ontouchstart' in window) || (navigator.maxTouchPoints > 1));
-            return isMobileUA || isCoarseOnly || isMobileScreen;
+            // Detect iPadOS Safari desktop spoofing: platform 'MacIntel' with maxTouchPoints > 1
+            const isIPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || /iPad/i.test(ua);
+            const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+            const hasCoarse = window.matchMedia && (
+                window.matchMedia('(pointer: coarse)').matches ||
+                window.matchMedia('(any-pointer: coarse)').matches
+            );
+            return isMobileUA || isIPad || (hasTouchPoints && hasCoarse) || ('ontouchstart' in window && hasCoarse);
         }
 
         function updateMobileControlsVisibility() {
@@ -2825,7 +2841,7 @@
             window.addEventListener('resize', updateMobileControlsVisibility);
 
             window.addEventListener('touchstart', () => {
-                if (!state.touchInteracted && window.innerWidth <= 1024) {
+                if (!state.touchInteracted) {
                     state.touchInteracted = true;
                     updateMobileControlsVisibility();
                 }
@@ -2894,16 +2910,20 @@
                 state.joystickSprint = state.joystickY < -0.85;
             }
 
-            // 2. Touch Aim / Look Zone
+            // 2. Touch Screen Outside Joystick: Strafe Left/Right & Look Pitch
+            let strafeTouchAnchorX = 0;
             if (touchLookZone) {
                 touchLookZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
                     if (aimTouchId !== null) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
+                        if (t.identifier === joystickTouchId) continue;
                         aimTouchId = t.identifier;
                         lastAimX = t.clientX;
                         lastAimY = t.clientY;
+                        strafeTouchAnchorX = t.clientX;
+                        state.touchStrafeX = 0;
                         e.preventDefault();
                         break;
                     }
@@ -2914,15 +2934,28 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
                         if (t.identifier === aimTouchId) {
-                            const dx = t.clientX - lastAimX;
+                            // Vertical movement: Look up / down (pitch)
                             const dy = t.clientY - lastAimY;
-                            lastAimX = t.clientX;
                             lastAimY = t.clientY;
-
-                            const sensitivity = 0.0042;
-                            camera.rotation.y -= dx * sensitivity;
-                            camera.rotation.x -= dy * sensitivity;
+                            const pitchSensitivity = 0.0042;
+                            camera.rotation.x -= dy * pitchSensitivity;
                             camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
+
+                            // Horizontal slide: Strafe Left / Right
+                            const maxDist = 48; // pixels for 100% strafe deflection
+                            const deadzone = 6;  // small deadzone for stability
+                            const rawDist = t.clientX - strafeTouchAnchorX;
+                            if (Math.abs(rawDist) > maxDist) {
+                                strafeTouchAnchorX = t.clientX - Math.sign(rawDist) * maxDist;
+                            }
+                            const deltaX = t.clientX - strafeTouchAnchorX;
+                            if (Math.abs(deltaX) > deadzone) {
+                                const effective = deltaX - Math.sign(deltaX) * deadzone;
+                                state.touchStrafeX = Math.max(-1, Math.min(1, effective / (maxDist - deadzone)));
+                            } else {
+                                state.touchStrafeX = 0;
+                            }
+
                             e.preventDefault();
                             break;
                         }
@@ -2934,6 +2967,7 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         if (e.changedTouches[i].identifier === aimTouchId) {
                             aimTouchId = null;
+                            state.touchStrafeX = 0;
                             break;
                         }
                     }
@@ -3114,7 +3148,13 @@
             const dt = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
 
-            // 1. Player Movement (WASD + Sprint - Zero Allocation)
+            // 1. Player Movement & Virtual Joystick Turning
+            // Virtual Joystick Yaw Turning (Left / Right)
+            if (state.joystickX !== 0) {
+                const joystickTurnSpeed = 2.4; // smooth yaw rotation speed (radians/sec)
+                camera.rotation.y -= state.joystickX * joystickTurnSpeed * dt;
+            }
+
             const yaw = camera.rotation.y;
             _forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
             _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -3125,10 +3165,14 @@
             if (keys.KeyD || keys.ArrowRight) _moveDir.add(_right);
             if (keys.KeyA || keys.ArrowLeft) _moveDir.sub(_right);
 
-            // Virtual Joystick Input (-Y is forward, +X is strafe right)
-            if (state.joystickX !== 0 || state.joystickY !== 0) {
+            // Virtual Joystick Input: Forward & Backward movement ONLY (-Y is forward, +Y is backward)
+            if (state.joystickY !== 0) {
                 _moveDir.addScaledVector(_forward, -state.joystickY);
-                _moveDir.addScaledVector(_right, state.joystickX);
+            }
+
+            // Screen Touch Outside Joystick: Strafe Left / Right
+            if (state.touchStrafeX !== 0) {
+                _moveDir.addScaledVector(_right, state.touchStrafeX);
             }
 
             const isMoving = _moveDir.lengthSq() > 0.001;

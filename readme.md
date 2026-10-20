@@ -40,14 +40,14 @@ Designed specifically for effortless static hosting, the entire game—including
 | **M** | **Mute / Unmute** | Toggles audio with live HUD status indicator |
 | **ESC** | **Pause / Resume** | Freezes simulation and opens tactical telemetry & settings modal |
 
-### 📱 Mobile & Touch Controls
+### 📱 Mobile, iPad & Tablet Touch Controls
 
 | **Touch Input** | **Action** | **Notes** |
 | :--- | :--- | :--- |
-| **Virtual Analog Joystick** | **Move / Strafe** | Bottom-left thumbstick with smooth 360° analog movement & auto-center |
-| **Touch Look Zone** | **Look / Aim** | Drag anywhere on the right half of the screen to aim with pitch clamping |
+| **Virtual Analog Joystick** | **Move & Turn** | Bottom-left thumbstick: push up/down to move forward/backward; tilt left/right to turn view left/right |
+| **Screen Touch (Outside Stick)** | **Strafe & Aim** | Touch and slide anywhere outside the joystick: horizontal drag strafes left/right; vertical drag aims pitch up/down |
 | **FIRE Button** | **Shoot Weapon** | Tap for precision single shots or hold for rapid continuous fire |
-| **SPRINT Button** | **Tactical Sprint** | Tap to engage/disengage Sprint Thrusters on mobile |
+| **SPRINT Button** | **Tactical Sprint** | Tap to engage/disengage Sprint Thrusters on mobile/tablets |
 | **RELOAD Button** | **Reload Carbine** | Tap to initiate tactical magazine swap |
 | **PAUSE & MUTE Buttons** | **HUD Controls** | Top-right on-screen buttons to pause simulation or toggle audio on touch devices |
 
