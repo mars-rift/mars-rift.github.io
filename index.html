@@ -1304,8 +1304,7 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.enabled = false;
         container.appendChild(renderer.domElement);
 
         // Lighting
@@ -1337,7 +1336,6 @@
         });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
         scene.add(floor);
 
         // Arena Obstacles / Pillars & Boundary Walls
@@ -1397,11 +1395,11 @@
             scene.add(wall);
             shootableWalls.push(wall);
 
-            // Top neon laser strip along perimeter walls
+            // Top neon laser strip along perimeter walls (protrudes slightly beyond 2-unit wall thickness)
             const stripGeo = new THREE.BoxGeometry(
-                cfg.size[0] === 2 ? 0.25 : cfg.size[0],
+                cfg.size[0] === 2 ? 2.16 : cfg.size[0],
                 0.2,
-                cfg.size[2] === 2 ? 0.25 : cfg.size[2]
+                cfg.size[2] === 2 ? 2.16 : cfg.size[2]
             );
             const strip = new THREE.Mesh(stripGeo, neonRingMat);
             strip.position.set(cfg.pos[0], 2.2, cfg.pos[2]);
@@ -1414,6 +1412,7 @@
         const weaponGroup = new THREE.Group();
         const WEAPON_BASE_POS = new THREE.Vector3(0.32, -0.27, -0.52);
         weaponGroup.position.copy(WEAPON_BASE_POS);
+        weaponGroup.visible = false;
         camera.add(weaponGroup);
 
         const gunMetalMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.35, metalness: 0.8 });
@@ -1489,7 +1488,9 @@
         const zombieHeadGeo = new THREE.BoxGeometry(0.5, 0.52, 0.5);
         const zombieEyeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.05);
         const zombieArmGeo = new THREE.BoxGeometry(0.22, 0.22, 0.85);
+        zombieArmGeo.translate(0, 0, 0.35); // Pivot at shoulder joint
         const zombieLegGeo = new THREE.BoxGeometry(0.28, 0.75, 0.3);
+        zombieLegGeo.translate(0, -0.375, 0); // Pivot at hip joint
 
         // Class-specific shared geometries for distinct silhouettes
         const runnerClawGeo = new THREE.BoxGeometry(0.06, 0.06, 0.35);
@@ -1502,6 +1503,7 @@
 
         function createZombieMesh(type) {
             const root = new THREE.Group();
+            root.rotation.order = 'YXZ';
 
             let skinColor = 0x2e3d2e; // Shambler: rotting moss-green
             let coatColor = 0x181316;
@@ -1611,41 +1613,41 @@
                 head.add(rightEye);
             }
 
-            // Arms
+            // Arms (pivoted at shoulder joint)
             const leftArm = new THREE.Mesh(zombieArmGeo, skinMat);
-            leftArm.position.set(-0.52, 1.55, 0.35);
+            leftArm.position.set(-0.52, 1.55, 0);
             root.add(leftArm);
 
             const rightArm = new THREE.Mesh(zombieArmGeo, skinMat);
-            rightArm.position.set(0.52, 1.55, 0.35);
+            rightArm.position.set(0.52, 1.55, 0);
             root.add(rightArm);
 
             // Class-specific arm attachments (Claws vs Fists)
             if (type === 'runner') {
                 const leftClaw = new THREE.Mesh(runnerClawGeo, skinMat);
-                leftClaw.position.set(0, 0, 0.52);
+                leftClaw.position.set(0, 0, 0.87);
                 leftArm.add(leftClaw);
 
                 const rightClaw = new THREE.Mesh(runnerClawGeo, skinMat);
-                rightClaw.position.set(0, 0, 0.52);
+                rightClaw.position.set(0, 0, 0.87);
                 rightArm.add(rightClaw);
             } else if (type === 'brute') {
                 const leftFist = new THREE.Mesh(bruteFistGeo, skinMat);
-                leftFist.position.set(0, 0, 0.45);
+                leftFist.position.set(0, 0, 0.8);
                 leftArm.add(leftFist);
 
                 const rightFist = new THREE.Mesh(bruteFistGeo, skinMat);
-                rightFist.position.set(0, 0, 0.45);
+                rightFist.position.set(0, 0, 0.8);
                 rightArm.add(rightFist);
             }
 
-            // Legs
+            // Legs (pivoted at hip joint)
             const leftLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
-            leftLeg.position.set(-0.2, 0.38, 0);
+            leftLeg.position.set(-0.2, 0.75, 0);
             root.add(leftLeg);
 
             const rightLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
-            rightLeg.position.set(0.2, 0.38, 0);
+            rightLeg.position.set(0.2, 0.75, 0);
             root.add(rightLeg);
 
             root.scale.setScalar(scale);
@@ -2065,6 +2067,11 @@
 
             removeHealthJewel();
 
+            weaponGroup.visible = false;
+            muzzleFlashGroup.visible = false;
+            muzzleLight.intensity = 0;
+            setCrosshairSpread(0);
+
             gameoverScreen.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
             hud.classList.add('hidden');
@@ -2259,7 +2266,10 @@
             if (state.isTouchMode) return;
             try {
                 if (renderer.domElement.requestPointerLock) {
-                    renderer.domElement.requestPointerLock();
+                    const lockPromise = renderer.domElement.requestPointerLock();
+                    if (lockPromise && typeof lockPromise.catch === 'function') {
+                        lockPromise.catch(() => { });
+                    }
                 }
             } catch (err) {
                 // Fallback handled via click-and-drag look if iframe blocks pointer lock
@@ -2268,11 +2278,11 @@
 
         document.addEventListener('pointerlockchange', () => {
             state.pointerLocked = (document.pointerLockElement === renderer.domElement);
-            if (state.mode === 'PLAYING' && !state.isTouchMode) {
-                if (!state.pointerLocked) {
-                    if (!state.isPaused) {
-                        pauseGame();
-                    }
+            if (state.pointerLocked) {
+                state.isDraggingLook = false;
+            } else if (state.mode === 'PLAYING' && !state.isTouchMode) {
+                if (!state.isPaused) {
+                    pauseGame();
                 }
             }
         });
@@ -2380,6 +2390,14 @@
             // Reset player state
             camera.position.set(0, 1.75, 0);
             camera.rotation.set(0, 0, 0);
+            camera.updateMatrixWorld(true);
+
+            weaponGroup.position.copy(WEAPON_BASE_POS);
+            weaponGroup.rotation.set(0, 0, 0);
+            weaponGroup.visible = true;
+            muzzleFlashGroup.visible = false;
+            muzzleLight.intensity = 0;
+            setCrosshairSpread(0);
 
             state.mode = 'PLAYING';
             state.isPaused = false;
@@ -2395,6 +2413,7 @@
             state.headshots = 0;
             state.recoilOffset = 0;
             state.recoilPitch = 0;
+            state.muzzleTimer = 0;
 
             titleScreen.classList.add('hidden');
             gameoverScreen.classList.add('hidden');
@@ -2419,6 +2438,10 @@
                 document.exitPointerLock();
             }
             removeHealthJewel();
+            weaponGroup.visible = false;
+            muzzleFlashGroup.visible = false;
+            muzzleLight.intensity = 0;
+            setCrosshairSpread(0);
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
@@ -2532,6 +2555,9 @@
                     }
                 }, 220);
             }
+
+            // Ensure camera and weapon world matrices reflect latest rotation before raycasting
+            camera.updateMatrixWorld(true);
 
             // Raycast from center of camera
             raycaster.setFromCamera(screenCenter, camera);
@@ -2698,10 +2724,13 @@
             if (state.mode !== 'PLAYING' || state.isPaused) return;
 
             if (state.pointerLocked) {
+                // Guard against browser pointer-lock warp spikes
+                if (Math.abs(e.movementX) > 300 || Math.abs(e.movementY) > 300) return;
                 const sensitivity = 0.0022;
                 camera.rotation.y -= e.movementX * sensitivity;
                 camera.rotation.x -= e.movementY * sensitivity;
                 camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
+                camera.rotation.z = 0;
             } else if (state.isDraggingLook) {
                 const dx = e.clientX - state.lastMouseX;
                 const dy = e.clientY - state.lastMouseY;
@@ -2711,6 +2740,7 @@
                 camera.rotation.y -= dx * sensitivity;
                 camera.rotation.x -= dy * sensitivity;
                 camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
+                camera.rotation.z = 0;
             }
         });
 
@@ -2816,11 +2846,9 @@
             // Detect iPadOS Safari desktop spoofing: platform 'MacIntel' with maxTouchPoints > 1
             const isIPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || /iPad/i.test(ua);
             const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
-            const hasCoarse = window.matchMedia && (
-                window.matchMedia('(pointer: coarse)').matches ||
-                window.matchMedia('(any-pointer: coarse)').matches
-            );
-            return isMobileUA || isIPad || (hasTouchPoints && hasCoarse) || ('ontouchstart' in window && hasCoarse);
+            // Only match when the primary pointer is coarse so touchscreen Windows laptops with a mouse stay in desktop mode
+            const hasPrimaryCoarse = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            return isMobileUA || isIPad || (hasTouchPoints && hasPrimaryCoarse) || ('ontouchstart' in window && hasPrimaryCoarse);
         }
 
         function updateMobileControlsVisibility() {
@@ -2843,6 +2871,13 @@
             window.addEventListener('touchstart', () => {
                 if (!state.touchInteracted) {
                     state.touchInteracted = true;
+                    updateMobileControlsVisibility();
+                }
+            }, { passive: true });
+
+            window.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'mouse' && state.touchInteracted && !isMobileDevice()) {
+                    state.touchInteracted = false;
                     updateMobileControlsVisibility();
                 }
             }, { passive: true });
@@ -2905,9 +2940,19 @@
                 const ky = Math.sin(angle) * clampedDist;
 
                 joystickKnob.style.transform = `translate(${kx}px, ${ky}px)`;
-                state.joystickX = kx / maxRadius;
-                state.joystickY = ky / maxRadius;
-                state.joystickSprint = state.joystickY < -0.85;
+
+                const rawX = kx / maxRadius;
+                const rawY = ky / maxRadius;
+                const deadzoneX = 0.16;
+                const deadzoneY = 0.18;
+
+                state.joystickX = Math.abs(rawX) > deadzoneX
+                    ? Math.sign(rawX) * ((Math.abs(rawX) - deadzoneX) / (1 - deadzoneX))
+                    : 0;
+                state.joystickY = Math.abs(rawY) > deadzoneY
+                    ? Math.sign(rawY) * ((Math.abs(rawY) - deadzoneY) / (1 - deadzoneY))
+                    : 0;
+                state.joystickSprint = (rawY < -0.55 && (clampedDist / maxRadius) > 0.85);
             }
 
             // 2. Touch Screen Outside Joystick: Strafe Left/Right & Look Pitch
@@ -3175,7 +3220,8 @@
                 _moveDir.addScaledVector(_right, state.touchStrafeX);
             }
 
-            const isMoving = _moveDir.lengthSq() > 0.001;
+            const moveLenSq = _moveDir.lengthSq();
+            const isMoving = moveLenSq > 0.001;
 
             // Tactical Sprint Input Evaluation based on active option
             let sprintInput = false;
@@ -3218,10 +3264,14 @@
             hudStaminaText.textContent = state.stamina < 15 ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
 
             if (isMoving) {
-                _moveDir.normalize();
+                // Clamp diagonal magnitude to 1 while preserving proportional analog stick / touch-strafe speed
+                if (moveLenSq > 1.0) {
+                    _moveDir.divideScalar(Math.sqrt(moveLenSq));
+                }
+                const speedFactor = Math.min(1.0, Math.sqrt(moveLenSq));
                 camera.position.addScaledVector(_moveDir, moveSpeed * dt);
                 resolveArenaCollisions(camera.position, 0.85);
-                state.bobTimer += dt * (wantsSprint ? 15 : 10);
+                state.bobTimer += dt * (wantsSprint ? 15 : 10) * speedFactor;
             } else {
                 state.bobTimer += dt * 2;
             }
@@ -3302,7 +3352,8 @@
                 if (z.dying) {
                     z.deathProgress += dt * 3.2;
                     z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
-                    z.mesh.position.y = -z.deathProgress * 0.35;
+                    z.mesh.rotation.z = 0;
+                    z.mesh.position.y = Math.min(0.22, z.deathProgress * 0.22) * z.parts.scale;
                     if (z.deathProgress >= 1.4) {
                         disposeZombie(z);
                         zombies.splice(i, 1);
@@ -3339,8 +3390,9 @@
 
                 // Awareness: Check if wandering zombie spots or senses player
                 if (z.state === 'WANDER') {
-                    const forwardX = -Math.sin(z.mesh.rotation.y);
-                    const forwardZ = -Math.cos(z.mesh.rotation.y);
+                    // Zombie meshes are modeled facing +Z (which lookAt aligns with target)
+                    const forwardX = Math.sin(z.mesh.rotation.y);
+                    const forwardZ = Math.cos(z.mesh.rotation.y);
                     const dot = forwardX * _toPlayerDir.x + forwardZ * _toPlayerDir.z;
 
                     const canSee = (dist < 34 && dot > 0.15); // 150-degree vision cone
@@ -3357,6 +3409,7 @@
                 if (z.state === 'ALERT') {
                     z.alertTimer -= dt;
                     z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
+                    z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
                     z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, -1.2, dt * 10);
                     z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, -1.2, dt * 10);
                     if (z.alertTimer <= 0) {
@@ -3382,6 +3435,7 @@
                 if (z.state === 'WANDER') {
                     z.wanderTimer -= dt;
                     if (z.isIdlePaused) {
+                        curSpeed = 0;
                         z.idlePauseTimer -= dt;
                         if (z.idlePauseTimer <= 0) {
                             z.isIdlePaused = false;
@@ -3396,6 +3450,7 @@
                             z.parts.head.rotation.y = Math.sin(now * 0.003 + z.walkCycle) * 0.45;
                         }
                     } else {
+                        z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 6);
                         const dx = z.wanderTarget.x - z.mesh.position.x;
                         const dz = z.wanderTarget.z - z.mesh.position.z;
                         const wDist = Math.hypot(dx, dz);
@@ -3409,6 +3464,7 @@
                         }
                     }
                 } else if (z.state === 'CHASE') {
+                    z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
                     if (z.type === 'runner') {
                         // Runner: predatory zig-zag weave & sprint-lunge
                         _moveDir.copy(_toPlayerDir);
@@ -3483,10 +3539,18 @@
                 if (z.isAttacking) {
                     z.parts.leftArm.rotation.x = 0.95;
                     z.parts.rightArm.rotation.x = -1.15;
+                    z.mesh.rotation.z = 0;
                 } else if (z.attackWindup > 0) {
                     // Attack windup telegraph
                     z.parts.leftArm.rotation.x = -1.35;
                     z.parts.rightArm.rotation.x = -1.35;
+                    z.mesh.rotation.z = 0;
+                } else if (curSpeed === 0) {
+                    z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0, dt * 8);
+                    z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0, dt * 8);
+                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0, dt * 6);
+                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, 0, dt * 6);
+                    z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, 0, dt * 8);
                 } else {
                     z.parts.leftLeg.rotation.x = Math.sin(z.walkCycle) * (z.type === 'runner' ? 0.82 : 0.65);
                     z.parts.rightLeg.rotation.x = -Math.sin(z.walkCycle) * (z.type === 'runner' ? 0.82 : 0.65);
