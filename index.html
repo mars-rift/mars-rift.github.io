@@ -5,7 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description"
+        content="RUN FROM THE DEAD - 3D procedural survival horror FPS set in Sector 09. Survive escalating waves of the infected with zero-external-asset WebGL graphics and procedural Web Audio synth.">
     <title>RUN FROM THE DEAD | 3D Neon Zombie Shooter</title>
+    <!-- Favicon: Inline Data SVG -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Three.js r128 CDN -->
@@ -180,6 +185,16 @@
             pointer-events: none;
         }
 
+        /* Directional Damage Pointer Arc */
+        #damage-indicator {
+            pointer-events: none;
+        }
+
+        #damage-pointer {
+            pointer-events: none;
+            transition: transform 0.05s ease-out, opacity 0.25s ease-out;
+        }
+
         /* Crosshair styling */
         .crosshair-line {
             position: absolute;
@@ -319,14 +334,32 @@
             backdrop-filter: blur(4px);
         }
 
-        /* On mobile & tablet screens, elevate bottom HUD so virtual joystick and fire buttons don't block it */
+        /* Mobile HUD Spacing: Prevent overlap with bottom controls while keeping HUD visible */
         body.is-mobile-device .mobile-hud-spacing {
-            margin-bottom: 6.5rem !important;
+            margin-bottom: 9.5rem !important;
         }
 
         @media (max-width: 640px) {
-            body.is-mobile-device .mobile-hud-spacing {
-                margin-bottom: 7.5rem !important;
+            body.is-mobile-device #hud-bottom-bar {
+                flex-direction: row !important;
+                align-items: stretch !important;
+                margin-bottom: 9.5rem !important;
+                gap: 0.5rem !important;
+            }
+
+            body.is-mobile-device #hud-bottom-bar>div:first-child {
+                width: 58% !important;
+                padding: 0.5rem 0.65rem !important;
+            }
+
+            body.is-mobile-device #hud-bottom-bar>div:last-child {
+                width: 40% !important;
+                padding: 0.5rem 0.65rem !important;
+            }
+
+            body.is-mobile-device #hud-ammo {
+                font-size: 1.5rem !important;
+                line-height: 1.75rem !important;
             }
         }
     </style>
@@ -341,6 +374,17 @@
     <div id="ambient-vignette" class="absolute inset-0 z-10"></div>
     <div class="scanlines absolute inset-0 z-10 opacity-40"></div>
 
+    <!-- Directional Damage Threat Arc Indicator (Improvement 3) -->
+    <div id="damage-indicator" class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+        <div id="damage-pointer" class="relative w-44 h-44 sm:w-56 sm:h-56 pointer-events-none opacity-0">
+            <svg class="w-full h-full text-red-500 drop-shadow-[0_0_12px_#ff0033]" viewBox="0 0 100 100" fill="none">
+                <!-- Curved glowing red wedge pointing in attack direction (top = forward) -->
+                <path d="M 30,14 A 40 40 0 0 1 70,14 L 62,22 A 30 30 0 0 0 38,22 Z" fill="currentColor" opacity="0.85" />
+                <polygon points="50,5 44,14 56,14" fill="#ffffff" />
+            </svg>
+        </div>
+    </div>
+
     <!-- Red Screen Damage Flash Overlay -->
     <div id="damage-overlay" class="absolute inset-0 z-20"></div>
 
@@ -348,10 +392,11 @@
     <div id="heal-overlay" class="absolute inset-0 z-20"></div>
 
     <!-- ================= IN-GAME HUD ================= -->
+    <!-- Z-Index 35 ensures top buttons receive pointer events above touch zones (Bug 2 Fix) -->
     <div id="hud"
-        class="hidden absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-3 sm:p-6 md:p-8">
+        class="hidden absolute inset-0 z-35 pointer-events-none flex flex-col justify-between p-3 sm:p-6 md:p-8">
         <!-- Top Bar: Score, Wave, Kills & Audio / Pause -->
-        <div class="flex justify-between items-start gap-2 sm:gap-4">
+        <div class="relative z-40 flex justify-between items-start gap-2 sm:gap-4">
             <div class="flex flex-wrap gap-2 sm:gap-4 pointer-events-auto">
                 <div class="neon-box px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg">
                     <div class="text-[10px] sm:text-xs uppercase tracking-widest text-red-400 font-semibold">Wave</div>
@@ -416,7 +461,7 @@
 
             <!-- Floating Kill / Headshot Feed -->
             <div id="kill-banner"
-                class="absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-red-400 opacity-0 transition-opacity duration-200">
+                class="absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-red-400 opacity-0 transition-opacity duration-200 pointer-events-none">
                 +150 HEADSHOT!
             </div>
 
@@ -426,11 +471,11 @@
                 RELOADING...
             </div>
 
-            <!-- Wave Announcement Center Banner -->
+            <!-- Wave Announcement / Breather Center Banner -->
             <div id="wave-banner-container" class="absolute top-1/4 pointer-events-none text-center"></div>
         </div>
 
-        <!-- Mobile & Tablet Virtual Joystick & Touch Controls Layer -->
+        <!-- Mobile & Tablet Virtual Joystick & Touch Controls Layer (Bug 3 & 4 Fixes) -->
         <div id="mobile-controls" class="hidden absolute inset-0 pointer-events-none select-none z-30 touch-none">
             <!-- Fullscreen Touch Strafe & Look Zone (covers screen outside joystick & action buttons) -->
             <div id="touch-look-zone" class="absolute inset-0 pointer-events-auto touch-none"></div>
@@ -450,9 +495,9 @@
                     <div class="absolute bottom-2 text-[9px] font-neon tracking-widest text-red-400 uppercase">MOVE / TURN
                     </div>
 
-                    <!-- Draggable Thumbstick Knob -->
+                    <!-- Draggable Thumbstick Knob (Using w-14 h-14 standard size) -->
                     <div id="joystick-knob"
-                        class="absolute w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 via-red-700 to-red-950 border-2 border-red-300 shadow-[0_0_14px_#ff0033] flex items-center justify-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        class="absolute w-14 h-14 rounded-full bg-gradient-to-br from-red-500 via-red-700 to-red-950 border-2 border-red-300 shadow-[0_0_14px_#ff0033] flex items-center justify-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                         <div class="w-3.5 h-3.5 rounded-full bg-white/90 shadow-[0_0_8px_#fff]"></div>
                     </div>
                 </div>
@@ -461,11 +506,11 @@
             <!-- Mobile Action Buttons (Bottom Right Cluster) -->
             <div id="touch-actions"
                 class="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col items-end gap-3 pointer-events-auto">
-                <!-- Top auxiliary row: Sprint & Reload -->
+                <!-- Top auxiliary row: Sprint & Reload (Standard w-14 h-14 classes) -->
                 <div class="flex items-center gap-3">
                     <!-- Touch Reload Button -->
                     <button id="touch-btn-reload" type="button" aria-label="Reload Weapon"
-                        class="touch-control-btn w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-black/75 border-2 border-red-600/80 flex flex-col items-center justify-center text-red-400 font-neon shadow-[0_0_12px_rgba(255,0,51,0.35)] active:scale-90 active:bg-red-600 active:text-white transition-all backdrop-blur-sm">
+                        class="touch-control-btn w-14 h-14 rounded-full bg-black/75 border-2 border-red-600/80 flex flex-col items-center justify-center text-red-400 font-neon shadow-[0_0_12px_rgba(255,0,51,0.35)] active:scale-90 active:bg-red-600 active:text-white transition-all backdrop-blur-sm">
                         <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                             stroke-width="2.2">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -477,7 +522,7 @@
 
                     <!-- Touch Tactical Sprint Button -->
                     <button id="touch-btn-sprint" type="button" aria-label="Tactical Sprint"
-                        class="touch-control-btn w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-black/75 border-2 border-red-600/80 flex flex-col items-center justify-center text-red-400 font-neon shadow-[0_0_12px_rgba(255,0,51,0.35)] active:scale-90 transition-all backdrop-blur-sm">
+                        class="touch-control-btn w-14 h-14 rounded-full bg-black/75 border-2 border-red-600/80 flex flex-col items-center justify-center text-red-400 font-neon shadow-[0_0_12px_rgba(255,0,51,0.35)] active:scale-90 transition-all backdrop-blur-sm">
                         <svg class="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                         </svg>
@@ -485,9 +530,9 @@
                     </button>
                 </div>
 
-                <!-- Touch Main Fire Button -->
+                <!-- Touch Main Fire Button (Standard w-20 h-20 sm:w-24 sm:h-24) -->
                 <button id="touch-btn-fire" type="button" aria-label="Fire Carbine"
-                    class="touch-control-btn w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-gradient-to-br from-red-600 via-red-800 to-black border-2 border-red-400 flex flex-col items-center justify-center text-white font-neon shadow-[0_0_22px_#ff0033] active:scale-90 active:border-white active:from-red-500 active:to-red-700 transition-all">
+                    class="touch-control-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-red-600 via-red-800 to-black border-2 border-red-400 flex flex-col items-center justify-center text-white font-neon shadow-[0_0_22px_#ff0033] active:scale-90 active:border-white active:from-red-500 active:to-red-700 transition-all">
                     <svg class="w-7 h-7 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
                         <circle cx="12" cy="12" r="7"></circle>
@@ -501,7 +546,7 @@
             </div>
         </div>
 
-        <!-- Bottom Bar: Health, Stamina & Ammo -->
+        <!-- Bottom Bar: Health, Stamina & Ammo (Bug 5 Responsive Mobile Layout) -->
         <div id="hud-bottom-bar"
             class="flex flex-col sm:flex-row justify-between items-end gap-3 sm:gap-4 pointer-events-none transition-all">
             <!-- Health & Stamina Bars -->
@@ -517,7 +562,7 @@
                 </div>
 
                 <!-- Stamina Bar -->
-                <div class="flex justify-between items-baseline mt-3 mb-1">
+                <div class="flex justify-between items-baseline mt-2 sm:mt-3 mb-1">
                     <span class="text-[11px] font-neon tracking-widest text-neutral-400 uppercase">Sprint
                         Thruster</span>
                     <span id="hud-stamina-text" class="text-xs font-semibold text-neutral-300">READY</span>
@@ -530,22 +575,21 @@
 
             <!-- Weapon & Magazine Ammo Counter -->
             <div
-                class="neon-box px-4 py-3 sm:px-6 sm:py-4 rounded-xl flex items-center gap-4 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end pointer-events-auto">
+                class="neon-box px-3 py-2 sm:px-6 sm:py-4 rounded-xl flex items-center gap-3 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end pointer-events-auto">
                 <div>
-                    <div class="text-xs font-neon tracking-widest text-red-400 uppercase">NX-9 Pulse Carbine</div>
-                    <div id="ammo-status" class="text-xs text-neutral-400 mt-0.5">Press [R] to Reload</div>
+                    <div class="text-[11px] sm:text-xs font-neon tracking-widest text-red-400 uppercase">NX-9 Pulse Carbine</div>
+                    <div id="ammo-status" class="text-[10px] sm:text-xs text-neutral-400 mt-0.5">Hold LMB to Fire | [R] Reload</div>
                 </div>
                 <div class="text-right font-neon">
-                    <span id="hud-ammo" class="text-3xl sm:text-4xl font-black text-white">15</span>
-                    <span class="text-lg text-red-500 font-bold">/ <span id="hud-ammo-max">15</span></span>
-                    <div class="text-[10px] tracking-widest text-red-400 uppercase">∞ Reserve</div>
+                    <span id="hud-ammo" class="text-2xl sm:text-4xl font-black text-white">15</span>
+                    <span class="text-sm sm:text-lg text-red-500 font-bold">/ <span id="hud-ammo-max">15</span></span>
+                    <div class="text-[9px] sm:text-[10px] tracking-widest text-red-400 uppercase">∞ Reserve</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ================= TITLE SCREEN ================= -->
-    <!-- ================= FULLSCREEN TITLE SCREEN (AAA CINEMATIC PRESENTATION) ================= -->
+    <!-- ================= FULLSCREEN TITLE SCREEN ================= -->
     <div id="title-screen"
         class="absolute inset-0 z-40 flex flex-col justify-between p-3 sm:p-5 md:p-6 select-none overflow-y-auto overflow-x-hidden">
 
@@ -568,11 +612,15 @@
                     SECTOR 09 QUARANTINE BREACH // BIO-HAZARD PRIORITY 1
                 </span>
             </div>
-            <div
-                class="hidden md:flex items-center gap-4 text-[10px] sm:text-xs font-neon text-neutral-400 tracking-wider uppercase">
-                <span class="text-red-500/80">NX-9 PULSE CARBINE ARMED</span>
-                <span class="text-neutral-600">|</span>
-                <span>PROCEDURAL 3D WEBGL</span>
+            <!-- High Score Record Badge -->
+            <div class="flex items-center gap-4 text-[10px] sm:text-xs font-neon text-neutral-400 tracking-wider uppercase pointer-events-auto">
+                <div class="bg-red-950/40 border border-red-700/50 px-2.5 py-1 rounded text-red-300">
+                    BEST: <span id="title-best-wave" class="text-white font-bold">WAVE 01</span> // <span id="title-high-score" class="text-white font-bold">0000</span> PTS
+                </div>
+                <button id="settings-btn-title" type="button"
+                    class="hover:text-red-400 transition-colors border border-red-900/60 bg-black/60 px-2 py-0.5 rounded text-[10px]">
+                    ⚙ SETTINGS
+                </button>
             </div>
         </div>
 
@@ -589,7 +637,7 @@
                 <div class="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_#ff0033]"></div>
             </div>
 
-            <!-- THE LARGEST TEXT ON SCREEN: Dominant Center Title -->
+            <!-- Dominant Center Title -->
             <h1
                 class="font-neon neon-title text-4xl sm:text-6xl md:text-7xl lg:text-[5rem] xl:text-[5.5rem] 2xl:text-[6.5rem] font-black tracking-wider uppercase mb-2 leading-none drop-shadow-[0_0_40px_rgba(255,0,51,0.9)]">
                 RUN FROM THE DEAD
@@ -599,7 +647,7 @@
             <p
                 class="text-neutral-300 text-xs sm:text-sm md:text-base max-w-2xl mx-auto mb-4 sm:mb-5 font-normal leading-relaxed">
                 The dead do not rest. Armed with an NX-9 pulse carbine in a pitch-black neon wasteland,
-                survive relentless waves of the infected. Aim for the head. Never stop moving.
+                survive relentless waves of the infected. Hold trigger to lay continuous fire. Aim for the head. Never stop moving.
             </p>
 
             <!-- Prominent Glowing Start Button -->
@@ -610,7 +658,7 @@
                     <span class="text-base sm:text-lg text-red-300">▶</span>
                 </button>
                 <div class="text-[10px] sm:text-[11px] text-neutral-400 tracking-wider">
-                    100% Procedural 3D &amp; Web Audio Synth
+                    Hold LMB / Fire button for Continuous Pulse Fire
                 </div>
             </div>
         </div>
@@ -627,8 +675,7 @@
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-sm"></span>
                         TACTICAL CONTROLS BRIEFING
                     </span>
-                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP, TABLET &amp; MOBILE
-                        READY</span>
+                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP, TABLET &amp; MOBILE READY</span>
                 </div>
                 <div class="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
                     <div
@@ -643,8 +690,8 @@
                     </div>
                     <div
                         class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Look &amp; Shoot</span>
-                        <span class="key-badge">MOUSE + LMB</span>
+                        <span class="text-neutral-300">Look &amp; Auto-Fire</span>
+                        <span class="key-badge">HOLD LMB</span>
                     </div>
                     <div
                         class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
@@ -708,9 +755,9 @@
     <!-- ================= PAUSE MODAL OVERLAY ================= -->
     <div id="resume-lock-prompt"
         class="hidden absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm pointer-events-auto">
-        <div class="neon-box max-w-md w-full rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden">
+        <div class="neon-box max-w-md w-full rounded-2xl p-5 sm:p-7 text-center relative overflow-hidden">
             <!-- Decorative top neon bar -->
-            <div class="w-20 h-1 bg-red-600 mx-auto mb-4 shadow-[0_0_12px_#ff0033]"></div>
+            <div class="w-20 h-1 bg-red-600 mx-auto mb-3 shadow-[0_0_12px_#ff0033]"></div>
 
             <p class="font-neon text-xs tracking-[0.35em] text-red-500 uppercase font-bold mb-1">
                 COMBAT SUSPENDED
@@ -718,59 +765,123 @@
             <div class="font-neon neon-title text-2xl sm:text-3xl font-black text-white mb-2 tracking-wider uppercase">
                 SIMULATION PAUSED
             </div>
-            <p class="text-sm text-neutral-300 mb-5 leading-relaxed">
+            <p class="text-xs sm:text-sm text-neutral-300 mb-4 leading-relaxed">
                 All hostiles and telemetry are frozen.<br>
-                Press <span class="key-badge">ESC</span> or tap below to resume combat.
+                Press <span class="key-badge">ESC</span> or click below to resume combat.
             </p>
 
             <!-- Quick Telemetry in Pause Menu -->
-            <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
                     <div class="text-[10px] uppercase tracking-wider text-red-400">Wave</div>
                     <div id="pause-wave" class="font-neon text-lg font-bold text-white">01</div>
                 </div>
-                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
                     <div class="text-[10px] uppercase tracking-wider text-red-400">Score</div>
                     <div id="pause-score" class="font-neon text-lg font-bold text-white">0000</div>
                 </div>
-                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2.5">
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
                     <div class="text-[10px] uppercase tracking-wider text-red-400">Kills</div>
                     <div id="pause-kills" class="font-neon text-lg font-bold text-red-500">0</div>
                 </div>
             </div>
 
             <!-- Sprint Trigger Control Selector in Pause Menu -->
-            <div class="bg-red-950/30 border border-red-900/50 rounded-xl p-3 mb-5 text-left">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-neon text-red-400 tracking-wider uppercase font-bold">Tactical Sprint
-                        Trigger</span>
-                    <span id="pause-sprint-label" class="text-xs font-neon text-rose-300 font-semibold">ALL
-                        ACTIVE</span>
+            <div class="bg-red-950/30 border border-red-900/50 rounded-xl p-2.5 mb-4 text-left">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-neon text-red-400 tracking-wider uppercase font-bold">Tactical Sprint Trigger</span>
+                    <span id="pause-sprint-label" class="text-xs font-neon text-rose-300 font-semibold">ALL ACTIVE</span>
                 </div>
                 <div id="pause-sprint-options" class="grid grid-cols-4 gap-1.5">
                     <button type="button" data-sprint-opt="all"
-                        class="sprint-opt-btn active py-1.5 text-xs font-neon rounded border transition-all text-center">ALL</button>
+                        class="sprint-opt-btn active py-1 text-xs font-neon rounded border transition-all text-center">ALL</button>
                     <button type="button" data-sprint-opt="shift"
-                        class="sprint-opt-btn py-1.5 text-xs font-neon rounded border transition-all text-center">SHIFT</button>
+                        class="sprint-opt-btn py-1 text-xs font-neon rounded border transition-all text-center">SHIFT</button>
                     <button type="button" data-sprint-opt="space"
-                        class="sprint-opt-btn py-1.5 text-xs font-neon rounded border transition-all text-center">SPACE</button>
+                        class="sprint-opt-btn py-1 text-xs font-neon rounded border transition-all text-center">SPACE</button>
                     <button type="button" data-sprint-opt="rmb"
-                        class="sprint-opt-btn py-1.5 text-xs font-neon rounded border transition-all text-center">RMB</button>
+                        class="sprint-opt-btn py-1 text-xs font-neon rounded border transition-all text-center">RMB</button>
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <div class="flex flex-wrap gap-2.5 justify-center">
                 <button id="resume-btn"
-                    class="neon-button font-neon px-8 py-3 rounded-lg text-sm font-bold tracking-widest uppercase">
+                    class="neon-button font-neon px-6 py-2.5 rounded-lg text-xs sm:text-sm font-bold tracking-widest uppercase">
                     RESUME COMBAT
                 </button>
+                <button id="settings-btn-pause"
+                    class="neon-button font-neon px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest uppercase text-neutral-300 border-neutral-700 hover:border-red-500">
+                    SETTINGS
+                </button>
                 <button id="pause-restart-btn"
-                    class="neon-button font-neon px-6 py-3 rounded-lg text-xs font-bold tracking-widest uppercase text-red-400 border-red-900/80 hover:border-red-500">
+                    class="neon-button font-neon px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest uppercase text-red-400 border-red-900/80 hover:border-red-500">
                     RESTART
                 </button>
                 <button id="pause-home-btn"
-                    class="neon-button font-neon px-6 py-3 rounded-lg text-xs font-bold tracking-widest uppercase text-neutral-300 border-neutral-800 hover:border-red-500">
+                    class="neon-button font-neon px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest uppercase text-neutral-300 border-neutral-800 hover:border-red-500">
                     HOME
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SETTINGS MODAL (Improvement 4) ================= -->
+    <div id="settings-modal"
+        class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md pointer-events-auto">
+        <div class="neon-box max-w-md w-full rounded-2xl p-6 text-left relative">
+            <div class="flex justify-between items-center mb-4 border-b border-red-900/60 pb-2">
+                <div class="font-neon text-base font-bold text-white tracking-widest uppercase flex items-center gap-2">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    TACTICAL SETTINGS
+                </div>
+                <button id="settings-close-btn" class="text-red-400 hover:text-white font-neon text-lg px-2">✕</button>
+            </div>
+
+            <div class="space-y-4 text-xs font-neon">
+                <!-- Mouse Sensitivity -->
+                <div>
+                    <div class="flex justify-between text-neutral-300 mb-1">
+                        <span>MOUSE SENSITIVITY</span>
+                        <span id="val-mouse-sens" class="text-red-400 font-bold">1.0x</span>
+                    </div>
+                    <input id="setting-mouse-sens" type="range" min="0.4" max="2.6" step="0.1" value="1.0"
+                        class="w-full accent-red-500 cursor-pointer">
+                </div>
+
+                <!-- Invert Y Look -->
+                <div class="flex items-center justify-between py-1 border-t border-red-950/60">
+                    <span class="text-neutral-300">INVERT Y-AXIS (LOOK)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="setting-invert-y" type="checkbox" class="sr-only peer">
+                        <div class="w-9 h-5 bg-neutral-900 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
+
+                <!-- Touch Sensitivity -->
+                <div class="pt-1 border-t border-red-950/60">
+                    <div class="flex justify-between text-neutral-300 mb-1">
+                        <span>TOUCH STRAFE / LOOK SPEED</span>
+                        <span id="val-touch-sens" class="text-red-400 font-bold">1.0x</span>
+                    </div>
+                    <input id="setting-touch-sens" type="range" min="0.5" max="2.5" step="0.1" value="1.0"
+                        class="w-full accent-red-500 cursor-pointer">
+                </div>
+
+                <!-- Master Volume -->
+                <div class="pt-1 border-t border-red-950/60">
+                    <div class="flex justify-between text-neutral-300 mb-1">
+                        <span>MASTER AUDIO SYNTH VOLUME</span>
+                        <span id="val-master-vol" class="text-red-400 font-bold">100%</span>
+                    </div>
+                    <input id="setting-master-vol" type="range" min="0" max="1" step="0.05" value="1"
+                        class="w-full accent-red-500 cursor-pointer">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button id="settings-apply-btn"
+                    class="neon-button font-neon px-6 py-2 rounded-lg text-xs font-bold tracking-widest uppercase">
+                    CONFIRM &amp; SAVE
                 </button>
             </div>
         </div>
@@ -792,7 +903,7 @@
             </p>
 
             <!-- Final Combat Telemetry -->
-            <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="grid grid-cols-2 gap-3 mb-6">
                 <div class="bg-red-950/30 border border-red-900/60 rounded-xl p-3.5">
                     <div class="text-xs uppercase tracking-widest text-red-400">Final Score</div>
                     <div id="final-score" class="font-neon text-2xl sm:text-3xl font-black text-white mt-1">0</div>
@@ -811,6 +922,12 @@
                 </div>
             </div>
 
+            <!-- Best Run Telemetry Record -->
+            <div id="gameover-high-score-banner"
+                class="mb-6 py-2 px-4 rounded-lg bg-red-950/40 border border-red-700/50 font-neon text-xs text-red-300">
+                SECTOR RECORD: <span id="gameover-best-record" class="text-white font-bold">WAVE 01 // 0000 PTS</span>
+            </div>
+
             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <button id="restart-btn"
                     class="neon-button font-neon text-base sm:text-lg font-black px-8 py-4 rounded-xl tracking-[0.2em] uppercase w-full sm:w-auto">
@@ -824,8 +941,41 @@
         </div>
     </div>
 
+    <!-- CDN Fallback Alert Modal if Three.js or CDN is blocked -->
+    <div id="cdn-error-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/95">
+        <div class="neon-box max-w-md w-full p-6 text-center rounded-xl">
+            <div class="text-red-500 font-neon text-2xl font-bold mb-2">CRITICAL SUBSYSTEM FAILURE</div>
+            <p class="text-neutral-300 text-sm mb-4">Three.js WebGL library failed to load from CDN. Please check your internet connection or content blocker.</p>
+            <button onclick="location.reload()" class="neon-button font-neon px-6 py-2 rounded">RETRY INITIALIZATION</button>
+        </div>
+    </div>
+
     <!-- ================= MAIN GAME SCRIPT ================= -->
     <script>
+        // Check for WebGL library availability
+        if (typeof THREE === 'undefined') {
+            document.getElementById('cdn-error-modal').classList.remove('hidden');
+        }
+
+        /********************************************************************
+         * 0. SAFE STORAGE HELPER (Bug 10 Fix: Never crash in sandboxed iframes)
+         ********************************************************************/
+        const safeStorage = {
+            getItem(key, defaultVal = null) {
+                try {
+                    const val = localStorage.getItem(key);
+                    return val !== null ? val : defaultVal;
+                } catch (e) {
+                    return defaultVal;
+                }
+            },
+            setItem(key, val) {
+                try {
+                    localStorage.setItem(key, String(val));
+                } catch (e) { }
+            }
+        };
+
         /********************************************************************
          * 1. PROCEDURAL WEB AUDIO SYNTHESIZER (Zero External Assets)
          ********************************************************************/
@@ -833,6 +983,7 @@
             constructor() {
                 this.ctx = null;
                 this.muted = false;
+                this.masterVolume = parseFloat(safeStorage.getItem('mr_master_vol', '1.0'));
                 this.masterGain = null;
                 this.sfxGain = null;
                 this.ambientGain = null;
@@ -847,7 +998,7 @@
                     const AudioCtx = window.AudioContext || window.webkitAudioContext;
                     this.ctx = new AudioCtx();
 
-                    // 1. Master Dynamics Compressor (Limiter) to eliminate digital clipping and popping on simultaneous sounds
+                    // 1. Master Dynamics Compressor (Limiter)
                     this.limiter = this.ctx.createDynamicsCompressor();
                     this.limiter.threshold.setValueAtTime(-1.0, this.ctx.currentTime);
                     this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
@@ -858,7 +1009,8 @@
 
                     // 2. Master Gain (Mute & Master Level bus)
                     this.masterGain = this.ctx.createGain();
-                    this.masterGain.gain.setValueAtTime(this.muted ? 0 : 1.0, this.ctx.currentTime);
+                    const targetGain = this.muted ? 0 : this.masterVolume;
+                    this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
                     this.masterGain.connect(this.limiter);
 
                     // 3. Sub-buses for SFX and Ambient
@@ -870,7 +1022,7 @@
                     this.ambientGain.gain.setValueAtTime(0.14, this.ctx.currentTime);
                     this.ambientGain.connect(this.masterGain);
 
-                    // 4. Pre-bake noise buffer pool (Zero allocation during gameplay to prevent GC pauses)
+                    // 4. Pre-bake noise buffer pool
                     this.buildNoiseBufferPool();
                 }
 
@@ -884,8 +1036,6 @@
                 }
             }
 
-            // Pre-generates variations of gun noise bursts once at startup
-            // Eliminates Float32Array allocations and Math.random() loops during shooting
             buildNoiseBufferPool() {
                 const sampleRate = this.ctx.sampleRate || 44100;
                 const bufferSize = Math.floor(sampleRate * 0.22);
@@ -901,8 +1051,6 @@
                 }
             }
 
-            // Cleanly register Web Audio node disconnections on source end
-            // Completely fixes the Web Audio graph node accumulation leak that causes audio thread stutter & clicks
             registerCleanup(source, ...nodes) {
                 let cleaned = false;
                 const cleanup = () => {
@@ -914,48 +1062,46 @@
                     }
                 };
                 source.onended = cleanup;
-                // Failsafe timer in case onended is delayed by background tab throttling
                 setTimeout(cleanup, 2200);
+            }
+
+            setMasterVolume(val) {
+                this.masterVolume = THREE.MathUtils.clamp(val, 0, 1);
+                safeStorage.setItem('mr_master_vol', this.masterVolume);
+                if (this.masterGain && this.ctx) {
+                    const target = this.muted ? 0 : this.masterVolume;
+                    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.03);
+                }
             }
 
             toggleMute() {
                 this.muted = !this.muted;
                 if (this.masterGain && this.ctx) {
-                    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 1.0, this.ctx.currentTime, 0.03);
+                    const target = this.muted ? 0 : this.masterVolume;
+                    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.03);
                 }
-                const muteHint = document.getElementById('hud-mute-hint');
-                if (muteHint) {
-                    if (this.muted) {
-                        muteHint.innerHTML = '<span class="text-red-500 font-bold">[M] Audio: MUTED</span> | [ESC] Pause';
-                    } else {
-                        muteHint.innerHTML = '[M] Mute Audio | [ESC] Pause';
-                    }
-                }
+                updateMuteUI();
                 return this.muted;
             }
 
             duckAmbient(duck) {
                 if (!this.ambientGain || !this.ctx) return;
-                const target = duck ? 0.04 : 0.14;
+                const target = duck ? 0.03 : 0.14;
                 this.ambientGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.1);
             }
 
-            // Dark eerie sub-bass & dissonant horror pad
             startAmbientDrone() {
                 if (!this.ctx || !this.ambientGain) return;
                 const now = this.ctx.currentTime;
 
-                // Sub drone oscillator 1
                 const osc1 = this.ctx.createOscillator();
                 osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(46.25, now); // Low F#1
+                osc1.frequency.setValueAtTime(46.25, now);
 
-                // Dissonant detuned oscillator 2
                 const osc2 = this.ctx.createOscillator();
                 osc2.type = 'triangle';
-                osc2.frequency.setValueAtTime(49.0, now); // Slightly detuned G1 for pulsing dread
+                osc2.frequency.setValueAtTime(49.0, now);
 
-                // Slow LFO modulating lowpass filter
                 const lfo = this.ctx.createOscillator();
                 lfo.type = 'sine';
                 lfo.frequency.setValueAtTime(0.18, now);
@@ -980,12 +1126,10 @@
                 lfo.start();
             }
 
-            // Punchy synthesized rifle gunshot with zero garbage allocation & zero DC pops
             playGunshot() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
 
-                // 1. Noise burst from pre-baked pool
                 if (this.noiseBuffers && this.noiseBuffers.length > 0) {
                     const noiseBuffer = this.noiseBuffers[Math.floor(Math.random() * this.noiseBuffers.length)];
                     const whiteNoise = this.ctx.createBufferSource();
@@ -998,7 +1142,6 @@
                     filter.Q.setValueAtTime(0.9, now);
 
                     const noiseGain = this.ctx.createGain();
-                    // Micro-attack and smooth exponential+linear release to eliminate DC pops
                     noiseGain.gain.setValueAtTime(0.0001, now);
                     noiseGain.gain.linearRampToValueAtTime(0.65, now + 0.003);
                     noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.19);
@@ -1013,7 +1156,6 @@
                     whiteNoise.stop(now + 0.22);
                 }
 
-                // 2. Low-end punch kick
                 const punchOsc = this.ctx.createOscillator();
                 const punchGain = this.ctx.createGain();
                 punchOsc.type = 'sine';
@@ -1033,7 +1175,6 @@
                 punchOsc.stop(now + 0.12);
             }
 
-            // Dry metallic click when clip is empty
             playEmptyClick() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
@@ -1056,12 +1197,10 @@
                 osc.stop(now + 0.04);
             }
 
-            // Two-stage mechanical reload sound
             playReload() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
 
-                // Mag out click
                 const click1 = this.ctx.createOscillator();
                 const gain1 = this.ctx.createGain();
                 click1.type = 'triangle';
@@ -1079,7 +1218,6 @@
                 click1.start(now);
                 click1.stop(now + 0.1);
 
-                // Mag in + bolt rack at +0.85s
                 const click2 = this.ctx.createOscillator();
                 const gain2 = this.ctx.createGain();
                 click2.type = 'sawtooth';
@@ -1099,7 +1237,6 @@
                 click2.stop(now + 1.05);
             }
 
-            // Flesh hit or headshot crunch
             playHit(isHeadshot = false) {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
@@ -1122,12 +1259,10 @@
                 osc.stop(now + 0.095);
             }
 
-            // Guttural zombie groan with concurrency limiter to prevent audio clutter & clipping
             playZombieGroan(pitchMultiplier = 1.0) {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
 
-                // Concurrency limiter prevents cacophony and audio clipping in high-density waves
                 if (now - this.lastGroanTime < 0.12) return;
                 this.lastGroanTime = now;
 
@@ -1161,7 +1296,6 @@
                 osc.stop(now + 0.8);
             }
 
-            // Heavy player damage thud
             playPlayerDamage() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
@@ -1180,16 +1314,15 @@
                 osc.connect(gain);
                 gain.connect(this.sfxGain);
                 this.registerCleanup(osc, gain);
-                osc.start(now);
+                punchOscCleanup: osc.start(now);
                 osc.stop(now + 0.33);
             }
 
-            // Crystalline neon health chime (ascending dual-harmonic sparkle)
             playHealthPickup() {
                 if (!this.ctx || this.muted) return;
                 const now = this.ctx.currentTime;
 
-                const notes = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6 arpeggio chime
+                const notes = [587.33, 739.99, 880.00, 1174.66];
                 notes.forEach((freq, i) => {
                     const noteTime = now + i * 0.055;
                     const stopTime = noteTime + 0.35;
@@ -1224,18 +1357,15 @@
             canvas.height = 512;
             const ctx = canvas.getContext('2d');
 
-            // Dark asphalt base
             ctx.fillStyle = '#0b0608';
             ctx.fillRect(0, 0, 512, 512);
 
-            // Subtle gritty noise speckles
             for (let i = 0; i < 2500; i++) {
                 const v = Math.floor(Math.random() * 22);
                 ctx.fillStyle = `rgb(${v + 8}, ${v}, ${v + 4})`;
                 ctx.fillRect(Math.random() * 512, Math.random() * 512, 3, 3);
             }
 
-            // Tiled grid lines with subtle dark crimson tint
             ctx.strokeStyle = '#2d0610';
             ctx.lineWidth = 4;
             const step = 128;
@@ -1251,7 +1381,6 @@
                 ctx.stroke();
             }
 
-            // Neon red corner accents at intersections
             ctx.fillStyle = '#80001a';
             for (let x = 0; x < 512; x += step) {
                 for (let y = 0; y < 512; y += step) {
@@ -1275,12 +1404,10 @@
             ctx.fillStyle = '#120b0e';
             ctx.fillRect(0, 0, 256, 512);
 
-            // Industrial dark paneling
             ctx.strokeStyle = '#2b0912';
             ctx.lineWidth = 6;
             ctx.strokeRect(8, 8, 240, 496);
 
-            // Glowing red hazard stripes near base and top
             ctx.fillStyle = '#ff0033';
             ctx.fillRect(0, 80, 256, 10);
             ctx.fillRect(0, 420, 256, 10);
@@ -1297,13 +1424,14 @@
         scene.fog = new THREE.FogExp2(0x090004, 0.028);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 160);
-        // Use YXZ order for clean FPS yaw + pitch look
         camera.rotation.order = 'YXZ';
         scene.add(camera);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // Mobile DPR cap (Performance improvement: 1.5 on mobile to avoid fillrate throttling)
+        const isMobileInit = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileInit ? 1.5 : 2.0));
         renderer.shadowMap.enabled = false;
         container.appendChild(renderer.domElement);
 
@@ -1315,9 +1443,13 @@
         moonLight.position.set(35, 60, -40);
         scene.add(moonLight);
 
-        // Player subtle flashlight / aura light
         const playerLight = new THREE.PointLight(0xff2244, 0.9, 18);
         camera.add(playerLight);
+
+        // Persistent Pre-Created Jewel Light (Bug 9 Fix: Eliminates shader recompile stutter)
+        const persistentJewelLight = new THREE.PointLight(0x00ffcc, 0, 18);
+        persistentJewelLight.visible = false;
+        scene.add(persistentJewelLight);
 
         // Crimson Blood Moon in the sky
         const moonGeo = new THREE.SphereGeometry(10, 24, 24);
@@ -1339,8 +1471,11 @@
         scene.add(floor);
 
         // Arena Obstacles / Pillars & Boundary Walls
-        const obstacles = []; // { x, z, radius } for collision
-        const shootableWalls = []; // Meshes that block bullets
+        const obstacles = [];
+        const shootableWalls = [];
+        // Add floor to shootableWalls (Issue 15 Fix: downward shots hit ground instead of void)
+        shootableWalls.push(floor);
+
         const pillarTex = createPillarTexture();
         const pillarMat = new THREE.MeshStandardMaterial({
             map: pillarTex,
@@ -1367,13 +1502,11 @@
             shootableWalls.push(pillar);
             obstacles.push({ x: px, z: pz, radius: 1.85 });
 
-            // Glowing red neon collar around each pillar
             const ring = new THREE.Mesh(neonRingGeo, neonRingMat);
             ring.rotation.x = Math.PI / 2;
             ring.position.set(px, 2.5, pz);
             scene.add(ring);
 
-            // Add point lights on key inner pillars for atmosphere
             if (idx < 4) {
                 const beacon = new THREE.PointLight(0xff0033, 1.1, 22);
                 beacon.position.set(px, 4.5, pz);
@@ -1381,7 +1514,7 @@
             }
         });
 
-        // Perimeter Neon Barrier Walls
+        // Perimeter Neon Barrier Walls (Wall strip positioned at top y=7.9: Doc/Hygiene Fix)
         const wallMat = new THREE.MeshStandardMaterial({ color: 0x0d0205, roughness: 0.8 });
         const wallConfigs = [
             { pos: [0, 4, -62], size: [124, 8, 2] },
@@ -1395,19 +1528,18 @@
             scene.add(wall);
             shootableWalls.push(wall);
 
-            // Top neon laser strip along perimeter walls (protrudes slightly beyond 2-unit wall thickness)
             const stripGeo = new THREE.BoxGeometry(
                 cfg.size[0] === 2 ? 2.16 : cfg.size[0],
                 0.2,
                 cfg.size[2] === 2 ? 2.16 : cfg.size[2]
             );
             const strip = new THREE.Mesh(stripGeo, neonRingMat);
-            strip.position.set(cfg.pos[0], 2.2, cfg.pos[2]);
+            strip.position.set(cfg.pos[0], 7.9, cfg.pos[2]);
             scene.add(strip);
         });
 
         /********************************************************************
-         * 4. 3D WEAPON VIEWMODEL (Bottom Right Corner + Recoil + Muzzle Flash)
+         * 4. 3D WEAPON VIEWMODEL
          ********************************************************************/
         const weaponGroup = new THREE.Group();
         const WEAPON_BASE_POS = new THREE.Vector3(0.32, -0.27, -0.52);
@@ -1419,17 +1551,14 @@
         const gunDarkMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0f, roughness: 0.6, metalness: 0.4 });
         const gunNeonMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
 
-        // Main receiver body
         const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.14, 0.56), gunMetalMat);
         weaponGroup.add(receiver);
 
-        // Barrel shroud & barrel
         const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.45, 12), gunDarkMat);
         barrel.rotation.x = Math.PI / 2;
         barrel.position.set(0, 0.03, -0.42);
         weaponGroup.add(barrel);
 
-        // Glowing neon red rail strips on weapon sides
         const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.018, 0.46), gunNeonMat);
         leftRail.position.set(-0.058, 0.03, -0.02);
         weaponGroup.add(leftRail);
@@ -1438,7 +1567,6 @@
         rightRail.position.set(0.058, 0.03, -0.02);
         weaponGroup.add(rightRail);
 
-        // Holographic sight housing & glowing reticle dot
         const sightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.12), gunDarkMat);
         sightFrame.position.set(0, 0.095, -0.05);
         weaponGroup.add(sightFrame);
@@ -1447,13 +1575,11 @@
         sightDot.position.set(0, 0.1, -0.05);
         weaponGroup.add(sightDot);
 
-        // Magazine (animates during reload)
         const magazine = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.22, 0.11), gunDarkMat);
         magazine.position.set(0, -0.14, -0.08);
         magazine.rotation.x = 0.2;
         weaponGroup.add(magazine);
 
-        // Muzzle Flash 3D Mesh + Dynamic Muzzle Flash Light
         const muzzleFlashGroup = new THREE.Group();
         muzzleFlashGroup.position.set(0, 0.03, -0.68);
         muzzleFlashGroup.visible = false;
@@ -1479,20 +1605,17 @@
          * 5. ZOMBIE FACTORY & AI SYSTEM
          ********************************************************************/
         const zombies = [];
-        const particles = [];
-        const bulletTracers = [];
 
-        // Shared zombie materials and geometries for zero GPU memory bloat
+        // Shared zombie geometries for zero GPU memory bloat
         const zombieTorsoGeo = new THREE.BoxGeometry(0.75, 1.05, 0.42);
         const zombieCoreGeo = new THREE.BoxGeometry(0.35, 0.4, 0.44);
         const zombieHeadGeo = new THREE.BoxGeometry(0.5, 0.52, 0.5);
         const zombieEyeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.05);
         const zombieArmGeo = new THREE.BoxGeometry(0.22, 0.22, 0.85);
-        zombieArmGeo.translate(0, 0, 0.35); // Pivot at shoulder joint
+        zombieArmGeo.translate(0, 0, 0.35);
         const zombieLegGeo = new THREE.BoxGeometry(0.28, 0.75, 0.3);
-        zombieLegGeo.translate(0, -0.375, 0); // Pivot at hip joint
+        zombieLegGeo.translate(0, -0.375, 0);
 
-        // Class-specific shared geometries for distinct silhouettes
         const runnerClawGeo = new THREE.BoxGeometry(0.06, 0.06, 0.35);
         const bruteShoulderGeo = new THREE.BoxGeometry(0.55, 0.42, 0.55);
         const bruteHelmGeo = new THREE.BoxGeometry(0.56, 0.22, 0.56);
@@ -1505,25 +1628,25 @@
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
 
-            let skinColor = 0x2e3d2e; // Shambler: rotting moss-green
+            let skinColor = 0x2e3d2e;
             let coatColor = 0x181316;
-            let eyeColor = 0x39ff14;  // Toxic radioactive green
-            let coreColor = 0x2aff2a; // Festering green core
+            let eyeColor = 0x39ff14;
+            let coreColor = 0x2aff2a;
             let scale = 1.0;
             let armorMat = null;
 
             if (type === 'runner') {
-                skinColor = 0x8a0b1c; // Flayed raw crimson sinew
-                coatColor = 0x0e0205; // Charred shredded wraps
-                eyeColor = 0xff0033;  // Piercing laser crimson
-                coreColor = 0xff1144; // Volcanic crimson heart
-                scale = 0.88;         // Sleek, wiry predator profile
+                skinColor = 0x8a0b1c;
+                coatColor = 0x0e0205;
+                eyeColor = 0xff0033;
+                coreColor = 0xff1144;
+                scale = 0.88;
             } else if (type === 'brute') {
-                skinColor = 0x1e1a22; // Ashen stone corrupted flesh
+                skinColor = 0x1e1a22;
                 coatColor = 0x140408;
-                eyeColor = 0xff7700;  // Blazing amber/orange visor
-                coreColor = 0xff5500; // Geothermal high-heat reactor core
-                scale = 1.48;         // Towering massive juggernaut
+                eyeColor = 0xff7700;
+                coreColor = 0xff5500;
+                scale = 1.48;
                 armorMat = new THREE.MeshStandardMaterial({
                     color: 0x1f060b,
                     metalness: 0.75,
@@ -1545,18 +1668,13 @@
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
             const coreMat = new THREE.MeshBasicMaterial({ color: coreColor });
 
-            // Torso
             const torso = new THREE.Mesh(zombieTorsoGeo, clothesMat);
             torso.position.y = 1.25;
-            if (type === 'runner') {
-                torso.rotation.x = 0.25; // Hunched raptor sprint posture
-            }
+            if (type === 'runner') torso.rotation.x = 0.25;
             root.add(torso);
 
-            // Exposed glowing core / reactor weakpoint
             let coreMesh;
             if (type === 'brute') {
-                // Brute gets heavy chest plate guarding torso + glowing exposed reactor core
                 const chestPlate = new THREE.Mesh(bruteChestPlateGeo, armorMat);
                 chestPlate.position.set(0, 1.3, 0.24);
                 root.add(chestPlate);
@@ -1566,7 +1684,6 @@
                 coreMesh.userData.isCore = true;
                 root.add(coreMesh);
 
-                // Heavy shoulder pauldrons
                 const leftShoulder = new THREE.Mesh(bruteShoulderGeo, armorMat);
                 leftShoulder.position.set(-0.62, 1.82, 0);
                 root.add(leftShoulder);
@@ -1580,7 +1697,6 @@
                 root.add(coreMesh);
             }
 
-            // Head (tagged for headshots)
             const head = new THREE.Mesh(zombieHeadGeo, skinMat);
             head.userData.isHead = true;
             if (type === 'runner') {
@@ -1592,14 +1708,11 @@
             }
             root.add(head);
 
-            // Eyes / Visor
             if (type === 'brute') {
-                // Single wide horizontal amber visor slit
                 const visor = new THREE.Mesh(bruteVisorGeo, eyeMat);
                 visor.position.set(0, 0.06, 0.26);
                 head.add(visor);
 
-                // Armored helmet brow plate
                 const helm = new THREE.Mesh(bruteHelmGeo, armorMat);
                 helm.position.set(0, 0.22, 0);
                 head.add(helm);
@@ -1613,7 +1726,6 @@
                 head.add(rightEye);
             }
 
-            // Arms (pivoted at shoulder joint)
             const leftArm = new THREE.Mesh(zombieArmGeo, skinMat);
             leftArm.position.set(-0.52, 1.55, 0);
             root.add(leftArm);
@@ -1622,7 +1734,6 @@
             rightArm.position.set(0.52, 1.55, 0);
             root.add(rightArm);
 
-            // Class-specific arm attachments (Claws vs Fists)
             if (type === 'runner') {
                 const leftClaw = new THREE.Mesh(runnerClawGeo, skinMat);
                 leftClaw.position.set(0, 0, 0.87);
@@ -1641,7 +1752,6 @@
                 rightArm.add(rightFist);
             }
 
-            // Legs (pivoted at hip joint)
             const leftLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
             leftLeg.position.set(-0.2, 0.75, 0);
             root.add(leftLeg);
@@ -1682,23 +1792,167 @@
             }
         }
 
-        function clearParticles() {
-            for (let i = 0; i < particles.length; i++) {
-                const p = particles[i];
-                scene.remove(p.mesh);
-                if (p.mesh.material) p.mesh.material.dispose();
+        /********************************************************************
+         * 6. HIGH PERFORMANCE ZERO-ALLOCATION PARTICLE & TRACER POOLS
+         ********************************************************************/
+        const bloodGeo = new THREE.BoxGeometry(0.11, 0.11, 0.11);
+        const jewelSparkleGeo = new THREE.OctahedronGeometry(0.12, 0);
+
+        // Pre-allocated Blood Particle Pool
+        const BLOOD_POOL_SIZE = 80;
+        const bloodPool = [];
+        for (let i = 0; i < BLOOD_POOL_SIZE; i++) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: i % 2 === 0 ? 0xff0033 : 0x800015,
+                transparent: true,
+                opacity: 1
+            });
+            const mesh = new THREE.Mesh(bloodGeo, mat);
+            mesh.visible = false;
+            scene.add(mesh);
+            bloodPool.push({
+                mesh,
+                velocity: new THREE.Vector3(),
+                life: 0,
+                maxLife: 1,
+                active: false
+            });
+        }
+
+        function spawnBloodParticles(position, count = 14, isKill = false) {
+            let spawned = 0;
+            for (let i = 0; i < BLOOD_POOL_SIZE && spawned < count; i++) {
+                const p = bloodPool[i];
+                if (p.active) continue;
+                p.active = true;
+                p.mesh.visible = true;
+                p.mesh.position.copy(position);
+
+                const speed = isKill ? (3 + Math.random() * 6) : (2 + Math.random() * 4);
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+
+                p.velocity.set(
+                    Math.sin(phi) * Math.cos(theta) * speed,
+                    Math.abs(Math.cos(phi)) * speed + 1.8,
+                    Math.sin(phi) * Math.sin(theta) * speed
+                );
+                p.life = 0.55 + Math.random() * 0.45;
+                p.maxLife = p.life;
+                p.mesh.material.opacity = 1;
+                spawned++;
             }
-            particles.length = 0;
+        }
+
+        // Pre-allocated Jewel Sparkle Particle Pool
+        const SPARKLE_POOL_SIZE = 30;
+        const sparklePool = [];
+        for (let i = 0; i < SPARKLE_POOL_SIZE; i++) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: i % 2 === 0 ? 0x00ffcc : 0xffffff,
+                transparent: true,
+                opacity: 1
+            });
+            const mesh = new THREE.Mesh(jewelSparkleGeo, mat);
+            mesh.visible = false;
+            scene.add(mesh);
+            sparklePool.push({
+                mesh,
+                velocity: new THREE.Vector3(),
+                life: 0,
+                maxLife: 1,
+                active: false
+            });
+        }
+
+        function spawnHealSparkleParticles(position, count = 24) {
+            let spawned = 0;
+            for (let i = 0; i < SPARKLE_POOL_SIZE && spawned < count; i++) {
+                const p = sparklePool[i];
+                if (p.active) continue;
+                p.active = true;
+                p.mesh.visible = true;
+                p.mesh.position.copy(position);
+                p.mesh.position.y += (Math.random() - 0.5) * 0.4;
+
+                const speed = 2.5 + Math.random() * 5.5;
+                const angle = Math.random() * Math.PI * 2;
+                const elev = (Math.random() - 0.3) * Math.PI * 0.5;
+
+                p.velocity.set(
+                    Math.cos(angle) * Math.cos(elev) * speed,
+                    Math.sin(elev) * speed + 3.2,
+                    Math.sin(angle) * Math.cos(elev) * speed
+                );
+                p.life = 0.65 + Math.random() * 0.4;
+                p.maxLife = p.life;
+                p.mesh.material.opacity = 1;
+                spawned++;
+            }
+        }
+
+        // Pre-allocated Bullet Tracer Pool
+        const TRACER_POOL_SIZE = 8;
+        const tracerPool = [];
+        for (let i = 0; i < TRACER_POOL_SIZE; i++) {
+            const positions = new Float32Array(6);
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.LineBasicMaterial({
+                color: 0xff3355,
+                transparent: true,
+                opacity: 0.85
+            });
+            const line = new THREE.Line(geo, mat);
+            line.visible = false;
+            scene.add(line);
+            tracerPool.push({ line, positions, life: 0, active: false });
+        }
+
+        function spawnBulletTracer(startPos, endPos) {
+            for (let i = 0; i < TRACER_POOL_SIZE; i++) {
+                const t = tracerPool[i];
+                if (t.active) continue;
+                t.active = true;
+                t.life = 0.07;
+                t.positions[0] = startPos.x;
+                t.positions[1] = startPos.y;
+                t.positions[2] = startPos.z;
+                t.positions[3] = endPos.x;
+                t.positions[4] = endPos.y;
+                t.positions[5] = endPos.z;
+                t.line.geometry.attributes.position.needsUpdate = true;
+                t.line.material.opacity = 0.85;
+                t.line.visible = true;
+                break;
+            }
+        }
+
+        function clearParticles() {
+            for (let i = 0; i < BLOOD_POOL_SIZE; i++) {
+                bloodPool[i].active = false;
+                bloodPool[i].mesh.visible = false;
+            }
+            for (let i = 0; i < SPARKLE_POOL_SIZE; i++) {
+                sparklePool[i].active = false;
+                sparklePool[i].mesh.visible = false;
+            }
         }
 
         function clearBulletTracers() {
-            for (let i = 0; i < bulletTracers.length; i++) {
-                const t = bulletTracers[i];
-                scene.remove(t.line);
-                if (t.line.geometry) t.line.geometry.dispose();
-                if (t.line.material) t.line.material.dispose();
+            for (let i = 0; i < TRACER_POOL_SIZE; i++) {
+                tracerPool[i].active = false;
+                tracerPool[i].line.visible = false;
             }
-            bulletTracers.length = 0;
+        }
+
+        // Fast active zombie counter (Performance improvement: Zero Array Allocation per frame)
+        function getActiveZombieCount() {
+            let count = 0;
+            for (let i = 0; i < zombies.length; i++) {
+                if (!zombies[i].dying) count++;
+            }
+            return count;
         }
 
         function spawnZombie(waveNum) {
@@ -1713,8 +1967,9 @@
 
             const parts = createZombieMesh(type);
 
-            // Spawn around the player at a safe distance inside the arena without spawning inside pillars
+            // Obstacle & Player safe coordinate rejection (Issue 13 Fix: Guaranteed fallback)
             let spawnX = 0, spawnZ = 0;
+            let validSpawnFound = false;
             for (let attempt = 0; attempt < 30; attempt++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 28 + Math.random() * 24;
@@ -1723,16 +1978,25 @@
                 const dToPlayer = Math.hypot(spawnX - camera.position.x, spawnZ - camera.position.z);
                 if (dToPlayer <= 20) continue;
 
-                // Ensure spawn coordinate does not collide with arena obstacle pillars
                 let insidePillar = false;
                 for (let j = 0; j < obstacles.length; j++) {
                     const obs = obstacles[j];
-                    if (Math.hypot(spawnX - obs.x, spawnZ - obs.z) < obs.radius + 1.5) {
+                    if (Math.hypot(spawnX - obs.x, spawnZ - obs.z) < obs.radius + 1.8) {
                         insidePillar = true;
                         break;
                     }
                 }
-                if (!insidePillar) break;
+                if (!insidePillar) {
+                    validSpawnFound = true;
+                    break;
+                }
+            }
+
+            if (!validSpawnFound) {
+                const safeNodes = [[35, 35], [-35, 35], [35, -35], [-35, -35], [0, 45], [0, -45], [45, 0], [-45, 0]];
+                const node = safeNodes[Math.floor(Math.random() * safeNodes.length)];
+                spawnX = node[0];
+                spawnZ = node[1];
             }
 
             parts.root.position.set(spawnX, 0, spawnZ);
@@ -1757,7 +2021,6 @@
                 dying: false,
                 deathProgress: 0,
 
-                // --- Professional AI State Machine ---
                 state: distToPlayer > 22 ? 'WANDER' : 'CHASE',
                 alertTimer: 0,
                 wanderTarget: new THREE.Vector3(
@@ -1773,15 +2036,16 @@
                 attackCooldown: 0,
                 attackWindup: 0,
                 isAttacking: false,
+                isAttackingTimer: 0,
                 staggerTimer: 0,
                 staggerPush: 0,
+                staggerCooldown: 0, // Issue 11 Fix: Poise cooldown prevents stagger-lock
                 lungeTimer: 0,
                 lungeCooldown: 2 + Math.random() * 3,
                 isEnraged: false,
                 weaveOffset: Math.random() * Math.PI * 2
             };
 
-            // Link mesh parts back to zombieObj for raycasting
             parts.root.traverse(child => {
                 if (child.isMesh) {
                     child.userData.zombie = zombieObj;
@@ -1790,7 +2054,9 @@
 
             zombies.push(zombieObj);
 
-            if (type === 'brute') {
+            // Announce Brute only once per wave (Issue 17 Fix: Prevents killfeed obliteration)
+            if (type === 'brute' && !state.bruteAnnouncedThisWave) {
+                state.bruteAnnouncedThisWave = true;
                 showKillFeed('WARNING: ARMORED BRUTE DETECTED!');
                 sound.playZombieGroan(0.55);
             }
@@ -1799,100 +2065,40 @@
         }
 
         /********************************************************************
-         * 6. PARTICLE EFFECTS & BULLET TRACERS
-         ********************************************************************/
-        const bloodGeo = new THREE.BoxGeometry(0.11, 0.11, 0.11);
-
-        function spawnBloodParticles(position, count = 14, isKill = false) {
-            for (let i = 0; i < count; i++) {
-                const mat = new THREE.MeshBasicMaterial({
-                    color: Math.random() > 0.35 ? 0xff0033 : 0x800015,
-                    transparent: true,
-                    opacity: 1
-                });
-                const mesh = new THREE.Mesh(bloodGeo, mat);
-                mesh.position.copy(position);
-
-                const speed = isKill ? (3 + Math.random() * 6) : (2 + Math.random() * 4);
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI;
-
-                const velocity = new THREE.Vector3(
-                    Math.sin(phi) * Math.cos(theta) * speed,
-                    Math.abs(Math.cos(phi)) * speed + 1.8,
-                    Math.sin(phi) * Math.sin(theta) * speed
-                );
-
-                scene.add(mesh);
-                particles.push({
-                    mesh,
-                    velocity,
-                    life: 0.55 + Math.random() * 0.45,
-                    maxLife: 1.0
-                });
-            }
-        }
-
-        function spawnBulletTracer(startPos, endPos) {
-            const points = [startPos, endPos];
-            const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const mat = new THREE.LineBasicMaterial({
-                color: 0xff3355,
-                transparent: true,
-                opacity: 0.85
-            });
-            const line = new THREE.Line(geo, mat);
-            scene.add(line);
-            bulletTracers.push({ line, life: 0.07 });
-        }
-
-        const jewelSparkleGeo = new THREE.OctahedronGeometry(0.12, 0);
-
-        function spawnHealSparkleParticles(position, count = 24) {
-            for (let i = 0; i < count; i++) {
-                const mat = new THREE.MeshBasicMaterial({
-                    color: Math.random() > 0.4 ? 0x00ffcc : 0xffffff,
-                    transparent: true,
-                    opacity: 1
-                });
-                const mesh = new THREE.Mesh(jewelSparkleGeo, mat);
-                mesh.position.copy(position);
-                mesh.position.y += (Math.random() - 0.5) * 0.4;
-
-                const speed = 2.5 + Math.random() * 5.5;
-                const angle = Math.random() * Math.PI * 2;
-                const elev = (Math.random() - 0.3) * Math.PI * 0.5;
-
-                const velocity = new THREE.Vector3(
-                    Math.cos(angle) * Math.cos(elev) * speed,
-                    Math.sin(elev) * speed + 3.2,
-                    Math.sin(angle) * Math.cos(elev) * speed
-                );
-
-                const life = 0.65 + Math.random() * 0.4;
-                scene.add(mesh);
-                particles.push({ mesh, velocity, life, maxLife: life });
-            }
-        }
-
-        /********************************************************************
-         * 7. GAME STATE, CONTROLS & COMBAT LOGIC
+         * 7. GAME STATE, SETTINGS & COMBAT LOGIC
          ********************************************************************/
         const MAX_AMMO = 15;
+
+        // Tactical Settings (Improvement 4)
+        const userSettings = {
+            mouseSens: parseFloat(safeStorage.getItem('mr_mouse_sens', '1.0')),
+            invertY: safeStorage.getItem('mr_invert_y', 'false') === 'true',
+            touchSens: parseFloat(safeStorage.getItem('mr_touch_sens', '1.0')),
+            masterVol: parseFloat(safeStorage.getItem('mr_master_vol', '1.0'))
+        };
+
         const state = {
-            mode: 'TITLE', // TITLE, PLAYING, GAMEOVER
+            mode: 'TITLE',
             isPaused: false,
             health: 100,
             stamina: 100,
             ammo: MAX_AMMO,
             isReloading: false,
             reloadTimer: 0,
+            autoReloadTimer: 0, // Issue 16 Fix: Pausable frame-based reload
             score: 0,
             kills: 0,
             headshots: 0,
             wave: 1,
             waveZombiesRemainingToSpawn: 0,
+            waveRoster: [],
+            bruteAnnouncedThisWave: false,
             spawnTimer: 0,
+
+            // Intermission Breather (Improvement 6)
+            isIntermission: false,
+            intermissionTimer: 0,
+
             recoilOffset: 0,
             recoilPitch: 0,
             muzzleTimer: 0,
@@ -1902,8 +2108,9 @@
             isDraggingLook: false,
             lastMouseX: 0,
             lastMouseY: 0,
-            sprintBinding: localStorage.getItem('mr_sprint_binding') || 'all',
+            sprintBinding: safeStorage.getItem('mr_sprint_binding', 'all'),
             isRightMouseDown: false,
+            isLeftMouseDown: false, // Improvement 1: Desktop hold-to-fire
             isTouchMode: false,
             touchInteracted: false,
             joystickX: 0,
@@ -1939,6 +2146,7 @@
         const pauseHomeBtn = document.getElementById('pause-home-btn');
         const resumeLockPrompt = document.getElementById('resume-lock-prompt');
         const damageOverlay = document.getElementById('damage-overlay');
+        const damagePointer = document.getElementById('damage-pointer');
         const hitmarker = document.getElementById('hitmarker');
         const killBanner = document.getElementById('kill-banner');
         const reloadPrompt = document.getElementById('reload-prompt');
@@ -1960,7 +2168,7 @@
         const chRight = document.getElementById('ch-right');
         const hudMuteHint = document.getElementById('hud-mute-hint');
 
-        // Mobile Touch & Joystick Controls DOM Elements
+        // Mobile Touch DOM Elements
         const mobileControls = document.getElementById('mobile-controls');
         const mobileTopBtns = document.getElementById('mobile-top-btns');
         const joystickZone = document.getElementById('joystick-zone');
@@ -1975,7 +2183,21 @@
         const touchMuteIcon = document.getElementById('touch-mute-icon');
         const pauseSprintLabel = document.getElementById('pause-sprint-label');
 
-        // Zero-allocation scratch math structures for smooth 60fps simulation
+        // Settings Elements
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsBtnTitle = document.getElementById('settings-btn-title');
+        const settingsBtnPause = document.getElementById('settings-btn-pause');
+        const settingsCloseBtn = document.getElementById('settings-close-btn');
+        const settingsApplyBtn = document.getElementById('settings-apply-btn');
+        const settingMouseSens = document.getElementById('setting-mouse-sens');
+        const settingInvertY = document.getElementById('setting-invert-y');
+        const settingTouchSens = document.getElementById('setting-touch-sens');
+        const settingMasterVol = document.getElementById('setting-master-vol');
+        const valMouseSens = document.getElementById('val-mouse-sens');
+        const valTouchSens = document.getElementById('val-touch-sens');
+        const valMasterVol = document.getElementById('val-master-vol');
+
+        // Zero-allocation scratch structures
         const _forward = new THREE.Vector3();
         const _right = new THREE.Vector3();
         const _moveDir = new THREE.Vector3();
@@ -1989,12 +2211,15 @@
 
         let lastPauseTime = 0;
         let fireInterval = null;
+        let _lastStaminaRounded = -1;
+        let _lastStaminaTextVal = '';
 
         function resetKeys() {
             for (const k in keys) {
                 keys[k] = false;
             }
             state.isRightMouseDown = false;
+            state.isLeftMouseDown = false;
             state.joystickX = 0;
             state.joystickY = 0;
             state.joystickSprint = false;
@@ -2004,12 +2229,28 @@
                 touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
             }
             if (joystickKnob) {
-                joystickKnob.style.transform = 'translate(0px, 0px)';
+                joystickKnob.style.transform = 'translate(-50%, -50%)';
             }
             if (fireInterval) {
                 clearInterval(fireInterval);
                 fireInterval = null;
             }
+        }
+
+        // Directional Damage Threat Arc Indicator (Improvement 3)
+        function showDamageDirection(attackerPos) {
+            if (!attackerPos || !damagePointer) return;
+            const dx = attackerPos.x - camera.position.x;
+            const dz = attackerPos.z - camera.position.z;
+            const worldAngle = Math.atan2(dx, dz);
+            const relAngle = worldAngle - (camera.rotation.y + Math.PI);
+            const deg = (relAngle * 180 / Math.PI);
+            damagePointer.style.transform = `rotate(${deg}deg)`;
+            damagePointer.style.opacity = '1';
+            clearTimeout(damagePointer._timer);
+            damagePointer._timer = setTimeout(() => {
+                damagePointer.style.opacity = '0';
+            }, 450);
         }
 
         function updatePauseTelemetry() {
@@ -2052,6 +2293,7 @@
         function returnToTitle() {
             state.mode = 'TITLE';
             state.isPaused = false;
+            state.isIntermission = false;
             sound.duckAmbient(false);
             if (document.pointerLockElement) {
                 document.exitPointerLock();
@@ -2059,12 +2301,10 @@
             resetKeys();
             state.isDraggingLook = false;
 
-            // Cleanly dispose remaining zombies, particles & bullet tracers
             zombies.forEach(disposeZombie);
             zombies.length = 0;
             clearParticles();
             clearBulletTracers();
-
             removeHealthJewel();
 
             weaponGroup.visible = false;
@@ -2074,16 +2314,29 @@
 
             gameoverScreen.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
+            settingsModal.classList.add('hidden');
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
             reloadPrompt.classList.add('hidden');
             damageOverlay.style.opacity = '0';
             if (healOverlay) healOverlay.style.opacity = '0';
+            refreshHighScoresUI();
             titleScreen.classList.remove('hidden');
         }
 
+        function refreshHighScoresUI() {
+            const bestScore = safeStorage.getItem('mr_high_score', '0');
+            const bestWave = safeStorage.getItem('mr_best_wave', '1');
+            const titleHighScore = document.getElementById('title-high-score');
+            const titleBestWave = document.getElementById('title-best-wave');
+            if (titleHighScore) titleHighScore.textContent = parseInt(bestScore, 10).toLocaleString();
+            if (titleBestWave) titleBestWave.textContent = `WAVE ${String(bestWave).padStart(2, '0')}`;
+        }
+
+        refreshHighScoresUI();
+
         /********************************************************************
-         * NEON DIAMOND HEALTH JEWEL SYSTEM
+         * NEON DIAMOND HEALTH JEWEL SYSTEM (Bug 9 Fix: No Dynamic PointLights)
          ********************************************************************/
         let healthJewel = null;
         const healOverlay = document.getElementById('heal-overlay');
@@ -2100,6 +2353,9 @@
         function removeHealthJewel() {
             if (!healthJewel) return;
             scene.remove(healthJewel.group);
+            persistentJewelLight.intensity = 0;
+            persistentJewelLight.visible = false;
+
             healthJewel.group.traverse(child => {
                 if (child.isMesh || child.isLineSegments) {
                     if (child.geometry) child.geometry.dispose();
@@ -2112,15 +2368,15 @@
             healthJewel = null;
         }
 
+        // Safe jewel spawn relative to actual player position (Issue 14 Fix)
         function findSafeJewelPosition() {
             for (let attempt = 0; attempt < 50; attempt++) {
-                const x = (Math.random() - 0.5) * 80; // [-40, 40]
+                const x = (Math.random() - 0.5) * 80;
                 const z = (Math.random() - 0.5) * 80;
 
-                // Don't spawn immediately adjacent to player start
-                if (Math.hypot(x, z) < 8) continue;
+                // Never spawn right on top of player's actual coordinate
+                if (Math.hypot(x - camera.position.x, z - camera.position.z) < 16) continue;
 
-                // Check distance against all arena pillars
                 let collides = false;
                 for (let i = 0; i < obstacles.length; i++) {
                     const obs = obstacles[i];
@@ -2134,7 +2390,7 @@
                     return { x, z };
                 }
             }
-            return { x: 18, z: 18 };
+            return { x: 32, z: 32 };
         }
 
         function spawnHealthJewel() {
@@ -2144,7 +2400,6 @@
             const group = new THREE.Group();
             group.position.set(pos.x, 1.4, pos.z);
 
-            // 1. Faceted Neon Diamond Crystal (Classic Octahedron Gem Geometry)
             const jewelGeo = new THREE.OctahedronGeometry(0.72, 0);
             jewelGeo.scale(1.0, 1.45, 1.0);
             const jewelMat = new THREE.MeshStandardMaterial({
@@ -2158,20 +2413,17 @@
             const diamondMesh = new THREE.Mesh(jewelGeo, jewelMat);
             group.add(diamondMesh);
 
-            // 2. High-contrast Neon Edge Lines for gem facets
             const edgesGeo = new THREE.EdgesGeometry(jewelGeo);
             const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
             const edgesMesh = new THREE.LineSegments(edgesGeo, edgesMat);
             diamondMesh.add(edgesMesh);
 
-            // 3. Inner Pulsing Core
             const coreGeo = new THREE.OctahedronGeometry(0.36, 0);
             coreGeo.scale(0.9, 1.3, 0.9);
             const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 });
             const coreMesh = new THREE.Mesh(coreGeo, coreMat);
             diamondMesh.add(coreMesh);
 
-            // 4. Floating Gyroscopic Orbital Rings
             const ringGeo = new THREE.TorusGeometry(1.22, 0.038, 8, 36);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
             const ring1 = new THREE.Mesh(ringGeo, ringMat);
@@ -2182,7 +2434,6 @@
             ring2.rotation.x = -Math.PI / 3;
             group.add(ring2);
 
-            // 5. Floor Beacon Halo
             const floorRingGeo = new THREE.RingGeometry(0.4, 0.95, 28);
             const floorRingMat = new THREE.MeshBasicMaterial({
                 color: 0x00ffcc,
@@ -2195,12 +2446,12 @@
             floorRing.position.y = -1.35;
             group.add(floorRing);
 
-            // 6. Dynamic Point Light casting glow on surrounding floor & pillars
-            const jewelLight = new THREE.PointLight(0x00ffcc, 3.2, 18);
-            jewelLight.position.set(0, 0, 0);
-            group.add(jewelLight);
-
             scene.add(group);
+
+            // Re-activate persistent jewel light without modifying scene graph lights count
+            persistentJewelLight.position.set(pos.x, 1.4, pos.z);
+            persistentJewelLight.intensity = 3.2;
+            persistentJewelLight.visible = true;
 
             healthJewel = {
                 group,
@@ -2210,31 +2461,26 @@
                 ring2,
                 floorRing,
                 jewelMat,
-                jewelLight,
                 baseY: 1.4,
                 position: new THREE.Vector3(pos.x, 1.4, pos.z),
                 update(dt, now) {
                     const t = now * 0.001;
-
-                    // Diamond rotation & levitation bobbing
                     diamondMesh.rotation.y += dt * 1.6;
                     diamondMesh.rotation.x = Math.sin(t * 1.8) * 0.15;
                     group.position.y = this.baseY + Math.sin(t * 2.8) * 0.22;
                     this.position.y = group.position.y;
 
-                    // Gyroscopic rings spin
                     ring1.rotation.z += dt * 2.0;
                     ring1.rotation.y += dt * 0.8;
                     ring2.rotation.z -= dt * 1.7;
                     ring2.rotation.x += dt * 1.1;
 
-                    // Pulsing floor halo
                     floorRing.scale.setScalar(1.0 + Math.sin(t * 3.5) * 0.18);
                     floorRing.material.opacity = 0.45 + Math.sin(t * 3.5) * 0.25;
-
-                    // Emissive glow pulsing
                     jewelMat.emissiveIntensity = 0.75 + Math.sin(t * 4.0) * 0.35;
-                    jewelLight.intensity = 2.4 + Math.sin(t * 4.0) * 0.6;
+
+                    persistentJewelLight.position.y = group.position.y;
+                    persistentJewelLight.intensity = 2.4 + Math.sin(t * 4.0) * 0.6;
                 }
             };
         }
@@ -2245,17 +2491,14 @@
             const pickupPos = healthJewel.position.clone();
             removeHealthJewel();
 
-            // Replenish vital integrity by 50%
             state.health = Math.min(100, state.health + 50);
             updateHUD();
 
-            // Dynamic glow on health bar
             hudHealthBar.style.boxShadow = '0 0 22px #00ffcc';
             setTimeout(() => {
                 hudHealthBar.style.boxShadow = '0 0 12px #ff0033';
             }, 600);
 
-            // Audio & visual feedback
             sound.playHealthPickup();
             showKillFeed('+50% VITAL INTEGRITY RESTORED!', true);
             showHealOverlay();
@@ -2271,9 +2514,7 @@
                         lockPromise.catch(() => { });
                     }
                 }
-            } catch (err) {
-                // Fallback handled via click-and-drag look if iframe blocks pointer lock
-            }
+            } catch (err) { }
         }
 
         document.addEventListener('pointerlockchange', () => {
@@ -2286,6 +2527,8 @@
                 }
             }
         });
+
+        document.addEventListener('pointerlockerror', () => { });
 
         function shuffleArray(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
@@ -2318,15 +2561,14 @@
 
         function startWave(waveNumber) {
             state.wave = waveNumber;
+            state.isIntermission = false;
+            state.bruteAnnouncedThisWave = false;
             const totalZombies = 6 + waveNumber * 4;
 
-            // Generate deterministic, designed wave composition roster so every hostile class is reliably spawned
             const roster = [];
             if (waveNumber === 1) {
-                // Wave 1: 100% Shamblers to master movement & shooting
                 for (let i = 0; i < totalZombies; i++) roster.push('shambler');
             } else if (waveNumber === 2) {
-                // Wave 2: Debut of Crimson Runners! (~35% runners, guaranteed in first 3)
                 const numRunners = Math.max(3, Math.floor(totalZombies * 0.35));
                 for (let i = 0; i < numRunners; i++) roster.push('runner');
                 while (roster.length < totalZombies) roster.push('shambler');
@@ -2336,20 +2578,17 @@
                     if (rIdx > -1) { [roster[1], roster[rIdx]] = [roster[rIdx], roster[1]]; }
                 }
             } else if (waveNumber === 3) {
-                // Wave 3: Debut of Armored Brutes! Guaranteed 2 Brutes, ~35% Runners, ~45% Shamblers
                 const numBrutes = Math.max(2, Math.floor(totalZombies * 0.18));
                 const numRunners = Math.max(4, Math.floor(totalZombies * 0.35));
                 for (let i = 0; i < numBrutes; i++) roster.push('brute');
                 for (let i = 0; i < numRunners; i++) roster.push('runner');
                 while (roster.length < totalZombies) roster.push('shambler');
                 shuffleArray(roster);
-                // Ensure first Brute spawns around spawn 4-5 as a dramatic mid-wave miniboss
                 const bIdx = roster.indexOf('brute');
                 if (bIdx > -1 && bIdx > 5) {
                     [roster[4], roster[bIdx]] = [roster[bIdx], roster[4]];
                 }
             } else {
-                // Wave 4+: Full multi-class escalation (22-28% Brutes, 35-42% Runners, rest Shamblers)
                 const bruteRatio = Math.min(0.28, 0.18 + waveNumber * 0.02);
                 const runnerRatio = Math.min(0.42, 0.30 + waveNumber * 0.02);
                 const numBrutes = Math.max(2, Math.floor(totalZombies * bruteRatio));
@@ -2365,10 +2604,8 @@
             state.spawnTimer = 0.5;
             announceWave(waveNumber);
 
-            // Clean up any uncollected jewel from previous wave
             removeHealthJewel();
 
-            // 50% chance to appear per level from 3rd level on
             if (waveNumber >= 3 && Math.random() < 0.5) {
                 spawnHealthJewel();
             }
@@ -2379,15 +2616,12 @@
         function startGame() {
             sound.init();
 
-            // Cleanly dispose existing zombies, particles & bullet tracers
             zombies.forEach(disposeZombie);
             zombies.length = 0;
             clearParticles();
             clearBulletTracers();
-
             removeHealthJewel();
 
-            // Reset player state
             camera.position.set(0, 1.75, 0);
             camera.rotation.set(0, 0, 0);
             camera.updateMatrixWorld(true);
@@ -2401,6 +2635,7 @@
 
             state.mode = 'PLAYING';
             state.isPaused = false;
+            state.isIntermission = false;
             resetKeys();
             state.isDraggingLook = false;
             state.health = 100;
@@ -2408,6 +2643,7 @@
             state.ammo = MAX_AMMO;
             state.isReloading = false;
             state.reloadTimer = 0;
+            state.autoReloadTimer = 0;
             state.score = 0;
             state.kills = 0;
             state.headshots = 0;
@@ -2417,6 +2653,7 @@
 
             titleScreen.classList.add('hidden');
             gameoverScreen.classList.add('hidden');
+            settingsModal.classList.add('hidden');
             hud.classList.remove('hidden');
             if (mobileControls) mobileControls.classList.remove('hidden');
             updateMobileControlsVisibility();
@@ -2432,6 +2669,7 @@
         function triggerGameOver() {
             state.mode = 'GAMEOVER';
             state.isPaused = false;
+            state.isIntermission = false;
             resetKeys();
             state.isDraggingLook = false;
             if (document.pointerLockElement) {
@@ -2445,12 +2683,26 @@
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
-            gameoverScreen.classList.remove('hidden');
+
+            // Save High Score & Best Wave
+            const currentHigh = parseInt(safeStorage.getItem('mr_high_score', '0'), 10) || 0;
+            const currentBestWave = parseInt(safeStorage.getItem('mr_best_wave', '1'), 10) || 1;
+            if (state.score > currentHigh) safeStorage.setItem('mr_high_score', state.score.toString());
+            if (state.wave > currentBestWave) safeStorage.setItem('mr_best_wave', state.wave.toString());
 
             document.getElementById('final-score').textContent = state.score.toLocaleString();
             document.getElementById('final-wave').textContent = state.wave;
             document.getElementById('final-kills').textContent = state.kills;
             document.getElementById('final-headshots').textContent = state.headshots;
+
+            const bestScore = safeStorage.getItem('mr_high_score', '0');
+            const bestWv = safeStorage.getItem('mr_best_wave', '1');
+            const recordEl = document.getElementById('gameover-best-record');
+            if (recordEl) {
+                recordEl.textContent = `WAVE ${String(bestWv).padStart(2, '0')} // ${parseInt(bestScore, 10).toLocaleString()} PTS`;
+            }
+
+            gameoverScreen.classList.remove('hidden');
         }
 
         function updateHUD() {
@@ -2458,7 +2710,8 @@
             hudScore.textContent = String(state.score).padStart(4, '0');
             hudKills.textContent = state.kills;
 
-            const activeCount = zombies.filter(z => !z.dying).length + state.waveZombiesRemainingToSpawn;
+            // Zero array allocation hostile count
+            const activeCount = getActiveZombieCount() + state.waveZombiesRemainingToSpawn;
             hudHostiles.textContent = activeCount;
 
             const hpPct = Math.max(0, Math.round(state.health));
@@ -2473,16 +2726,18 @@
                 ammoStatus.textContent = state.isTouchMode ? 'EMPTY! TAP RELOAD' : 'EMPTY! PRESS [R] TO RELOAD';
                 ammoStatus.className = 'text-xs text-red-500 font-bold mt-0.5 animate-pulse';
             } else {
-                ammoStatus.textContent = state.isTouchMode ? 'Tap RELOAD' : 'Press [R] to Reload';
+                ammoStatus.textContent = state.isTouchMode ? 'Hold FIRE | Tap RELOAD' : 'Hold LMB to Fire | [R] Reload';
                 ammoStatus.className = 'text-xs text-neutral-400 mt-0.5';
             }
         }
 
+        // Bug 1 Fix: Clear inline style.opacity so class-based transitions and re-triggers work reliably
         function showKillFeed(text, isHeal = false) {
             killBanner.textContent = text;
+            killBanner.style.opacity = '';
             killBanner.className = isHeal
-                ? 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-emerald-400 drop-shadow-[0_0_10px_#00ffcc] opacity-100 transition-opacity duration-200'
-                : 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-red-400 opacity-100 transition-opacity duration-200';
+                ? 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-emerald-400 drop-shadow-[0_0_10px_#00ffcc] opacity-100 transition-opacity duration-200 pointer-events-none'
+                : 'absolute top-1/2 mt-10 text-center font-neon text-sm sm:text-base tracking-widest uppercase text-red-400 opacity-100 transition-opacity duration-200 pointer-events-none';
             clearTimeout(killBanner._timeout);
             killBanner._timeout = setTimeout(() => {
                 killBanner.style.opacity = '0';
@@ -2493,6 +2748,7 @@
             if (state.isReloading || state.ammo === MAX_AMMO || state.mode !== 'PLAYING' || state.isPaused) return;
             state.isReloading = true;
             state.reloadTimer = 1.15;
+            state.autoReloadTimer = 0;
             reloadPrompt.classList.remove('hidden');
             sound.playReload();
             updateHUD();
@@ -2510,14 +2766,13 @@
             }
         }
 
-        // Raycaster for shooting
         const raycaster = new THREE.Raycaster();
         const screenCenter = new THREE.Vector2(0, 0);
 
         function shootWeapon() {
             if (state.mode !== 'PLAYING' || state.isPaused) return;
             const now = performance.now();
-            if (now - state.lastShootTime < 135) return; // Fire rate cap
+            if (now - state.lastShootTime < 135) return;
 
             if (state.isReloading) return;
 
@@ -2531,10 +2786,8 @@
             state.ammo--;
             sound.playGunshot();
 
-            // Acoustic sound wave alerts unalerted wandering zombies across the arena
             alertZombiesNear(camera.position, 48);
 
-            // Weapon recoil & muzzle flash
             state.recoilOffset = 0.11;
             state.recoilPitch = 0.04;
             state.muzzleTimer = 0.055;
@@ -2542,27 +2795,19 @@
             muzzleFlashGroup.rotation.z = Math.random() * Math.PI;
             muzzleLight.intensity = 3.2;
 
-            // Crosshair bloom
             setCrosshairSpread(10);
             setTimeout(() => setCrosshairSpread(0), 90);
 
-            // Auto reload when last round fired
             updateHUD();
+
+            // Auto reload timer in game loop (Issue 16 Fix)
             if (state.ammo <= 0) {
-                setTimeout(() => {
-                    if (state.ammo <= 0 && !state.isReloading && state.mode === 'PLAYING' && !state.isPaused) {
-                        startReload();
-                    }
-                }, 220);
+                state.autoReloadTimer = 0.22;
             }
 
-            // Ensure camera and weapon world matrices reflect latest rotation before raycasting
             camera.updateMatrixWorld(true);
-
-            // Raycast from center of camera
             raycaster.setFromCamera(screenCenter, camera);
 
-            // Collect all active zombie meshes + arena obstacles (reusing scratch array)
             _raycastTargets.length = 0;
             for (let i = 0; i < shootableWalls.length; i++) {
                 _raycastTargets.push(shootableWalls[i]);
@@ -2574,8 +2819,6 @@
             }
 
             const intersects = raycaster.intersectObjects(_raycastTargets, true);
-
-            // Calculate world position of gun muzzle for tracer (zero allocation)
             muzzleFlashGroup.getWorldPosition(_muzzlePos);
             raycaster.ray.at(60, _tracerEnd);
 
@@ -2591,12 +2834,12 @@
                     let damage = 40;
                     if (hitZombie.type === 'brute') {
                         if (isHeadshot) {
-                            damage = 120; // Critical headshot
+                            damage = 120;
                         } else if (isCoreHit) {
-                            damage = 110; // Critical reactor core rupture!
+                            damage = 110;
                             spawnBloodParticles(hit.point, 16, false);
                         } else {
-                            damage = 26; // Heavy armor absorbs body shots
+                            damage = 26; // Heavy chest armor absorbs body shots
                         }
                     } else {
                         damage = isHeadshot ? 110 : 40;
@@ -2608,31 +2851,45 @@
                     hitZombie.parts.clothesMat.emissive.setHex(0x88001b);
                     if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0xaa2200);
 
-                    // Knockback slightly (zero allocation)
                     _knockDir.subVectors(hitZombie.mesh.position, camera.position).setY(0).normalize();
                     const knockPower = isHeadshot ? (hitZombie.type === 'brute' ? 0.35 : 0.75) : (hitZombie.type === 'brute' ? 0.12 : 0.32);
                     hitZombie.mesh.position.addScaledVector(_knockDir, knockPower);
 
-                    // Stagger and interrupt attack windup
-                    hitZombie.staggerTimer = isHeadshot ? 0.34 : 0.16;
-                    hitZombie.staggerPush = knockPower * 3.0;
+                    // Poise & Stagger System (Issue 11 Fix: Armored Brute cannot be stagger-locked)
+                    if (hitZombie.type === 'brute') {
+                        if (isHeadshot || isCoreHit) {
+                            if (!hitZombie.staggerCooldown || hitZombie.staggerCooldown <= 0) {
+                                hitZombie.staggerTimer = 0.12;
+                                hitZombie.staggerPush = knockPower * 1.5;
+                                hitZombie.staggerCooldown = 1.2;
+                            }
+                        } else {
+                            hitZombie.staggerTimer = 0;
+                            hitZombie.staggerPush = 0;
+                        }
+                    } else {
+                        hitZombie.staggerTimer = isHeadshot ? 0.30 : 0.14;
+                        hitZombie.staggerPush = knockPower * 2.5;
+                    }
+
                     hitZombie.attackWindup = 0;
                     hitZombie.isAttacking = false;
-                    hitZombie.state = 'CHASE'; // Instantly alerted to attacker
+                    hitZombie.state = 'CHASE';
 
-                    // Alert nearby packmates
                     alertZombiesNear(hitZombie.mesh.position, 18);
 
-                    // Flash hitmarker (golden yellow on critical/headshot/core)
+                    // Bug 8 Fix: Set hitmarker.style.color and filter instead of borderColor on SVG
                     hitmarker.style.opacity = '1';
-                    hitmarker.style.borderColor = (isHeadshot || isCoreHit) ? '#ffcc00' : '#ff0033';
+                    const isCrit = (isHeadshot || isCoreHit);
+                    hitmarker.style.color = isCrit ? '#ffcc00' : '#ff0033';
+                    hitmarker.style.filter = isCrit ? 'drop-shadow(0 0 6px #ffcc00)' : 'drop-shadow(0 0 6px #ff0033)';
                     clearTimeout(hitmarker._timer);
                     hitmarker._timer = setTimeout(() => {
                         hitmarker.style.opacity = '0';
                     }, 95);
 
-                    sound.playHit(isHeadshot || isCoreHit);
-                    spawnBloodParticles(hit.point, (isHeadshot || isCoreHit) ? 18 : 9, hitZombie.hp <= 0);
+                    sound.playHit(isCrit);
+                    spawnBloodParticles(hit.point, isCrit ? 18 : 9, hitZombie.hp <= 0);
 
                     if (hitZombie.hp <= 0) {
                         hitZombie.dying = true;
@@ -2657,7 +2914,6 @@
                         updateHUD();
                     }
                 } else {
-                    // Spark particles on pillar/wall impact
                     spawnBloodParticles(hit.point, 5, false);
                 }
             }
@@ -2673,16 +2929,19 @@
         }
 
         /********************************************************************
-         * 8. INPUT LISTENERS (Keyboard, Mouse Look, Shooting, Sprint Options & Touch)
+         * 8. INPUT LISTENERS & TOUCH CONTROLS
          ********************************************************************/
         window.addEventListener('keydown', (e) => {
             if (e.code === 'KeyM') {
                 sound.toggleMute();
-                updateMuteUI();
                 return;
             }
 
             if (e.code === 'Escape') {
+                if (!settingsModal.classList.contains('hidden')) {
+                    settingsModal.classList.add('hidden');
+                    return;
+                }
                 if (state.mode === 'PLAYING') {
                     const now = performance.now();
                     if (state.isPaused) {
@@ -2723,12 +2982,14 @@
         window.addEventListener('mousemove', (e) => {
             if (state.mode !== 'PLAYING' || state.isPaused) return;
 
+            const invertFactor = userSettings.invertY ? -1 : 1;
+            const sensFactor = userSettings.mouseSens;
+
             if (state.pointerLocked) {
-                // Guard against browser pointer-lock warp spikes
                 if (Math.abs(e.movementX) > 300 || Math.abs(e.movementY) > 300) return;
-                const sensitivity = 0.0022;
+                const sensitivity = 0.0022 * sensFactor;
                 camera.rotation.y -= e.movementX * sensitivity;
-                camera.rotation.x -= e.movementY * sensitivity;
+                camera.rotation.x -= e.movementY * sensitivity * invertFactor;
                 camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
                 camera.rotation.z = 0;
             } else if (state.isDraggingLook) {
@@ -2736,9 +2997,9 @@
                 const dy = e.clientY - state.lastMouseY;
                 state.lastMouseX = e.clientX;
                 state.lastMouseY = e.clientY;
-                const sensitivity = 0.0035;
+                const sensitivity = 0.0035 * sensFactor;
                 camera.rotation.y -= dx * sensitivity;
-                camera.rotation.x -= dy * sensitivity;
+                camera.rotation.x -= dy * sensitivity * invertFactor;
                 camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
                 camera.rotation.z = 0;
             }
@@ -2753,19 +3014,28 @@
                 return;
             }
 
+            let justLocked = false;
+            // Bug 7 Fix: If resuming without pointer lock, first click re-locks aim without firing accidental shot
             if (!state.pointerLocked && !state.isTouchMode) {
                 requestGamePointerLock();
                 state.isDraggingLook = true;
                 state.lastMouseX = e.clientX;
                 state.lastMouseY = e.clientY;
+                justLocked = true;
             }
 
             if (e.button === 0) {
-                shootWeapon();
+                state.isLeftMouseDown = true;
+                if (!justLocked) {
+                    shootWeapon();
+                }
             }
         });
 
         window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                state.isLeftMouseDown = false;
+            }
             if (e.button === 2 || (e.buttons !== undefined && !(e.buttons & 2))) {
                 state.isRightMouseDown = false;
             }
@@ -2782,11 +3052,9 @@
         function updateMuteUI() {
             const isMuted = sound.muted;
             if (hudMuteHint) {
-                if (isMuted) {
-                    hudMuteHint.innerHTML = '<span class="text-red-500 font-bold">[M] Audio: MUTED</span> | [ESC] Pause';
-                } else {
-                    hudMuteHint.innerHTML = '[M] Mute Audio | [ESC] Pause';
-                }
+                hudMuteHint.innerHTML = isMuted
+                    ? '<span class="text-red-500 font-bold">[M] Audio: MUTED</span> | [ESC] Pause'
+                    : '[M] Mute Audio | [ESC] Pause';
             }
             if (touchMuteIcon) {
                 touchMuteIcon.textContent = isMuted ? '🔇' : '🔊';
@@ -2795,7 +3063,7 @@
 
         function setSprintBinding(binding) {
             state.sprintBinding = binding;
-            localStorage.setItem('mr_sprint_binding', binding);
+            safeStorage.setItem('mr_sprint_binding', binding);
             updateSprintOptionUI();
         }
 
@@ -2843,10 +3111,8 @@
         function isMobileDevice() {
             const ua = navigator.userAgent || navigator.vendor || window.opera || '';
             const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-            // Detect iPadOS Safari desktop spoofing: platform 'MacIntel' with maxTouchPoints > 1
             const isIPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || /iPad/i.test(ua);
             const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
-            // Only match when the primary pointer is coarse so touchscreen Windows laptops with a mouse stay in desktop mode
             const hasPrimaryCoarse = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             return isMobileUA || isIPad || (hasTouchPoints && hasPrimaryCoarse) || ('ontouchstart' in window && hasPrimaryCoarse);
         }
@@ -2882,7 +3148,7 @@
                 }
             }, { passive: true });
 
-            // 1. Virtual Analog Joystick
+            // Virtual Analog Joystick (Bug 3 Fix: Centering math preserved via calc)
             if (joystickZone && joystickBase && joystickKnob) {
                 joystickZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
@@ -2919,7 +3185,7 @@
                             state.joystickX = 0;
                             state.joystickY = 0;
                             state.joystickSprint = false;
-                            joystickKnob.style.transform = 'translate(0px, 0px)';
+                            joystickKnob.style.transform = 'translate(-50%, -50%)';
                             break;
                         }
                     }
@@ -2939,7 +3205,8 @@
                 const kx = Math.cos(angle) * clampedDist;
                 const ky = Math.sin(angle) * clampedDist;
 
-                joystickKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+                // Center-relative transform ensures knob never jumps offset
+                joystickKnob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
 
                 const rawX = kx / maxRadius;
                 const rawY = ky / maxRadius;
@@ -2955,7 +3222,7 @@
                 state.joystickSprint = (rawY < -0.55 && (clampedDist / maxRadius) > 0.85);
             }
 
-            // 2. Touch Screen Outside Joystick: Strafe Left/Right & Look Pitch
+            // Touch Screen Strafe Left/Right & Look Pitch
             let strafeTouchAnchorX = 0;
             if (touchLookZone) {
                 touchLookZone.addEventListener('touchstart', (e) => {
@@ -2979,16 +3246,15 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
                         if (t.identifier === aimTouchId) {
-                            // Vertical movement: Look up / down (pitch)
                             const dy = t.clientY - lastAimY;
                             lastAimY = t.clientY;
-                            const pitchSensitivity = 0.0042;
-                            camera.rotation.x -= dy * pitchSensitivity;
+                            const pitchSensitivity = 0.0042 * userSettings.touchSens;
+                            const invertFactor = userSettings.invertY ? -1 : 1;
+                            camera.rotation.x -= dy * pitchSensitivity * invertFactor;
                             camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
 
-                            // Horizontal slide: Strafe Left / Right
-                            const maxDist = 48; // pixels for 100% strafe deflection
-                            const deadzone = 6;  // small deadzone for stability
+                            const maxDist = 48;
+                            const deadzone = 6;
                             const rawDist = t.clientX - strafeTouchAnchorX;
                             if (Math.abs(rawDist) > maxDist) {
                                 strafeTouchAnchorX = t.clientX - Math.sign(rawDist) * maxDist;
@@ -3022,7 +3288,7 @@
                 window.addEventListener('touchcancel', endAim, { passive: false });
             }
 
-            // 3. Touch Fire Button (Single tap or continuous auto-fire while held)
+            // Touch Fire Button (Hold for automatic fire)
             if (touchBtnFire) {
                 touchBtnFire.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -3050,7 +3316,7 @@
                 touchBtnFire.addEventListener('touchcancel', stopFire, { passive: false });
             }
 
-            // 4. Touch Tactical Sprint Button (Toggle on tap)
+            // Touch Sprint Button
             if (touchBtnSprint) {
                 touchBtnSprint.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -3068,7 +3334,7 @@
                 }, { passive: false });
             }
 
-            // 5. Touch Reload Button
+            // Touch Reload Button
             if (touchBtnReload) {
                 touchBtnReload.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -3078,7 +3344,7 @@
                 }, { passive: false });
             }
 
-            // 6. Touch Pause Button
+            // Touch Pause Button
             if (touchBtnPause) {
                 const handlePause = (e) => {
                     e.preventDefault();
@@ -3089,13 +3355,12 @@
                 touchBtnPause.addEventListener('touchstart', handlePause, { passive: false });
             }
 
-            // 7. Touch Mute Button
+            // Touch Mute Button
             if (touchBtnMute) {
                 const handleMute = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     sound.toggleMute();
-                    updateMuteUI();
                 };
                 touchBtnMute.addEventListener('click', handleMute);
                 touchBtnMute.addEventListener('touchstart', handleMute, { passive: false });
@@ -3103,6 +3368,52 @@
         }
 
         setupTouchControls();
+
+        // Settings Modal Handlers (Improvement 4)
+        function openSettingsModal() {
+            settingMouseSens.value = userSettings.mouseSens;
+            valMouseSens.textContent = `${userSettings.mouseSens.toFixed(1)}x`;
+            settingInvertY.checked = userSettings.invertY;
+            settingTouchSens.value = userSettings.touchSens;
+            valTouchSens.textContent = `${userSettings.touchSens.toFixed(1)}x`;
+            settingMasterVol.value = userSettings.masterVol;
+            valMasterVol.textContent = `${Math.round(userSettings.masterVol * 100)}%`;
+            settingsModal.classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            settingsModal.classList.add('hidden');
+        }
+
+        function saveSettings() {
+            userSettings.mouseSens = parseFloat(settingMouseSens.value);
+            userSettings.invertY = settingInvertY.checked;
+            userSettings.touchSens = parseFloat(settingTouchSens.value);
+            userSettings.masterVol = parseFloat(settingMasterVol.value);
+
+            safeStorage.setItem('mr_mouse_sens', userSettings.mouseSens);
+            safeStorage.setItem('mr_invert_y', userSettings.invertY);
+            safeStorage.setItem('mr_touch_sens', userSettings.touchSens);
+            safeStorage.setItem('mr_master_vol', userSettings.masterVol);
+
+            sound.setMasterVolume(userSettings.masterVol);
+            closeSettingsModal();
+        }
+
+        settingMouseSens?.addEventListener('input', () => {
+            valMouseSens.textContent = `${parseFloat(settingMouseSens.value).toFixed(1)}x`;
+        });
+        settingTouchSens?.addEventListener('input', () => {
+            valTouchSens.textContent = `${parseFloat(settingTouchSens.value).toFixed(1)}x`;
+        });
+        settingMasterVol?.addEventListener('input', () => {
+            valMasterVol.textContent = `${Math.round(parseFloat(settingMasterVol.value) * 100)}%`;
+        });
+
+        settingsBtnTitle?.addEventListener('click', (e) => { e.stopPropagation(); openSettingsModal(); });
+        settingsBtnPause?.addEventListener('click', (e) => { e.stopPropagation(); openSettingsModal(); });
+        settingsCloseBtn?.addEventListener('click', (e) => { e.stopPropagation(); closeSettingsModal(); });
+        settingsApplyBtn?.addEventListener('click', (e) => { e.stopPropagation(); saveSettings(); });
 
         startBtn.addEventListener('click', startGame);
         restartBtn.addEventListener('click', startGame);
@@ -3143,18 +3454,17 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            const isMobile = isMobileDevice() || state.touchInteracted;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2.0));
         });
 
         /********************************************************************
-         * 9. COLLISION HELPER & MAIN GAME LOOP
+         * 9. COLLISION HELPER & MAIN SIMULATION LOOP
          ********************************************************************/
         function resolveArenaCollisions(pos, entityRadius) {
-            // Clamp within outer walls
             pos.x = THREE.MathUtils.clamp(pos.x, -ARENA_LIMIT, ARENA_LIMIT);
             pos.z = THREE.MathUtils.clamp(pos.z, -ARENA_LIMIT, ARENA_LIMIT);
 
-            // Push out of cylindrical pillars
             for (let i = 0; i < obstacles.length; i++) {
                 const obs = obstacles[i];
                 const dx = pos.x - obs.x;
@@ -3174,7 +3484,6 @@
         function animate(now) {
             requestAnimationFrame(animate);
 
-            // Idle rotating camera on Title / Game Over screen
             if (state.mode !== 'PLAYING') {
                 const t = now * 0.00025;
                 camera.position.set(Math.cos(t) * 18, 3.5, Math.sin(t) * 18);
@@ -3183,7 +3492,6 @@
                 return;
             }
 
-            // Paused: Keep frame time synchronized, render current scene, do not advance simulation
             if (state.isPaused) {
                 lastTime = now;
                 renderer.render(scene, camera);
@@ -3193,10 +3501,14 @@
             const dt = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
 
+            // Desktop Automatic Hold-to-Fire (Improvement 1)
+            if (state.isLeftMouseDown && !state.isTouchMode && !state.isReloading && state.ammo > 0) {
+                shootWeapon();
+            }
+
             // 1. Player Movement & Virtual Joystick Turning
-            // Virtual Joystick Yaw Turning (Left / Right)
             if (state.joystickX !== 0) {
-                const joystickTurnSpeed = 2.4; // smooth yaw rotation speed (radians/sec)
+                const joystickTurnSpeed = 2.4 * userSettings.touchSens;
                 camera.rotation.y -= state.joystickX * joystickTurnSpeed * dt;
             }
 
@@ -3210,12 +3522,10 @@
             if (keys.KeyD || keys.ArrowRight) _moveDir.add(_right);
             if (keys.KeyA || keys.ArrowLeft) _moveDir.sub(_right);
 
-            // Virtual Joystick Input: Forward & Backward movement ONLY (-Y is forward, +Y is backward)
             if (state.joystickY !== 0) {
                 _moveDir.addScaledVector(_forward, -state.joystickY);
             }
 
-            // Screen Touch Outside Joystick: Strafe Left / Right
             if (state.touchStrafeX !== 0) {
                 _moveDir.addScaledVector(_right, state.touchStrafeX);
             }
@@ -3223,7 +3533,6 @@
             const moveLenSq = _moveDir.lengthSq();
             const isMoving = moveLenSq > 0.001;
 
-            // Tactical Sprint Input Evaluation based on active option
             let sprintInput = false;
             const binding = state.sprintBinding || 'all';
             const shiftActive = keys.ShiftLeft || keys.ShiftRight;
@@ -3236,7 +3545,7 @@
                 sprintInput = spaceActive;
             } else if (binding === 'rmb') {
                 sprintInput = rmbActive;
-            } else { // 'all' or default
+            } else {
                 sprintInput = shiftActive || spaceActive || rmbActive;
             }
 
@@ -3260,11 +3569,19 @@
                 state.stamina = Math.min(100, state.stamina + 20 * dt);
             }
 
-            hudStaminaBar.style.width = `${state.stamina}%`;
-            hudStaminaText.textContent = state.stamina < 15 ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
+            // Performance: Only update DOM when stamina value changes
+            const roundedStamina = Math.round(state.stamina);
+            if (roundedStamina !== _lastStaminaRounded) {
+                _lastStaminaRounded = roundedStamina;
+                hudStaminaBar.style.width = `${roundedStamina}%`;
+            }
+            const stText = state.stamina < 15 ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
+            if (stText !== _lastStaminaTextVal) {
+                _lastStaminaTextVal = stText;
+                hudStaminaText.textContent = stText;
+            }
 
             if (isMoving) {
-                // Clamp diagonal magnitude to 1 while preserving proportional analog stick / touch-strafe speed
                 if (moveLenSq > 1.0) {
                     _moveDir.divideScalar(Math.sqrt(moveLenSq));
                 }
@@ -3276,7 +3593,6 @@
                 state.bobTimer += dt * 2;
             }
 
-            // Headbob on camera Y
             camera.position.y = 1.75 + Math.sin(state.bobTimer) * (isMoving ? 0.055 : 0.012);
 
             // 2. Reload Timer & Weapon Viewmodel Animation
@@ -3288,9 +3604,16 @@
                     reloadPrompt.classList.add('hidden');
                     updateHUD();
                 }
+            } else if (state.autoReloadTimer > 0) {
+                // Issue 16 Fix: Pausable auto reload
+                state.autoReloadTimer -= dt;
+                if (state.autoReloadTimer <= 0) {
+                    if (state.ammo <= 0 && !state.isReloading && state.mode === 'PLAYING') {
+                        startReload();
+                    }
+                }
             }
 
-            // Recover recoil smoothly
             state.recoilOffset = THREE.MathUtils.lerp(state.recoilOffset, 0, dt * 16);
             state.recoilPitch = THREE.MathUtils.lerp(state.recoilPitch, 0, dt * 14);
 
@@ -3301,7 +3624,6 @@
             weaponGroup.rotation.x = state.recoilPitch - (state.isReloading ? 0.45 : 0);
             weaponGroup.rotation.z = wantsSprint ? 0.16 : 0;
 
-            // Muzzle flash decay
             if (state.muzzleTimer > 0) {
                 state.muzzleTimer -= dt;
                 if (state.muzzleTimer <= 0) {
@@ -3320,8 +3642,22 @@
                 }
             }
 
-            // 3. Wave & Zombie Spawning Logic
-            if (state.waveZombiesRemainingToSpawn > 0) {
+            // 3. Wave, Spawning & Tactical Intermission Breather (Improvement 6)
+            if (state.isIntermission) {
+                state.intermissionTimer -= dt;
+                const secLeft = Math.max(1, Math.ceil(state.intermissionTimer));
+                waveBannerContainer.innerHTML = `
+                    <div class="wave-announce">
+                        <div class="font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold">SECTOR PURGED // TACTICAL RESUPPLY</div>
+                        <div class="font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase">NEXT IN ${secLeft}S</div>
+                    </div>
+                `;
+                if (state.intermissionTimer <= 0) {
+                    state.isIntermission = false;
+                    sound.duckAmbient(false);
+                    startWave(state.wave + 1);
+                }
+            } else if (state.waveZombiesRemainingToSpawn > 0) {
                 state.spawnTimer -= dt;
                 if (state.spawnTimer <= 0) {
                     spawnZombie(state.wave);
@@ -3329,16 +3665,17 @@
                     state.spawnTimer = Math.max(0.55, 1.8 - state.wave * 0.14);
                     updateHUD();
                 }
-            } else if (zombies.filter(z => !z.dying).length === 0) {
-                // Next wave!
-                startWave(state.wave + 1);
+            } else if (getActiveZombieCount() === 0) {
+                // Trigger 3.5s Breather Intermission before next wave
+                state.isIntermission = true;
+                state.intermissionTimer = 3.5;
+                sound.duckAmbient(true);
             }
 
-            // 4. Update Zombies AI, Animation & Player Damage
+            // 4. Update Zombies AI, Animation, Collision & Damage
             for (let i = zombies.length - 1; i >= 0; i--) {
                 const z = zombies[i];
 
-                // Hit flash reset
                 if (z.hitFlashTimer > 0) {
                     z.hitFlashTimer -= dt;
                     if (z.hitFlashTimer <= 0) {
@@ -3348,7 +3685,6 @@
                     }
                 }
 
-                // Death collapse animation
                 if (z.dying) {
                     z.deathProgress += dt * 3.2;
                     z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
@@ -3362,7 +3698,6 @@
                     continue;
                 }
 
-                // Distance & Vector to player (Zero Allocation)
                 _toPlayer.set(
                     camera.position.x - z.mesh.position.x,
                     0,
@@ -3371,6 +3706,8 @@
                 const dist = _toPlayer.length();
                 _toPlayerDir.copy(_toPlayer);
                 if (dist > 0.001) _toPlayerDir.divideScalar(dist);
+
+                if (z.staggerCooldown > 0) z.staggerCooldown -= dt;
 
                 // Bullet Stagger & Flinch recoil
                 if (z.staggerTimer > 0) {
@@ -3383,20 +3720,19 @@
                     z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, -0.4, dt * 10);
                     z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, -0.5, dt * 8);
                     z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, -0.5, dt * 8);
-                    continue; // Skip movement/attack while recovering from bullet impact
+                    continue;
                 } else {
                     z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, 0, dt * 6);
                 }
 
-                // Awareness: Check if wandering zombie spots or senses player
+                // Awareness: Spot or Smell player
                 if (z.state === 'WANDER') {
-                    // Zombie meshes are modeled facing +Z (which lookAt aligns with target)
                     const forwardX = Math.sin(z.mesh.rotation.y);
                     const forwardZ = Math.cos(z.mesh.rotation.y);
                     const dot = forwardX * _toPlayerDir.x + forwardZ * _toPlayerDir.z;
 
-                    const canSee = (dist < 34 && dot > 0.15); // 150-degree vision cone
-                    const canSmell = (dist < 7.5);            // Proximity sense
+                    const canSee = (dist < 34 && dot > 0.15);
+                    const canSmell = (dist < 7.5);
 
                     if (canSee || canSmell) {
                         z.state = 'ALERT';
@@ -3405,7 +3741,6 @@
                     }
                 }
 
-                // Alert state: Threat display / howl before charging
                 if (z.state === 'ALERT') {
                     z.alertTimer -= dt;
                     z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
@@ -3418,19 +3753,22 @@
                     continue;
                 }
 
-                // Brute Berserk Enrage (< 50% HP)
+                // Brute Berserk Enrage (Issue 19 Fix: Proportional surge speed)
                 if (z.type === 'brute' && !z.isEnraged && z.hp < z.maxHp * 0.5) {
                     z.isEnraged = true;
-                    z.speed = 6.2; // Massive speed surge!
+                    z.speed = Math.max(6.2, z.baseSpeed * 1.45);
                     z.parts.eyeMat.color.setHex(0xff0000);
                     z.parts.coreMat.color.setHex(0xff2200);
                     showKillFeed('WARNING: BRUTE BERSERK RAGE!');
                     sound.playZombieGroan(0.5);
                 }
 
-                // Calculate move direction & speed based on AI state
+                // Movement AI
                 _moveDir.set(0, 0, 0);
                 let curSpeed = z.speed;
+                const attackReach = z.type === 'brute' ? 2.5 : 1.95;
+                // Stopping distance to prevent walking through the camera (Bug 6 Fix)
+                const stopDist = attackReach * 0.75;
 
                 if (z.state === 'WANDER') {
                     z.wanderTimer -= dt;
@@ -3446,7 +3784,6 @@
                             );
                             z.wanderTimer = 3 + Math.random() * 4;
                         } else {
-                            // Idle sniffing / head turn
                             z.parts.head.rotation.y = Math.sin(now * 0.003 + z.walkCycle) * 0.45;
                         }
                     } else {
@@ -3459,43 +3796,45 @@
                             z.idlePauseTimer = 1.2 + Math.random() * 1.2;
                         } else {
                             _moveDir.set(dx / wDist, 0, dz / wDist);
-                            curSpeed = z.speed * 0.38; // Leisurely roam pace
+                            curSpeed = z.speed * 0.38;
                             z.mesh.lookAt(z.wanderTarget.x, z.mesh.position.y, z.wanderTarget.z);
                         }
                     }
                 } else if (z.state === 'CHASE') {
                     z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
-                    if (z.type === 'runner') {
-                        // Runner: predatory zig-zag weave & sprint-lunge
-                        _moveDir.copy(_toPlayerDir);
-                        _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
-                        const weave = Math.sin(now * 0.006 + z.weaveOffset) * 0.45;
-                        _moveDir.addScaledVector(_sideDir, weave);
-                        _moveDir.normalize();
 
-                        if (z.lungeCooldown > 0) z.lungeCooldown -= dt;
-                        if (z.lungeTimer > 0) {
-                            z.lungeTimer -= dt;
-                            curSpeed = z.speed * 1.45; // Burst speed
-                        } else if (dist > 3.2 && dist < 8.0 && z.lungeCooldown <= 0) {
-                            z.lungeTimer = 0.75;
-                            z.lungeCooldown = 4.0;
-                            sound.playZombieGroan(1.4);
+                    if (dist > stopDist) {
+                        if (z.type === 'runner') {
+                            _moveDir.copy(_toPlayerDir);
+                            _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
+                            const weave = Math.sin(now * 0.006 + z.weaveOffset) * 0.45;
+                            _moveDir.addScaledVector(_sideDir, weave);
+                            _moveDir.normalize();
+
+                            if (z.lungeCooldown > 0) z.lungeCooldown -= dt;
+                            if (z.lungeTimer > 0) {
+                                z.lungeTimer -= dt;
+                                curSpeed = z.speed * 1.45;
+                            } else if (dist > 3.2 && dist < 8.0 && z.lungeCooldown <= 0) {
+                                z.lungeTimer = 0.75;
+                                z.lungeCooldown = 4.0;
+                                sound.playZombieGroan(1.4);
+                            }
+                        } else if (z.type === 'brute') {
+                            _moveDir.copy(_toPlayerDir);
+                            curSpeed = z.speed;
+                        } else {
+                            _moveDir.copy(_toPlayerDir);
+                            curSpeed = dist < 8.5 ? z.speed * 1.15 : z.speed;
                         }
-                    } else if (z.type === 'brute') {
-                        // Brute: unstoppable charge
-                        _moveDir.copy(_toPlayerDir);
-                        curSpeed = z.speed;
                     } else {
-                        // Shambler: direct swarm + close frenzy
-                        _moveDir.copy(_toPlayerDir);
-                        curSpeed = dist < 8.5 ? z.speed * 1.15 : z.speed;
+                        curSpeed = 0; // Maintain distance when in attack range (Bug 6 Fix)
                     }
 
                     z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
                 }
 
-                // Obstacle Avoidance: Steer around arena pillars
+                // Obstacle Avoidance around Pillars
                 if (_moveDir.lengthSq() > 0.01) {
                     for (let j = 0; j < obstacles.length; j++) {
                         const obs = obstacles[j];
@@ -3515,7 +3854,19 @@
                     resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
                 }
 
-                // Semicircle Horde Flocking Separation
+                // Player-vs-Zombie Physical Body Collision (Improvement 7 Fix)
+                const zombieRadius = 0.55 * z.parts.scale;
+                const playerRadius = 0.55;
+                const combinedRadius = playerRadius + zombieRadius;
+                if (dist < combinedRadius && dist > 0.001) {
+                    const overlap = combinedRadius - dist;
+                    camera.position.addScaledVector(_toPlayerDir, overlap * 0.65);
+                    z.mesh.position.addScaledVector(_toPlayerDir, -overlap * 0.35);
+                    resolveArenaCollisions(camera.position, playerRadius);
+                    resolveArenaCollisions(z.mesh.position, zombieRadius);
+                }
+
+                // Flocking Separation (Issue 12 Fix: Clamp 'other' zombie within arena collisions)
                 for (let j = i - 1; j >= 0; j--) {
                     const other = zombies[j];
                     if (other.dying) continue;
@@ -3529,10 +3880,11 @@
                         z.mesh.position.z += (dz / d) * push;
                         other.mesh.position.x -= (dx / d) * push;
                         other.mesh.position.z -= (dz / d) * push;
+                        resolveArenaCollisions(other.mesh.position, 0.75 * other.parts.scale);
                     }
                 }
 
-                // Class-specific Limb Animations
+                // Limb Animation
                 const animPace = z.state === 'WANDER' ? 1.4 : (z.type === 'runner' ? 3.8 : (z.type === 'brute' ? 1.8 : 2.4));
                 z.walkCycle += dt * curSpeed * animPace;
 
@@ -3541,7 +3893,6 @@
                     z.parts.rightArm.rotation.x = -1.15;
                     z.mesh.rotation.z = 0;
                 } else if (z.attackWindup > 0) {
-                    // Attack windup telegraph
                     z.parts.leftArm.rotation.x = -1.35;
                     z.parts.rightArm.rotation.x = -1.35;
                     z.mesh.rotation.z = 0;
@@ -3570,7 +3921,7 @@
                     }
                 }
 
-                // Occasional Eerie Groan
+                // Groan Audio
                 z.groanTimer -= dt;
                 if (z.groanTimer <= 0) {
                     if (dist < 32 && Math.random() < 0.45) {
@@ -3579,9 +3930,15 @@
                     z.groanTimer = 3.5 + Math.random() * 5.5;
                 }
 
-                // Telegraphed Attack Logic
+                // Attack Duration Timer (Issue 16 Fix: No setTimeout during pause)
+                if (z.isAttackingTimer > 0) {
+                    z.isAttackingTimer -= dt;
+                    if (z.isAttackingTimer <= 0) {
+                        z.isAttacking = false;
+                    }
+                }
+
                 if (z.attackCooldown > 0) z.attackCooldown -= dt;
-                const attackReach = z.type === 'brute' ? 2.5 : 1.95;
 
                 if (dist < attackReach && z.attackCooldown <= 0) {
                     if (z.attackWindup <= 0 && !z.isAttacking) {
@@ -3594,11 +3951,13 @@
                     if (z.attackWindup <= 0) {
                         if (dist < attackReach + 0.35) {
                             z.isAttacking = true;
-                            setTimeout(() => { z.isAttacking = false; }, 180);
+                            z.isAttackingTimer = 0.18;
                             z.attackCooldown = z.type === 'runner' ? 0.75 : (z.type === 'brute' ? 1.3 : 1.05);
 
                             state.health -= z.damage;
                             sound.playPlayerDamage();
+                            // Directional Threat Arc Indicator (Improvement 3)
+                            showDamageDirection(z.mesh.position);
                             updateHUD();
 
                             damageOverlay.style.opacity = z.type === 'brute' ? '1.0' : '0.85';
@@ -3612,23 +3971,23 @@
                                 return;
                             }
                         } else {
-                            z.attackCooldown = 0.4; // Player successfully backpedaled out of reach
+                            z.attackCooldown = 0.4;
                         }
                     }
                 }
             }
 
-            // 5. Update Blood & Spark Particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
+            // 5. Update Pooled Blood & Sparkle Particles (Zero Allocation)
+            for (let i = 0; i < BLOOD_POOL_SIZE; i++) {
+                const p = bloodPool[i];
+                if (!p.active) continue;
                 p.life -= dt;
                 if (p.life <= 0) {
-                    scene.remove(p.mesh);
-                    p.mesh.material.dispose();
-                    particles.splice(i, 1);
+                    p.active = false;
+                    p.mesh.visible = false;
                     continue;
                 }
-                p.velocity.y -= 14 * dt; // Gravity
+                p.velocity.y -= 14 * dt;
                 p.mesh.position.addScaledVector(p.velocity, dt);
                 if (p.mesh.position.y < 0.05) {
                     p.mesh.position.y = 0.05;
@@ -3638,15 +3997,28 @@
                 p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
             }
 
-            // 6. Update Bullet Tracers
-            for (let i = bulletTracers.length - 1; i >= 0; i--) {
-                const t = bulletTracers[i];
+            for (let i = 0; i < SPARKLE_POOL_SIZE; i++) {
+                const p = sparklePool[i];
+                if (!p.active) continue;
+                p.life -= dt;
+                if (p.life <= 0) {
+                    p.active = false;
+                    p.mesh.visible = false;
+                    continue;
+                }
+                p.velocity.y -= 10 * dt;
+                p.mesh.position.addScaledVector(p.velocity, dt);
+                p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+            }
+
+            // 6. Update Pooled Bullet Tracers (Zero Allocation)
+            for (let i = 0; i < TRACER_POOL_SIZE; i++) {
+                const t = tracerPool[i];
+                if (!t.active) continue;
                 t.life -= dt;
                 if (t.life <= 0) {
-                    scene.remove(t.line);
-                    t.line.geometry.dispose();
-                    t.line.material.dispose();
-                    bulletTracers.splice(i, 1);
+                    t.active = false;
+                    t.line.visible = false;
                 } else {
                     t.line.material.opacity = t.life / 0.07;
                 }
