@@ -2434,6 +2434,7 @@
             ring2.rotation.x = -Math.PI / 3;
             group.add(ring2);
 
+            // 5. Floor Beacon Halo
             const floorRingGeo = new THREE.RingGeometry(0.4, 0.95, 28);
             const floorRingMat = new THREE.MeshBasicMaterial({
                 color: 0x00ffcc,
@@ -2445,6 +2446,35 @@
             floorRing.rotation.x = -Math.PI / 2;
             floorRing.position.y = -1.35;
             group.add(floorRing);
+
+            // 6. Ethereal Cyan Vertical Beacon (Pierces fog across arena to match README spec)
+            const beaconCoreGeo = new THREE.CylinderGeometry(0.18, 0.18, 56, 16, 1, true);
+            const beaconCoreMat = new THREE.MeshBasicMaterial({
+                color: 0xaaffff,
+                transparent: true,
+                opacity: 0.65,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                fog: false
+            });
+            const beaconCore = new THREE.Mesh(beaconCoreGeo, beaconCoreMat);
+            beaconCore.position.y = 26;
+            group.add(beaconCore);
+
+            const beaconOuterGeo = new THREE.CylinderGeometry(0.85, 0.6, 56, 24, 1, true);
+            const beaconOuterMat = new THREE.MeshBasicMaterial({
+                color: 0x00ffcc,
+                transparent: true,
+                opacity: 0.24,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                fog: false
+            });
+            const beaconOuter = new THREE.Mesh(beaconOuterGeo, beaconOuterMat);
+            beaconOuter.position.y = 26;
+            group.add(beaconOuter);
 
             scene.add(group);
 
@@ -2460,6 +2490,10 @@
                 ring1,
                 ring2,
                 floorRing,
+                beaconCore,
+                beaconOuter,
+                beaconCoreMat,
+                beaconOuterMat,
                 jewelMat,
                 baseY: 1.4,
                 position: new THREE.Vector3(pos.x, 1.4, pos.z),
@@ -2474,6 +2508,12 @@
                     ring1.rotation.y += dt * 0.8;
                     ring2.rotation.z -= dt * 1.7;
                     ring2.rotation.x += dt * 1.1;
+
+                    beaconCore.rotation.y += dt * 0.4;
+                    beaconOuter.rotation.y -= dt * 0.25;
+                    const beaconPulse = Math.sin(t * 3.2);
+                    beaconOuterMat.opacity = 0.22 + beaconPulse * 0.07;
+                    beaconCoreMat.opacity = 0.60 + beaconPulse * 0.15;
 
                     floorRing.scale.setScalar(1.0 + Math.sin(t * 3.5) * 0.18);
                     floorRing.material.opacity = 0.45 + Math.sin(t * 3.5) * 0.25;
