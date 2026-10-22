@@ -3,6 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+    <meta name="referrer" content="no-referrer">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description"
@@ -11,14 +14,16 @@
     <!-- Favicon: Inline Data SVG -->
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js r128 CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tailwind CSS CDN (Pinned Version) -->
+    <script src="https://cdn.tailwindcss.com/3.4.17" referrerpolicy="no-referrer"></script>
+    <!-- Three.js r128 CDN with Subresource Integrity (SRI) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- Google Fonts for Horror/Neon & HUD Typography -->
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap"
-        rel="stylesheet">
+        rel="stylesheet" referrerpolicy="no-referrer">
     <style>
         :root {
             --neon-red: #ff0033;
@@ -946,12 +951,14 @@
         <div class="neon-box max-w-md w-full p-6 text-center rounded-xl">
             <div class="text-red-500 font-neon text-2xl font-bold mb-2">CRITICAL SUBSYSTEM FAILURE</div>
             <p class="text-neutral-300 text-sm mb-4">Three.js WebGL library failed to load from CDN. Please check your internet connection or content blocker.</p>
-            <button onclick="location.reload()" class="neon-button font-neon px-6 py-2 rounded">RETRY INITIALIZATION</button>
+            <button id="cdn-retry-btn" type="button" class="neon-button font-neon px-6 py-2 rounded">RETRY INITIALIZATION</button>
         </div>
     </div>
 
     <!-- ================= MAIN GAME SCRIPT ================= -->
     <script>
+        document.getElementById('cdn-retry-btn')?.addEventListener('click', () => location.reload());
+
         // Check for WebGL library availability
         if (typeof THREE === 'undefined') {
             document.getElementById('cdn-error-modal').classList.remove('hidden');
@@ -960,6 +967,7 @@
         /********************************************************************
          * 0. SAFE STORAGE HELPER (Bug 10 Fix: Never crash in sandboxed iframes)
          ********************************************************************/
+        const VALID_SPRINT_BINDINGS = ['all', 'shift', 'space', 'rmb'];
         const safeStorage = {
             getItem(key, defaultVal = null) {
                 try {
@@ -973,6 +981,20 @@
                 try {
                     localStorage.setItem(key, String(val));
                 } catch (e) { }
+            },
+            getFloat(key, defaultVal, min, max) {
+                const raw = parseFloat(this.getItem(key, String(defaultVal)));
+                if (!Number.isFinite(raw)) return defaultVal;
+                return Math.min(max, Math.max(min, raw));
+            },
+            getInt(key, defaultVal, min = 0, max = 999999999) {
+                const raw = parseInt(this.getItem(key, String(defaultVal)), 10);
+                if (!Number.isFinite(raw)) return defaultVal;
+                return Math.min(max, Math.max(min, raw));
+            },
+            getEnum(key, allowedValues, defaultVal) {
+                const raw = this.getItem(key, defaultVal);
+                return allowedValues.includes(raw) ? raw : defaultVal;
             }
         };
 
@@ -983,7 +1005,7 @@
             constructor() {
                 this.ctx = null;
                 this.muted = false;
-                this.masterVolume = parseFloat(safeStorage.getItem('mr_master_vol', '1.0'));
+                this.masterVolume = safeStorage.getFloat('mr_master_vol', 1.0, 0, 1);
                 this.masterGain = null;
                 this.sfxGain = null;
                 this.ambientGain = null;
@@ -1066,7 +1088,8 @@
             }
 
             setMasterVolume(val) {
-                this.masterVolume = THREE.MathUtils.clamp(val, 0, 1);
+                const numericVal = Number.isFinite(Number(val)) ? Number(val) : 1.0;
+                this.masterVolume = THREE.MathUtils.clamp(numericVal, 0, 1);
                 safeStorage.setItem('mr_master_vol', this.masterVolume);
                 if (this.masterGain && this.ctx) {
                     const target = this.muted ? 0 : this.masterVolume;
@@ -2071,10 +2094,10 @@
 
         // Tactical Settings (Improvement 4)
         const userSettings = {
-            mouseSens: parseFloat(safeStorage.getItem('mr_mouse_sens', '1.0')),
+            mouseSens: safeStorage.getFloat('mr_mouse_sens', 1.0, 0.4, 2.6),
             invertY: safeStorage.getItem('mr_invert_y', 'false') === 'true',
-            touchSens: parseFloat(safeStorage.getItem('mr_touch_sens', '1.0')),
-            masterVol: parseFloat(safeStorage.getItem('mr_master_vol', '1.0'))
+            touchSens: safeStorage.getFloat('mr_touch_sens', 1.0, 0.5, 2.5),
+            masterVol: safeStorage.getFloat('mr_master_vol', 1.0, 0, 1)
         };
 
         const state = {
@@ -2108,7 +2131,7 @@
             isDraggingLook: false,
             lastMouseX: 0,
             lastMouseY: 0,
-            sprintBinding: safeStorage.getItem('mr_sprint_binding', 'all'),
+            sprintBinding: safeStorage.getEnum('mr_sprint_binding', VALID_SPRINT_BINDINGS, 'all'),
             isRightMouseDown: false,
             isLeftMouseDown: false, // Improvement 1: Desktop hold-to-fire
             isTouchMode: false,
@@ -2325,11 +2348,11 @@
         }
 
         function refreshHighScoresUI() {
-            const bestScore = safeStorage.getItem('mr_high_score', '0');
-            const bestWave = safeStorage.getItem('mr_best_wave', '1');
+            const bestScore = safeStorage.getInt('mr_high_score', 0, 0, 999999999);
+            const bestWave = safeStorage.getInt('mr_best_wave', 1, 1, 99999);
             const titleHighScore = document.getElementById('title-high-score');
             const titleBestWave = document.getElementById('title-best-wave');
-            if (titleHighScore) titleHighScore.textContent = parseInt(bestScore, 10).toLocaleString();
+            if (titleHighScore) titleHighScore.textContent = bestScore.toLocaleString();
             if (titleBestWave) titleBestWave.textContent = `WAVE ${String(bestWave).padStart(2, '0')}`;
         }
 
@@ -2577,6 +2600,20 @@
             }
         }
 
+        function renderWaveBanner(subClass, subText, titleClass, titleText) {
+            if (!waveBannerContainer) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'wave-announce';
+            const subEl = document.createElement('div');
+            subEl.className = subClass;
+            subEl.textContent = subText;
+            const titleEl = document.createElement('div');
+            titleEl.className = titleClass;
+            titleEl.textContent = titleText;
+            wrapper.append(subEl, titleEl);
+            waveBannerContainer.replaceChildren(wrapper);
+        }
+
         function announceWave(waveNumber) {
             let subTitle = 'PRIMARY THREAT: SHAMBLERS DETECTED';
             let bannerColor = 'text-red-400';
@@ -2591,12 +2628,12 @@
                 bannerColor = 'text-red-500 font-bold';
             }
 
-            waveBannerContainer.innerHTML = `
-                <div class="wave-announce">
-                    <div class="font-neon text-xs sm:text-sm tracking-[0.3em] ${bannerColor} uppercase">${subTitle}</div>
-                    <div class="font-neon neon-title text-3xl sm:text-5xl font-black tracking-widest uppercase">WAVE ${String(waveNumber).padStart(2, '0')}</div>
-                </div>
-            `;
+            renderWaveBanner(
+                `font-neon text-xs sm:text-sm tracking-[0.3em] ${bannerColor} uppercase`,
+                subTitle,
+                'font-neon neon-title text-3xl sm:text-5xl font-black tracking-widest uppercase',
+                `WAVE ${String(waveNumber).padStart(2, '0')}`
+            );
         }
 
         function startWave(waveNumber) {
@@ -2725,8 +2762,8 @@
             resumeLockPrompt.classList.add('hidden');
 
             // Save High Score & Best Wave
-            const currentHigh = parseInt(safeStorage.getItem('mr_high_score', '0'), 10) || 0;
-            const currentBestWave = parseInt(safeStorage.getItem('mr_best_wave', '1'), 10) || 1;
+            const currentHigh = safeStorage.getInt('mr_high_score', 0, 0, 999999999);
+            const currentBestWave = safeStorage.getInt('mr_best_wave', 1, 1, 99999);
             if (state.score > currentHigh) safeStorage.setItem('mr_high_score', state.score.toString());
             if (state.wave > currentBestWave) safeStorage.setItem('mr_best_wave', state.wave.toString());
 
@@ -2735,11 +2772,11 @@
             document.getElementById('final-kills').textContent = state.kills;
             document.getElementById('final-headshots').textContent = state.headshots;
 
-            const bestScore = safeStorage.getItem('mr_high_score', '0');
-            const bestWv = safeStorage.getItem('mr_best_wave', '1');
+            const bestScore = safeStorage.getInt('mr_high_score', 0, 0, 999999999);
+            const bestWv = safeStorage.getInt('mr_best_wave', 1, 1, 99999);
             const recordEl = document.getElementById('gameover-best-record');
             if (recordEl) {
-                recordEl.textContent = `WAVE ${String(bestWv).padStart(2, '0')} // ${parseInt(bestScore, 10).toLocaleString()} PTS`;
+                recordEl.textContent = `WAVE ${String(bestWv).padStart(2, '0')} // ${bestScore.toLocaleString()} PTS`;
             }
 
             gameoverScreen.classList.remove('hidden');
@@ -3092,9 +3129,14 @@
         function updateMuteUI() {
             const isMuted = sound.muted;
             if (hudMuteHint) {
-                hudMuteHint.innerHTML = isMuted
-                    ? '<span class="text-red-500 font-bold">[M] Audio: MUTED</span> | [ESC] Pause'
-                    : '[M] Mute Audio | [ESC] Pause';
+                if (isMuted) {
+                    const mutedSpan = document.createElement('span');
+                    mutedSpan.className = 'text-red-500 font-bold';
+                    mutedSpan.textContent = '[M] Audio: MUTED';
+                    hudMuteHint.replaceChildren(mutedSpan, document.createTextNode(' | [ESC] Pause'));
+                } else {
+                    hudMuteHint.textContent = '[M] Mute Audio | [ESC] Pause';
+                }
             }
             if (touchMuteIcon) {
                 touchMuteIcon.textContent = isMuted ? '🔇' : '🔊';
@@ -3102,8 +3144,9 @@
         }
 
         function setSprintBinding(binding) {
-            state.sprintBinding = binding;
-            safeStorage.setItem('mr_sprint_binding', binding);
+            const safeBinding = VALID_SPRINT_BINDINGS.includes(binding) ? binding : 'all';
+            state.sprintBinding = safeBinding;
+            safeStorage.setItem('mr_sprint_binding', safeBinding);
             updateSprintOptionUI();
         }
 
@@ -3426,10 +3469,14 @@
         }
 
         function saveSettings() {
-            userSettings.mouseSens = parseFloat(settingMouseSens.value);
-            userSettings.invertY = settingInvertY.checked;
-            userSettings.touchSens = parseFloat(settingTouchSens.value);
-            userSettings.masterVol = parseFloat(settingMasterVol.value);
+            const rawMouse = parseFloat(settingMouseSens.value);
+            const rawTouch = parseFloat(settingTouchSens.value);
+            const rawVol = parseFloat(settingMasterVol.value);
+
+            userSettings.mouseSens = Number.isFinite(rawMouse) ? Math.min(2.6, Math.max(0.4, rawMouse)) : 1.0;
+            userSettings.invertY = Boolean(settingInvertY.checked);
+            userSettings.touchSens = Number.isFinite(rawTouch) ? Math.min(2.5, Math.max(0.5, rawTouch)) : 1.0;
+            userSettings.masterVol = Number.isFinite(rawVol) ? Math.min(1, Math.max(0, rawVol)) : 1.0;
 
             safeStorage.setItem('mr_mouse_sens', userSettings.mouseSens);
             safeStorage.setItem('mr_invert_y', userSettings.invertY);
@@ -3686,12 +3733,12 @@
             if (state.isIntermission) {
                 state.intermissionTimer -= dt;
                 const secLeft = Math.max(1, Math.ceil(state.intermissionTimer));
-                waveBannerContainer.innerHTML = `
-                    <div class="wave-announce">
-                        <div class="font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold">SECTOR PURGED // TACTICAL RESUPPLY</div>
-                        <div class="font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase">NEXT IN ${secLeft}S</div>
-                    </div>
-                `;
+                renderWaveBanner(
+                    'font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold',
+                    'SECTOR PURGED // TACTICAL RESUPPLY',
+                    'font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase',
+                    `NEXT IN ${secLeft}S`
+                );
                 if (state.intermissionTimer <= 0) {
                     state.isIntermission = false;
                     sound.duckAmbient(false);
