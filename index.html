@@ -1603,26 +1603,663 @@
         magazine.rotation.x = 0.2;
         weaponGroup.add(magazine);
 
+        // Tactical Muzzle Brake / Compensator at barrel tip
+        const compensatorBody = new THREE.Mesh(new THREE.CylinderGeometry(0.029, 0.025, 0.08, 16), gunMetalMat);
+        compensatorBody.rotation.x = Math.PI / 2;
+        compensatorBody.position.set(0, 0.03, -0.645);
+        weaponGroup.add(compensatorBody);
+
+        const compensatorBore = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.082, 12), gunDarkMat);
+        compensatorBore.rotation.x = Math.PI / 2;
+        compensatorBore.position.set(0, 0.03, -0.646);
+        weaponGroup.add(compensatorBore);
+
+        const compensatorHeatMat = new THREE.MeshBasicMaterial({
+            color: 0xff3355,
+            transparent: true,
+            opacity: 0.35,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const compensatorRing = new THREE.Mesh(new THREE.CylinderGeometry(0.0305, 0.0305, 0.012, 16), compensatorHeatMat);
+        compensatorRing.rotation.x = Math.PI / 2;
+        compensatorRing.position.set(0, 0.03, -0.635);
+        weaponGroup.add(compensatorRing);
+
+        // High-Dynamic-Range Procedural FPS Muzzle Flash Textures
+        function createMuzzleCrownTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const cx = 256, cy = 256;
+
+            ctx.clearRect(0, 0, 512, 512);
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Helper to draw a razor-sharp, multi-layered supersonic gas flame lance
+            // Note: In Three.js SpriteMaterial, canvas y=0 is top (+Y) and y=512 is bottom (-Y).
+            // In canvas 2D, positive angle rotates clockwise (+X toward +Y_canvas = -Y_screen).
+            function drawFlameLobe(screenAngle, length, width, intensity = 1.0) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(screenAngle);
+
+                // 1. Outer neon-crimson / fiery orange turbulent flame sheath
+                const outerGrad = ctx.createLinearGradient(6, 0, length, 0);
+                outerGrad.addColorStop(0.0, `rgba(255, 150, 45, ${0.96 * intensity})`);
+                outerGrad.addColorStop(0.35, `rgba(255, 60, 20, ${0.90 * intensity})`);
+                outerGrad.addColorStop(0.74, `rgba(255, 10, 55, ${0.52 * intensity})`);
+                outerGrad.addColorStop(1.0, 'rgba(180, 0, 40, 0)');
+
+                ctx.fillStyle = outerGrad;
+                ctx.beginPath();
+                ctx.moveTo(4, -width * 0.26);
+                ctx.bezierCurveTo(length * 0.26, -width * 1.02, length * 0.66, -width * 0.50, length, 0);
+                ctx.bezierCurveTo(length * 0.66, width * 0.50, length * 0.26, width * 1.02, 4, width * 0.26);
+                ctx.closePath();
+                ctx.fill();
+
+                // 2. Mid-layer searing amber-gold combustion tongue
+                const midLen = length * 0.82;
+                const midW = width * 0.60;
+                const midGrad = ctx.createLinearGradient(4, 0, midLen, 0);
+                midGrad.addColorStop(0.0, `rgba(255, 248, 190, ${1.0 * intensity})`);
+                midGrad.addColorStop(0.46, `rgba(255, 190, 55, ${0.94 * intensity})`);
+                midGrad.addColorStop(0.86, `rgba(255, 75, 20, ${0.40 * intensity})`);
+                midGrad.addColorStop(1.0, 'rgba(255, 30, 10, 0)');
+
+                ctx.fillStyle = midGrad;
+                ctx.beginPath();
+                ctx.moveTo(2, -midW * 0.24);
+                ctx.bezierCurveTo(midLen * 0.28, -midW, midLen * 0.64, -midW * 0.42, midLen, 0);
+                ctx.bezierCurveTo(midLen * 0.64, midW * 0.42, midLen * 0.28, midW, 2, midW * 0.24);
+                ctx.closePath();
+                ctx.fill();
+
+                // 3. Inner incandescent white-hot Mach spear
+                const coreLen = length * 0.58;
+                const coreW = width * 0.28;
+                const coreGrad = ctx.createLinearGradient(0, 0, coreLen, 0);
+                coreGrad.addColorStop(0.0, `rgba(255, 255, 255, ${1.0 * intensity})`);
+                coreGrad.addColorStop(0.58, `rgba(255, 252, 225, ${0.96 * intensity})`);
+                coreGrad.addColorStop(1.0, 'rgba(255, 205, 95, 0)');
+
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.moveTo(0, -coreW * 0.32);
+                ctx.quadraticCurveTo(coreLen * 0.45, -coreW, coreLen, 0);
+                ctx.quadraticCurveTo(coreLen * 0.45, coreW, 0, coreW * 0.32);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            // Directional First-Person Muzzle-Brake Pattern:
+            // Forward barrel axis in 1st-person screen space points up-left (~ -2.42 rad).
+            // Backwards along the rifle receiver is down-right (~ +0.72 rad) — kept completely clear!
+            const directionalLobes = [
+                // 1. Primary forward supersonic Mach lance shooting straight downrange along barrel line
+                { angle: -2.42, len: 252, width: 44, intensity: 1.0 },
+                // Flanking forward shock tongues
+                { angle: -2.12, len: 176, width: 24, intensity: 0.88 },
+                { angle: -2.72, len: 176, width: 24, intensity: 0.88 },
+
+                // 2. Left compensator port high-velocity gas blast (venting left & lower-left)
+                { angle: 3.04, len: 232, width: 38, intensity: 0.96 },
+                { angle: 2.52, len: 192, width: 30, intensity: 0.88 },
+                { angle: 2.02, len: 138, width: 20, intensity: 0.72 },
+
+                // 3. Right / Upper compensator port high-velocity gas blast (venting upper-right & right)
+                { angle: -0.78, len: 232, width: 38, intensity: 0.96 },
+                { angle: -0.26, len: 192, width: 30, intensity: 0.88 },
+                { angle: -1.28, len: 148, width: 22, intensity: 0.76 },
+
+                // 4. Top compensator port stabilization jet (venting upward)
+                { angle: -1.68, len: 205, width: 32, intensity: 0.92 },
+
+                // 5. Fine turbulent micro-spikes for organic supersonic detail
+                { angle: -2.92, len: 145, width: 16, intensity: 0.75 },
+                { angle: -1.02, len: 132, width: 15, intensity: 0.72 },
+                { angle: 2.78,  len: 142, width: 16, intensity: 0.75 }
+            ];
+
+            for (let i = 0; i < directionalLobes.length; i++) {
+                const l = directionalLobes[i];
+                drawFlameLobe(l.angle, l.len, l.width, l.intensity);
+            }
+
+            // Tight incandescent bore core at muzzle exit (no wide circular washout)
+            const centerCore = ctx.createRadialGradient(cx, cy, 0, cx, cy, 56);
+            centerCore.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+            centerCore.addColorStop(0.42, 'rgba(255, 250, 215, 0.96)');
+            centerCore.addColorStop(0.75, 'rgba(255, 145, 35, 0.48)');
+            centerCore.addColorStop(1.0, 'rgba(255, 30, 50, 0)');
+            ctx.fillStyle = centerCore;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 56, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function createMuzzleCoreTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const cx = 128, cy = 128;
+
+            ctx.clearRect(0, 0, 256, 256);
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Crisp directional incandescent core lances (forward, left-port, upper-right port — clear of barrel body)
+            const coreRays = [
+                { angle: -2.42, len: 118, w: 13 }, // Forward along barrel axis
+                { angle: 2.95,  len: 102, w: 11 }, // Left baffle port
+                { angle: -0.68, len: 102, w: 11 }, // Upper-right baffle port
+                { angle: -1.62, len: 88,  w: 10 }, // Top port
+                { angle: 2.25,  len: 72,  w: 8 }   // Lower-left wisp
+            ];
+            for (let i = 0; i < coreRays.length; i++) {
+                const r = coreRays[i];
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(r.angle);
+                const grad = ctx.createLinearGradient(0, 0, r.len, 0);
+                grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+                grad.addColorStop(0.5, 'rgba(255, 235, 145, 0.88)');
+                grad.addColorStop(1.0, 'rgba(255, 90, 20, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(0, -r.w * 0.45);
+                ctx.quadraticCurveTo(r.len * 0.45, -r.w, r.len, 0);
+                ctx.quadraticCurveTo(r.len * 0.45, r.w, 0, r.w * 0.45);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            const hotCenter = ctx.createRadialGradient(cx, cy, 0, cx, cy, 52);
+            hotCenter.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+            hotCenter.addColorStop(0.45, 'rgba(255, 252, 225, 0.96)');
+            hotCenter.addColorStop(0.78, 'rgba(255, 175, 55, 0.48)');
+            hotCenter.addColorStop(1.0, 'rgba(255, 45, 20, 0)');
+            ctx.fillStyle = hotCenter;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 52, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function createMuzzleJetTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, 256, 512);
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Base is near y = 498 (v = 0.03), forward tip is near y = 10 (v = 0.98)
+            // 1. Outer turbulent crimson-orange supersonic flame envelope
+            const outerGrad = ctx.createLinearGradient(128, 502, 128, 10);
+            outerGrad.addColorStop(0.0, 'rgba(255, 140, 40, 0)');
+            outerGrad.addColorStop(0.05, 'rgba(255, 130, 35, 0.92)');
+            outerGrad.addColorStop(0.32, 'rgba(255, 60, 18, 0.88)');
+            outerGrad.addColorStop(0.70, 'rgba(255, 12, 50, 0.48)');
+            outerGrad.addColorStop(1.0, 'rgba(160, 0, 35, 0)');
+
+            ctx.fillStyle = outerGrad;
+            ctx.beginPath();
+            ctx.moveTo(128, 502);
+            ctx.bezierCurveTo(198, 462, 208, 300, 128, 10);
+            ctx.bezierCurveTo(48, 300, 58, 462, 128, 502);
+            ctx.closePath();
+            ctx.fill();
+
+            // Ragged secondary side flame tongues along the jet body for organic combustion look
+            const sideTongues = [
+                { baseY: 450, tipX: 214, tipY: 250, ctrlX: 202, ctrlY: 380, w: 34 },
+                { baseY: 450, tipX: 42,  tipY: 250, ctrlX: 54,  ctrlY: 380, w: 34 },
+                { baseY: 370, tipX: 196, tipY: 145, ctrlX: 190, ctrlY: 280, w: 28 },
+                { baseY: 370, tipX: 60,  tipY: 145, ctrlX: 66,  ctrlY: 280, w: 28 }
+            ];
+            for (let i = 0; i < sideTongues.length; i++) {
+                const st = sideTongues[i];
+                const tGrad = ctx.createLinearGradient(128, st.baseY, st.tipX, st.tipY);
+                tGrad.addColorStop(0.0, 'rgba(255, 220, 110, 0.85)');
+                tGrad.addColorStop(0.5, 'rgba(255, 110, 25, 0.65)');
+                tGrad.addColorStop(1.0, 'rgba(255, 15, 45, 0)');
+                ctx.fillStyle = tGrad;
+                ctx.beginPath();
+                ctx.moveTo(128, st.baseY);
+                ctx.quadraticCurveTo(st.ctrlX, st.ctrlY, st.tipX, st.tipY);
+                ctx.quadraticCurveTo(128 + (st.ctrlX - 128) * 0.45, st.ctrlY - st.w, 128, st.baseY - st.w * 1.4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // 2. Middle high-temperature amber-gold combustion lance
+            const midGrad = ctx.createLinearGradient(128, 498, 128, 38);
+            midGrad.addColorStop(0.0, 'rgba(255, 245, 185, 0)');
+            midGrad.addColorStop(0.06, 'rgba(255, 240, 165, 1.0)');
+            midGrad.addColorStop(0.44, 'rgba(255, 175, 40, 0.94)');
+            midGrad.addColorStop(0.82, 'rgba(255, 60, 25, 0.36)');
+            midGrad.addColorStop(1.0, 'rgba(255, 20, 35, 0)');
+
+            ctx.fillStyle = midGrad;
+            ctx.beginPath();
+            ctx.moveTo(128, 498);
+            ctx.bezierCurveTo(172, 458, 176, 300, 128, 38);
+            ctx.bezierCurveTo(80, 300, 84, 458, 128, 498);
+            ctx.closePath();
+            ctx.fill();
+
+            // 3. Primary incandescent white-hot Mach shock diamond at nozzle exit
+            const coreGrad = ctx.createLinearGradient(128, 495, 128, 205);
+            coreGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0)');
+            coreGrad.addColorStop(0.07, 'rgba(255, 255, 255, 1.0)');
+            coreGrad.addColorStop(0.55, 'rgba(255, 252, 225, 0.96)');
+            coreGrad.addColorStop(1.0, 'rgba(255, 190, 75, 0)');
+
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.moveTo(128, 495);
+            ctx.quadraticCurveTo(156, 385, 128, 205);
+            ctx.quadraticCurveTo(100, 385, 128, 495);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. Secondary downstream Mach shock node
+            const mach2Grad = ctx.createLinearGradient(128, 255, 128, 85);
+            mach2Grad.addColorStop(0.0, 'rgba(255, 220, 130, 0)');
+            mach2Grad.addColorStop(0.35, 'rgba(255, 255, 240, 0.92)');
+            mach2Grad.addColorStop(0.72, 'rgba(255, 205, 95, 0.58)');
+            mach2Grad.addColorStop(1.0, 'rgba(255, 90, 25, 0)');
+
+            ctx.fillStyle = mach2Grad;
+            ctx.beginPath();
+            ctx.moveTo(128, 255);
+            ctx.quadraticCurveTo(145, 175, 128, 85);
+            ctx.quadraticCurveTo(111, 175, 128, 255);
+            ctx.closePath();
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function createAnamorphicFlareTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, 256, 64);
+            ctx.globalCompositeOperation = 'lighter';
+
+            const hGrad = ctx.createLinearGradient(0, 32, 256, 32);
+            hGrad.addColorStop(0.0, 'rgba(255, 0, 55, 0)');
+            hGrad.addColorStop(0.22, 'rgba(255, 45, 75, 0.32)');
+            hGrad.addColorStop(0.42, 'rgba(255, 195, 120, 0.82)');
+            hGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+            hGrad.addColorStop(0.58, 'rgba(255, 195, 120, 0.82)');
+            hGrad.addColorStop(0.78, 'rgba(255, 45, 75, 0.32)');
+            hGrad.addColorStop(1.0, 'rgba(255, 0, 55, 0)');
+
+            ctx.fillStyle = hGrad;
+            ctx.beginPath();
+            ctx.ellipse(128, 32, 124, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const coreStreak = ctx.createLinearGradient(24, 32, 232, 32);
+            coreStreak.addColorStop(0.0, 'rgba(255, 255, 255, 0)');
+            coreStreak.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
+            coreStreak.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = coreStreak;
+            ctx.beginPath();
+            ctx.ellipse(128, 32, 102, 3.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function createShockRingTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            const cx = 64, cy = 64;
+
+            const ringGrad = ctx.createRadialGradient(cx, cy, 16, cx, cy, 60);
+            ringGrad.addColorStop(0.0, 'rgba(255, 180, 120, 0)');
+            ringGrad.addColorStop(0.55, 'rgba(255, 160, 90, 0.12)');
+            ringGrad.addColorStop(0.78, 'rgba(255, 220, 170, 0.55)');
+            ringGrad.addColorStop(0.9, 'rgba(255, 40, 80, 0.25)');
+            ringGrad.addColorStop(1.0, 'rgba(255, 0, 50, 0)');
+
+            ctx.fillStyle = ringGrad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 62, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
         const muzzleFlashGroup = new THREE.Group();
-        muzzleFlashGroup.position.set(0, 0.03, -0.68);
+        muzzleFlashGroup.position.set(0, 0.03, -0.685);
         muzzleFlashGroup.visible = false;
         weaponGroup.add(muzzleFlashGroup);
 
-        const flashMat = new THREE.MeshBasicMaterial({
-            color: 0xff5577,
+        const muzzleCrownTex = createMuzzleCrownTexture();
+        const muzzleCoreTex = createMuzzleCoreTexture();
+        const muzzleJetTex = createMuzzleJetTexture();
+        const muzzleFlareTex = createAnamorphicFlareTexture();
+        const muzzleShockTex = createShockRingTexture();
+
+        // Layer 1: Directional multi-port muzzle-brake starburst (aligned with 1st-person barrel & port axes)
+        const muzzleCrownMat = new THREE.SpriteMaterial({
+            map: muzzleCrownTex,
+            color: 0xffffff,
             transparent: true,
-            opacity: 0.92
+            opacity: 1,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
         });
-        const flashCone1 = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.32, 6), flashMat);
-        flashCone1.rotation.x = -Math.PI / 2;
-        muzzleFlashGroup.add(flashCone1);
+        const muzzleCrownSprite = new THREE.Sprite(muzzleCrownMat);
+        muzzleCrownSprite.position.set(0, 0, -0.02);
+        muzzleCrownSprite.renderOrder = 10;
+        muzzleFlashGroup.add(muzzleCrownSprite);
 
-        const flashStar = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-        muzzleFlashGroup.add(flashStar);
+        // Layer 2: Axial volumetric Mach shock nodes stepping forward along the barrel axis (-Z)
+        const muzzleCoreMat = new THREE.SpriteMaterial({
+            map: muzzleCoreTex,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
+        });
+        const muzzleCoreSprite = new THREE.Sprite(muzzleCoreMat);
+        muzzleCoreSprite.position.set(0, 0, -0.01);
+        muzzleCoreSprite.renderOrder = 12;
+        muzzleFlashGroup.add(muzzleCoreSprite);
 
-        const muzzleLight = new THREE.PointLight(0xff2244, 0, 20);
-        muzzleLight.position.set(0, 0.05, -0.75);
+        const muzzleMidSliceMat = new THREE.SpriteMaterial({
+            map: muzzleCoreTex,
+            color: 0xffdd77,
+            transparent: true,
+            opacity: 0.95,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
+        });
+        const muzzleMidSliceSprite = new THREE.Sprite(muzzleMidSliceMat);
+        muzzleMidSliceSprite.position.set(0, 0, -0.18);
+        muzzleMidSliceSprite.renderOrder = 11;
+        muzzleFlashGroup.add(muzzleMidSliceSprite);
+
+        const muzzleTipSliceMat = new THREE.SpriteMaterial({
+            map: muzzleCoreTex,
+            color: 0xff4422,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
+        });
+        const muzzleTipSliceSprite = new THREE.Sprite(muzzleTipSliceMat);
+        muzzleTipSliceSprite.position.set(0, 0, -0.36);
+        muzzleTipSliceSprite.renderOrder = 9;
+        muzzleFlashGroup.add(muzzleTipSliceSprite);
+
+        // Layer 3: Subtle horizontal optical anamorphic lens glint at muzzle exit (never spins)
+        const muzzleFlareMat = new THREE.SpriteMaterial({
+            map: muzzleFlareTex,
+            color: 0xffddaa,
+            transparent: true,
+            opacity: 0.88,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
+        });
+        const muzzleFlareSprite = new THREE.Sprite(muzzleFlareMat);
+        muzzleFlareSprite.position.set(0, 0, -0.01);
+        muzzleFlareSprite.renderOrder = 13;
+        muzzleFlashGroup.add(muzzleFlareSprite);
+
+        // Layer 4: Supersonic expanding pressure shockwave ring
+        const muzzleShockMat = new THREE.SpriteMaterial({
+            map: muzzleShockTex,
+            color: 0xffbb88,
+            transparent: true,
+            opacity: 0.82,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            fog: false
+        });
+        const muzzleShockSprite = new THREE.Sprite(muzzleShockMat);
+        muzzleShockSprite.position.set(0, 0, -0.05);
+        muzzleShockSprite.renderOrder = 8;
+        muzzleFlashGroup.add(muzzleShockSprite);
+
+        // Layer 5: 3D Volumetric forward supersonic Mach plume (4 intersecting axial planes blasting downrange along -Z)
+        const muzzleJetMat = new THREE.MeshBasicMaterial({
+            map: muzzleJetTex,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            side: THREE.DoubleSide,
+            fog: false
+        });
+
+        const forwardJetGeo = new THREE.PlaneGeometry(0.24, 0.72);
+        forwardJetGeo.translate(0, 0.36, 0); // Anchor nozzle base at origin (0,0,0)
+
+        const forwardPlumeGroup = new THREE.Group();
+        forwardPlumeGroup.rotation.x = -Math.PI / 2; // Point +Y forward along -Z
+        for (let i = 0; i < 4; i++) {
+            const plane = new THREE.Mesh(forwardJetGeo, muzzleJetMat);
+            plane.rotation.y = (i * Math.PI) / 4;
+            plane.renderOrder = 9;
+            forwardPlumeGroup.add(plane);
+        }
+        muzzleFlashGroup.add(forwardPlumeGroup);
+
+        // Layer 6: 3D Directional Tactical Muzzle-Brake Port Gas Vents (angled forward & outward in weapon space)
+        const muzzleVentMat = new THREE.MeshBasicMaterial({
+            map: muzzleJetTex,
+            color: 0xffe4aa,
+            transparent: true,
+            opacity: 0.95,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false,
+            side: THREE.DoubleSide,
+            fog: false
+        });
+
+        const sideVentGeo = new THREE.PlaneGeometry(0.14, 0.36);
+        sideVentGeo.translate(0, 0.18, 0);
+
+        function createCompensatorVentJet(dirX, dirY, dirZ) {
+            const ventGroup = new THREE.Group();
+            const targetDir = new THREE.Vector3(dirX, dirY, dirZ).normalize();
+            ventGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), targetDir);
+            const p1 = new THREE.Mesh(sideVentGeo, muzzleVentMat);
+            const p2 = new THREE.Mesh(sideVentGeo, muzzleVentMat);
+            p2.rotation.y = Math.PI / 2;
+            ventGroup.add(p1, p2);
+            return ventGroup;
+        }
+
+        // Left, right, upper-left, upper-right, and top compensator gas jets blasting forward-outward from brake ports
+        const leftVentGroup = createCompensatorVentJet(-0.85, 0.05, -0.52);
+        leftVentGroup.position.set(-0.014, 0.0, 0.015);
+        muzzleFlashGroup.add(leftVentGroup);
+
+        const rightVentGroup = createCompensatorVentJet(0.85, 0.05, -0.52);
+        rightVentGroup.position.set(0.014, 0.0, 0.015);
+        muzzleFlashGroup.add(rightVentGroup);
+
+        const upperLeftVentGroup = createCompensatorVentJet(-0.58, 0.56, -0.59);
+        upperLeftVentGroup.position.set(-0.01, 0.01, 0.01);
+        muzzleFlashGroup.add(upperLeftVentGroup);
+
+        const upperRightVentGroup = createCompensatorVentJet(0.58, 0.56, -0.59);
+        upperRightVentGroup.position.set(0.01, 0.01, 0.01);
+        muzzleFlashGroup.add(upperRightVentGroup);
+
+        const topVentGroup = createCompensatorVentJet(0, 0.78, -0.62);
+        topVentGroup.position.set(0, 0.014, 0.015);
+        muzzleFlashGroup.add(topVentGroup);
+
+        const muzzleLight = new THREE.PointLight(0xff5533, 0, 22);
+        muzzleLight.position.set(0, 0.05, -0.78);
         weaponGroup.add(muzzleLight);
+
+        const MUZZLE_FLASH_DURATION = 0.068;
+        const muzzleFlashVariation = {
+            crownScale: 0.38,
+            plumeLength: 1.0,
+            plumeWidth: 1.0,
+            leftScale: 1.0,
+            rightScale: 1.0,
+            diagLeftScale: 0.85,
+            diagRightScale: 0.85,
+            topScale: 0.72,
+            flareWidth: 0.36
+        };
+
+        function triggerMuzzleFlash() {
+            state.muzzleTimer = MUZZLE_FLASH_DURATION;
+            muzzleFlashGroup.visible = true;
+
+            // Keep directional starburst aligned with barrel & compensator ports (subtle +/- 4 deg jitter, never spinning)
+            muzzleCrownMat.rotation = (Math.random() - 0.5) * 0.14;
+            muzzleCoreMat.rotation = 0;
+            muzzleMidSliceMat.rotation = 0;
+            muzzleTipSliceMat.rotation = 0;
+            muzzleFlareMat.rotation = (Math.random() - 0.5) * 0.04;
+
+            muzzleFlashVariation.crownScale = 0.44 + Math.random() * 0.10;
+            muzzleFlashVariation.plumeLength = 0.92 + Math.random() * 0.32;
+            muzzleFlashVariation.plumeWidth = 0.90 + Math.random() * 0.25;
+            muzzleFlashVariation.leftScale = 0.85 + Math.random() * 0.35;
+            muzzleFlashVariation.rightScale = 0.85 + Math.random() * 0.35;
+            muzzleFlashVariation.diagLeftScale = 0.72 + Math.random() * 0.32;
+            muzzleFlashVariation.diagRightScale = 0.72 + Math.random() * 0.32;
+            muzzleFlashVariation.topScale = 0.62 + Math.random() * 0.28;
+            muzzleFlashVariation.flareWidth = 0.42 + Math.random() * 0.14;
+
+            forwardPlumeGroup.rotation.z = (Math.random() - 0.5) * 0.4;
+            compensatorHeatMat.opacity = 1.0;
+
+            updateMuzzleFlash(0);
+        }
+
+        function updateMuzzleFlash(dt) {
+            if (compensatorHeatMat.opacity > 0.35) {
+                compensatorHeatMat.opacity = Math.max(0.35, compensatorHeatMat.opacity - dt * 2.8);
+            }
+
+            if (state.muzzleTimer <= 0) return;
+
+            state.muzzleTimer -= dt;
+            if (state.muzzleTimer <= 0) {
+                state.muzzleTimer = 0;
+                muzzleFlashGroup.visible = false;
+                muzzleLight.intensity = 0;
+                return;
+            }
+
+            // Progress p: 0.0 at ignition -> 1.0 at burnout
+            const p = 1 - (state.muzzleTimer / MUZZLE_FLASH_DURATION);
+            const ignitionCurve = p < 0.22 ? (0.76 + (p / 0.22) * 0.24) : (1.0 - (p - 0.22) * 0.34);
+            const alphaDecay = Math.pow(1 - p, 1.35);
+            const coreDecay = Math.pow(Math.max(0, 1 - p * 1.25), 1.5);
+
+            // 1. Directional Starburst Crown & Compact Forward Mach Nodes
+            const cScale = muzzleFlashVariation.crownScale * ignitionCurve;
+            muzzleCrownSprite.scale.set(cScale, cScale, 1);
+            muzzleCrownMat.opacity = alphaDecay;
+
+            const hotScale = cScale * (0.62 - p * 0.14);
+            muzzleCoreSprite.scale.set(hotScale, hotScale, 1);
+            muzzleCoreMat.opacity = coreDecay;
+
+            const midScale = cScale * 0.48 * ignitionCurve;
+            muzzleMidSliceSprite.scale.set(midScale, midScale, 1);
+            muzzleMidSliceMat.opacity = alphaDecay * 0.90;
+
+            const tipScale = cScale * 0.32 * (0.7 + p * 0.4);
+            muzzleTipSliceSprite.scale.set(tipScale, tipScale, 1);
+            muzzleTipSliceMat.opacity = Math.pow(1 - p, 1.6) * 0.82;
+
+            // 2. Subtle Horizontal Anamorphic Optical Streak
+            const flareDecay = Math.pow(Math.max(0, 1 - p * 1.35), 1.8);
+            muzzleFlareSprite.scale.set(
+                muzzleFlashVariation.flareWidth * (0.8 + 0.3 * (1 - p)),
+                0.052 * (0.7 + 0.3 * flareDecay),
+                1
+            );
+            muzzleFlareMat.opacity = flareDecay * 0.82;
+
+            // 3. Expanding Supersonic Shock Ring
+            const ringScale = 0.10 + p * 0.34;
+            muzzleShockSprite.scale.set(ringScale, ringScale, 1);
+            muzzleShockMat.opacity = Math.pow(1 - p, 1.8) * 0.72;
+
+            // 4. 3D Forward Supersonic Plume & Muzzle Brake Side/Diagonal/Top Vents
+            const jetStretch = muzzleFlashVariation.plumeLength * (0.75 + Math.sin(Math.min(1, p * 1.6) * Math.PI * 0.5) * 0.40);
+            const jetRadius = muzzleFlashVariation.plumeWidth * ignitionCurve * (1 - p * 0.2);
+            forwardPlumeGroup.scale.set(jetRadius, jetStretch, jetRadius);
+            muzzleJetMat.opacity = alphaDecay;
+
+            const ventFade = Math.pow(1 - p, 1.5);
+            muzzleVentMat.opacity = ventFade * 0.95;
+            const lS = muzzleFlashVariation.leftScale * ignitionCurve;
+            const rS = muzzleFlashVariation.rightScale * ignitionCurve;
+            const dlS = muzzleFlashVariation.diagLeftScale * ignitionCurve;
+            const drS = muzzleFlashVariation.diagRightScale * ignitionCurve;
+            const tS = muzzleFlashVariation.topScale * ignitionCurve;
+            leftVentGroup.scale.set(lS, lS, lS);
+            rightVentGroup.scale.set(rS, rS, rS);
+            upperLeftVentGroup.scale.set(dlS, dlS, dlS);
+            upperRightVentGroup.scale.set(drS, drS, drS);
+            topVentGroup.scale.set(tS, tS * 0.78, tS);
+
+            // 5. Dynamic Muzzle PointLight temperature & intensity decay
+            muzzleLight.intensity = 4.8 * Math.pow(1 - p, 1.35);
+            if (p < 0.35) {
+                muzzleLight.color.setHex(0xff7744);
+            } else {
+                muzzleLight.color.setHex(0xff2244);
+            }
+        }
 
         /********************************************************************
          * 5. ZOMBIE FACTORY & AI SYSTEM
@@ -1914,6 +2551,69 @@
             }
         }
 
+        // Pre-allocated Muzzle Spark Particle Pool (High-velocity incandescent propellant embers)
+        const MUZZLE_SPARK_POOL_SIZE = 28;
+        const muzzleSparkGeo = new THREE.BoxGeometry(0.014, 0.014, 0.095);
+        const muzzleSparkPool = [];
+        for (let i = 0; i < MUZZLE_SPARK_POOL_SIZE; i++) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: 0xfff2b8,
+                transparent: true,
+                opacity: 1,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                fog: false
+            });
+            const mesh = new THREE.Mesh(muzzleSparkGeo, mat);
+            mesh.visible = false;
+            scene.add(mesh);
+            muzzleSparkPool.push({
+                mesh,
+                velocity: new THREE.Vector3(),
+                life: 0,
+                maxLife: 1,
+                active: false
+            });
+        }
+
+        const _sparkUp = new THREE.Vector3(0, 1, 0);
+        const _sparkRight = new THREE.Vector3();
+        const _sparkOrthoUp = new THREE.Vector3();
+        const _sparkLookTarget = new THREE.Vector3();
+
+        function spawnMuzzleSparks(origin, forwardDir, count = 7) {
+            _sparkRight.crossVectors(forwardDir, _sparkUp);
+            if (_sparkRight.lengthSq() < 0.001) _sparkRight.set(1, 0, 0);
+            else _sparkRight.normalize();
+            _sparkOrthoUp.crossVectors(_sparkRight, forwardDir).normalize();
+
+            let spawned = 0;
+            for (let i = 0; i < MUZZLE_SPARK_POOL_SIZE && spawned < count; i++) {
+                const s = muzzleSparkPool[i];
+                if (s.active) continue;
+                s.active = true;
+                s.mesh.visible = true;
+                s.mesh.position.copy(origin);
+
+                const forwardSpeed = 12 + Math.random() * 14;
+                const radialSpeed = 1.4 + Math.random() * 3.8;
+                const angle = Math.random() * Math.PI * 2;
+
+                s.velocity.copy(forwardDir).multiplyScalar(forwardSpeed);
+                s.velocity.addScaledVector(_sparkRight, Math.cos(angle) * radialSpeed);
+                s.velocity.addScaledVector(_sparkOrthoUp, Math.sin(angle) * radialSpeed);
+
+                _sparkLookTarget.copy(origin).add(s.velocity);
+                s.mesh.lookAt(_sparkLookTarget);
+
+                s.life = 0.045 + Math.random() * 0.055;
+                s.maxLife = s.life;
+                s.mesh.material.color.setHex(0xfff4c2);
+                s.mesh.material.opacity = 1;
+                spawned++;
+            }
+        }
+
         // Pre-allocated Bullet Tracer Pool
         const TRACER_POOL_SIZE = 8;
         const tracerPool = [];
@@ -1922,9 +2622,11 @@
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             const mat = new THREE.LineBasicMaterial({
-                color: 0xff3355,
+                color: 0xff8855,
                 transparent: true,
-                opacity: 0.85
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
             });
             const line = new THREE.Line(geo, mat);
             line.visible = false;
@@ -1945,7 +2647,7 @@
                 t.positions[4] = endPos.y;
                 t.positions[5] = endPos.z;
                 t.line.geometry.attributes.position.needsUpdate = true;
-                t.line.material.opacity = 0.85;
+                t.line.material.opacity = 0.9;
                 t.line.visible = true;
                 break;
             }
@@ -1959,6 +2661,10 @@
             for (let i = 0; i < SPARKLE_POOL_SIZE; i++) {
                 sparklePool[i].active = false;
                 sparklePool[i].mesh.visible = false;
+            }
+            for (let i = 0; i < MUZZLE_SPARK_POOL_SIZE; i++) {
+                muzzleSparkPool[i].active = false;
+                muzzleSparkPool[i].mesh.visible = false;
             }
         }
 
@@ -2867,10 +3573,7 @@
 
             state.recoilOffset = 0.11;
             state.recoilPitch = 0.04;
-            state.muzzleTimer = 0.055;
-            muzzleFlashGroup.visible = true;
-            muzzleFlashGroup.rotation.z = Math.random() * Math.PI;
-            muzzleLight.intensity = 3.2;
+            triggerMuzzleFlash();
 
             setCrosshairSpread(10);
             setTimeout(() => setCrosshairSpread(0), 90);
@@ -2995,6 +3698,7 @@
                 }
             }
 
+            spawnMuzzleSparks(_muzzlePos, raycaster.ray.direction, 7);
             spawnBulletTracer(_muzzlePos, _tracerEnd);
         }
 
@@ -3711,13 +4415,7 @@
             weaponGroup.rotation.x = state.recoilPitch - (state.isReloading ? 0.45 : 0);
             weaponGroup.rotation.z = wantsSprint ? 0.16 : 0;
 
-            if (state.muzzleTimer > 0) {
-                state.muzzleTimer -= dt;
-                if (state.muzzleTimer <= 0) {
-                    muzzleFlashGroup.visible = false;
-                    muzzleLight.intensity = 0;
-                }
-            }
+            updateMuzzleFlash(dt);
 
             // 2b. Update Neon Diamond Health Jewel & Player Pickup Check
             if (healthJewel) {
@@ -4096,6 +4794,29 @@
                 p.velocity.y -= 10 * dt;
                 p.mesh.position.addScaledVector(p.velocity, dt);
                 p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+            }
+
+            for (let i = 0; i < MUZZLE_SPARK_POOL_SIZE; i++) {
+                const s = muzzleSparkPool[i];
+                if (!s.active) continue;
+                s.life -= dt;
+                if (s.life <= 0) {
+                    s.active = false;
+                    s.mesh.visible = false;
+                    continue;
+                }
+                const lifeRatio = Math.max(0, s.life / s.maxLife);
+                // Rapid aerodynamic drag & gravity on propellant sparks
+                const drag = Math.max(0, 1 - dt * 14);
+                s.velocity.multiplyScalar(drag);
+                s.velocity.y -= 6.5 * dt;
+                s.mesh.position.addScaledVector(s.velocity, dt);
+                s.mesh.material.opacity = lifeRatio;
+                if (lifeRatio < 0.45) {
+                    s.mesh.material.color.setHex(0xff2244);
+                } else if (lifeRatio < 0.75) {
+                    s.mesh.material.color.setHex(0xff8833);
+                }
             }
 
             // 6. Update Pooled Bullet Tracers (Zero Allocation)
