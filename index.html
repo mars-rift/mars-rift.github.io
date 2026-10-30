@@ -242,8 +242,10 @@
             animation: pulseBanner 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Tactical Sprint Option Buttons */
-        .sprint-opt-btn {
+        /* Tactical Sprint & Map Mode Option Buttons */
+        .sprint-opt-btn,
+        .map-mode-btn,
+        .map-preview-btn {
             background: rgba(20, 0, 5, 0.75);
             color: #d1d5db;
             border: 1px solid rgba(255, 0, 51, 0.35);
@@ -255,14 +257,18 @@
             touch-action: manipulation;
         }
 
-        .sprint-opt-btn:hover {
+        .sprint-opt-btn:hover,
+        .map-mode-btn:hover,
+        .map-preview-btn:hover {
             border-color: #ff0033;
             color: #ffffff;
             box-shadow: 0 0 10px rgba(255, 0, 51, 0.4);
             transform: translateY(-1px);
         }
 
-        .sprint-opt-btn.active {
+        .sprint-opt-btn.active,
+        .map-mode-btn.active,
+        .map-preview-btn.active {
             background: #ff0033;
             color: #050002;
             font-weight: 800;
@@ -414,6 +420,13 @@
                 <div class="neon-box px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg">
                     <div class="text-[10px] sm:text-xs uppercase tracking-widest text-red-400 font-semibold">Kills</div>
                     <div id="hud-kills" class="font-neon text-xl sm:text-3xl font-black text-red-500">0</div>
+                </div>
+                <div class="neon-box px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[10px] sm:text-xs uppercase tracking-widest text-red-400 font-semibold">Arena Map</span>
+                        <span id="hud-map-mode" class="text-[8px] sm:text-[9px] font-neon px-1.5 py-0.5 rounded bg-red-950/90 border border-red-700/60 text-red-300 uppercase font-bold tracking-wider">CYCLE</span>
+                    </div>
+                    <div id="hud-map-name" class="font-neon text-xs sm:text-base font-black text-white tracking-wider uppercase mt-0.5">01 // CONTAINMENT GRID</div>
                 </div>
             </div>
 
@@ -671,22 +684,22 @@
         <!-- 3. BOTTOM WIDESCREEN CONSOLE: Full-Width Tactical Panels -->
         <div
             class="w-full z-10 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3.5 items-stretch max-w-6xl mx-auto mt-1 sm:mt-2">
-            <!-- Left Console: Tactical Controls Briefing (7 cols) -->
+            <!-- Left Console: Tactical Controls Briefing (5 cols) -->
             <div
-                class="lg:col-span-7 neon-box rounded-xl p-2.5 sm:p-3 bg-black/75 backdrop-blur-md border border-red-900/70 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(255,0,51,0.15)]">
+                class="lg:col-span-5 neon-box rounded-xl p-2.5 sm:p-3 bg-black/75 backdrop-blur-md border border-red-900/70 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(255,0,51,0.15)]">
                 <div
                     class="font-neon text-[10px] sm:text-xs uppercase tracking-widest text-red-400 mb-1.5 font-bold flex items-center justify-between">
                     <span class="flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 bg-red-500 rounded-sm"></span>
                         TACTICAL CONTROLS BRIEFING
                     </span>
-                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP, TABLET &amp; MOBILE READY</span>
+                    <span class="text-[9px] text-neutral-400 font-normal hidden sm:inline">DESKTOP &amp; TOUCH</span>
                 </div>
-                <div class="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
+                <div class="grid grid-cols-2 gap-1.5 text-xs">
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Move / Strafe</span>
-                        <div class="flex gap-1">
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">Move</span>
+                        <div class="flex gap-0.5">
                             <span class="key-badge">W</span>
                             <span class="key-badge">A</span>
                             <span class="key-badge">S</span>
@@ -694,63 +707,106 @@
                         </div>
                     </div>
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Look &amp; Auto-Fire</span>
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">Auto-Fire</span>
                         <span class="key-badge">HOLD LMB</span>
                     </div>
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Reload Weapon</span>
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">Reload</span>
                         <span class="key-badge">R</span>
                     </div>
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Pause / Telemetry</span>
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">Pause</span>
                         <span class="key-badge">ESC</span>
                     </div>
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300">Mute Audio</span>
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">Mute</span>
                         <span class="key-badge">M</span>
                     </div>
                     <div
-                        class="flex items-center justify-between bg-red-950/30 px-2.5 py-1 rounded-lg border border-red-900/40">
-                        <span class="text-neutral-300 flex items-center gap-1.5">
-                            <span>📱 Touch &amp; iPad</span>
-                        </span>
-                        <span class="text-[10px] font-neon text-red-400 font-bold">STICK MOVE/TURN &amp; TOUCH STRAFE</span>
+                        class="flex items-center justify-between bg-red-950/30 px-2 py-1 rounded-lg border border-red-900/40">
+                        <span class="text-neutral-300">📱 Touch</span>
+                        <span class="text-[9px] font-neon text-red-400 font-bold">DUAL ZONE</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Console: Tactical Sprint Trigger (5 cols) -->
+            <!-- Center Console: Arena Map Rotation & Random Map Mode (4 cols) -->
             <div
-                class="lg:col-span-5 neon-box rounded-xl p-2.5 sm:p-3 bg-black/75 backdrop-blur-md border border-red-900/70 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(255,0,51,0.15)]">
+                class="lg:col-span-4 neon-box rounded-xl p-2.5 sm:p-3 bg-black/75 backdrop-blur-md border border-red-900/70 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(255,0,51,0.15)]">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-sm"></span>
+                            <span class="font-neon text-[10px] sm:text-xs uppercase tracking-wider text-white font-bold">Sector Arena Mode</span>
+                        </div>
+                        <span id="title-map-mode-badge"
+                            class="text-[9px] font-neon text-red-400 bg-red-950 px-2 py-0.5 rounded border border-red-700/60 uppercase">WAVE CYCLE</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 mb-2">
+                        <button type="button" data-map-mode="cycle"
+                            class="map-mode-btn active py-1.5 px-2 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">
+                            WAVE CYCLE (1→2→3)
+                        </button>
+                        <button type="button" data-map-mode="random"
+                            class="map-mode-btn py-1.5 px-2 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">
+                            RANDOM MAP MODE
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-[9px] sm:text-[10px] text-neutral-400 mb-1">
+                        <span>3 COMBAT ARENAS (CLICK TO PREVIEW):</span>
+                        <span id="title-preview-label" class="font-neon text-red-400 font-bold">MAP 01: CONTAINMENT GRID</span>
+                    </div>
+                    <div id="title-map-previews" class="grid grid-cols-3 gap-1.5">
+                        <button type="button" data-map-preview="0"
+                            class="map-preview-btn active py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            01 GRID
+                        </button>
+                        <button type="button" data-map-preview="1"
+                            class="map-preview-btn py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            02 REACTOR
+                        </button>
+                        <button type="button" data-map-preview="2"
+                            class="map-preview-btn py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            03 SANCTUM
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Console: Tactical Sprint Trigger (3 cols) -->
+            <div
+                class="lg:col-span-3 neon-box rounded-xl p-2.5 sm:p-3 bg-black/75 backdrop-blur-md border border-red-900/70 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(255,0,51,0.15)]">
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <div class="flex items-center gap-1.5">
                             <span class="w-1.5 h-1.5 bg-red-500 rounded-sm"></span>
                             <span
-                                class="font-neon text-[10px] sm:text-xs uppercase tracking-wider text-white font-bold">Tactical
-                                Sprint Trigger</span>
+                                class="font-neon text-[10px] sm:text-xs uppercase tracking-wider text-white font-bold">Sprint
+                                Trigger</span>
                         </div>
                         <span
-                            class="text-[9px] font-neon text-red-400 bg-red-950 px-2 py-0.5 rounded border border-red-700/60 uppercase">Configurable</span>
+                            class="text-[9px] font-neon text-red-400 bg-red-950 px-1.5 py-0.5 rounded border border-red-700/60 uppercase">Keybind</span>
                     </div>
-                    <div class="text-[10px] sm:text-[11px] text-neutral-400 mb-1.5 leading-tight">
-                        Choose input key to engage Sprint Thruster speed boost:
+                    <div class="text-[10px] text-neutral-400 mb-1.5 leading-tight">
+                        Select thruster boost trigger:
                     </div>
                 </div>
-                <div id="title-sprint-options" class="grid grid-cols-4 gap-1.5">
+                <div id="title-sprint-options" class="grid grid-cols-2 gap-1.5">
                     <button type="button" data-sprint-opt="all"
-                        class="sprint-opt-btn active py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">ALL
+                        class="sprint-opt-btn active py-1 px-1 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">ALL
                         (ANY)</button>
                     <button type="button" data-sprint-opt="shift"
-                        class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">SHIFT</button>
+                        class="sprint-opt-btn py-1 px-1 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">SHIFT</button>
                     <button type="button" data-sprint-opt="space"
-                        class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">SPACE</button>
+                        class="sprint-opt-btn py-1 px-1 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">SPACE</button>
                     <button type="button" data-sprint-opt="rmb"
-                        class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">RMB</button>
+                        class="sprint-opt-btn py-1 px-1 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">RMB</button>
                 </div>
             </div>
         </div>
@@ -776,7 +832,7 @@
             </p>
 
             <!-- Quick Telemetry in Pause Menu -->
-            <div class="grid grid-cols-3 gap-2 mb-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
                     <div class="text-[10px] uppercase tracking-wider text-red-400">Wave</div>
                     <div id="pause-wave" class="font-neon text-lg font-bold text-white">01</div>
@@ -788,6 +844,24 @@
                 <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
                     <div class="text-[10px] uppercase tracking-wider text-red-400">Kills</div>
                     <div id="pause-kills" class="font-neon text-lg font-bold text-red-500">0</div>
+                </div>
+                <div class="bg-red-950/30 border border-red-900/40 rounded-lg p-2">
+                    <div class="text-[10px] uppercase tracking-wider text-red-400">Arena</div>
+                    <div id="pause-map" class="font-neon text-xs sm:text-sm font-bold text-white truncate mt-1">01 GRID</div>
+                </div>
+            </div>
+
+            <!-- Sector Arena Map Mode Selector in Pause Menu -->
+            <div class="bg-red-950/30 border border-red-900/50 rounded-xl p-2.5 mb-2.5 text-left">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-neon text-red-400 tracking-wider uppercase font-bold">Sector Map Mode</span>
+                    <span id="pause-map-mode-label" class="text-xs font-neon text-rose-300 font-semibold">WAVE CYCLE</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" data-map-mode="cycle"
+                        class="map-mode-btn active py-1 text-xs font-neon rounded border transition-all text-center">WAVE CYCLE (1→2→3)</button>
+                    <button type="button" data-map-mode="random"
+                        class="map-mode-btn py-1 text-xs font-neon rounded border transition-all text-center">RANDOM MAP</button>
                 </div>
             </div>
 
@@ -881,6 +955,24 @@
                     <input id="setting-master-vol" type="range" min="0" max="1" step="0.05" value="1"
                         class="w-full accent-red-500 cursor-pointer">
                 </div>
+
+                <!-- Sector Map Progression Mode -->
+                <div class="pt-2 border-t border-red-950/60">
+                    <div class="flex justify-between text-neutral-300 mb-1.5">
+                        <span>ARENA MAP ROTATION MODE</span>
+                        <span id="setting-map-mode-label" class="text-red-400 font-bold">WAVE CYCLE</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" data-map-mode="cycle"
+                            class="map-mode-btn active py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
+                            WAVE CYCLE (1→2→3)
+                        </button>
+                        <button type="button" data-map-mode="random"
+                            class="map-mode-btn py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
+                            RANDOM MAP MODE
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end">
@@ -903,8 +995,8 @@
             <h2 class="font-neon neon-title text-4xl sm:text-6xl font-black tracking-wider uppercase mb-3">
                 YOU WERE OVERRUN
             </h2>
-            <p class="text-neutral-400 text-sm mb-6">
-                The horde consumed your position in Sector 09.
+            <p id="gameover-sector-text" class="text-neutral-400 text-sm mb-6">
+                The horde consumed your position in Sector 09 (MAP 01: CONTAINMENT GRID).
             </p>
 
             <!-- Final Combat Telemetry -->
@@ -968,6 +1060,7 @@
          * 0. SAFE STORAGE HELPER (Bug 10 Fix: Never crash in sandboxed iframes)
          ********************************************************************/
         const VALID_SPRINT_BINDINGS = ['all', 'shift', 'space', 'rmb'];
+        const VALID_MAP_MODES = ['cycle', 'random'];
         const safeStorage = {
             getItem(key, defaultVal = null) {
                 try {
@@ -1367,6 +1460,50 @@
                     osc.stop(stopTime);
                 });
             }
+
+            playMapTransition() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+
+                const subOsc = this.ctx.createOscillator();
+                const subGain = this.ctx.createGain();
+                subOsc.type = 'sine';
+                subOsc.frequency.setValueAtTime(95, now);
+                subOsc.frequency.exponentialRampToValueAtTime(42, now + 0.45);
+
+                subGain.gain.setValueAtTime(0.0001, now);
+                subGain.gain.linearRampToValueAtTime(0.38, now + 0.02);
+                subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.46);
+                subGain.gain.linearRampToValueAtTime(0, now + 0.48);
+
+                subOsc.connect(subGain);
+                subGain.connect(this.sfxGain);
+                this.registerCleanup(subOsc, subGain);
+                subOsc.start(now);
+                subOsc.stop(now + 0.48);
+
+                const sweepNotes = [220, 329.63, 440];
+                sweepNotes.forEach((freq, i) => {
+                    const startT = now + i * 0.07;
+                    const endT = startT + 0.28;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, startT);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.setValueAtTime(0.0001, startT);
+                    gain.gain.linearRampToValueAtTime(0.16, startT + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, endT - 0.01);
+                    gain.gain.linearRampToValueAtTime(0, endT);
+
+                    osc.connect(gain);
+                    gain.connect(this.sfxGain);
+                    this.registerCleanup(osc, gain);
+                    osc.start(startT);
+                    osc.stop(endT);
+                });
+            }
         }
 
         const sound = new SoundSystem();
@@ -1438,6 +1575,196 @@
             return new THREE.CanvasTexture(canvas);
         }
 
+        function createReactorFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#080205';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 2200; i++) {
+                const v = Math.floor(Math.random() * 18);
+                ctx.fillStyle = `rgb(${v + 12}, ${v}, ${v + 4})`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+            }
+
+            // Industrial reactor plating grid & conduit channels
+            ctx.strokeStyle = '#24040c';
+            ctx.lineWidth = 6;
+            const step = 128;
+            for (let i = 0; i <= 512; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 512);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(512, i);
+                ctx.stroke();
+            }
+
+            // Glowing crimson conduit traces along center of each cell
+            ctx.strokeStyle = '#660015';
+            ctx.lineWidth = 2;
+            for (let i = 64; i < 512; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 512);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(512, i);
+                ctx.stroke();
+            }
+
+            // Neon red plasma junction nodes
+            for (let x = 0; x <= 512; x += step) {
+                for (let y = 0; y <= 512; y += step) {
+                    ctx.strokeStyle = '#990022';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x - 10, y - 10, 20, 20);
+                    ctx.fillStyle = '#ff0033';
+                    ctx.fillRect(x - 3, y - 3, 6, 6);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(32, 32);
+            return texture;
+        }
+
+        function createReactorPylonTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#100508';
+            ctx.fillRect(0, 0, 256, 512);
+
+            ctx.strokeStyle = '#380714';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(6, 6, 244, 500);
+
+            // Vertical glowing plasma cooling louvers
+            ctx.fillStyle = '#550012';
+            for (let x = 28; x < 240; x += 48) {
+                ctx.fillRect(x, 110, 14, 290);
+            }
+            ctx.fillStyle = '#ff0033';
+            for (let y = 126; y < 390; y += 28) {
+                for (let x = 30; x < 240; x += 48) {
+                    ctx.fillRect(x, y, 10, 8);
+                }
+            }
+
+            // Horizontal reactor bands
+            ctx.fillStyle = '#ff0033';
+            ctx.fillRect(0, 64, 256, 12);
+            ctx.fillRect(0, 250, 256, 8);
+            ctx.fillRect(0, 436, 256, 12);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createSanctumFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#060103';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 2000; i++) {
+                const v = Math.floor(Math.random() * 16);
+                ctx.fillStyle = `rgb(${v + 8}, ${v}, ${v + 5})`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+            }
+
+            const step = 128;
+            ctx.strokeStyle = '#26030d';
+            ctx.lineWidth = 3;
+            for (let i = 0; i <= 512; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 512);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(512, i);
+                ctx.stroke();
+            }
+
+            // Obsidian diamond ritual lattice
+            ctx.strokeStyle = '#6b0018';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < 512; x += step) {
+                for (let y = 0; y < 512; y += step) {
+                    const cx = x + step / 2;
+                    const cy = y + step / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, y + 14);
+                    ctx.lineTo(x + step - 14, cy);
+                    ctx.lineTo(cx, y + step - 14);
+                    ctx.lineTo(x + 14, cy);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ff0033';
+                    ctx.fillRect(cx - 2.5, cy - 2.5, 5, 5);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(34, 34);
+            return texture;
+        }
+
+        function createSanctumMonolithTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#090205';
+            ctx.fillRect(0, 0, 256, 512);
+
+            ctx.strokeStyle = '#3d0514';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(8, 8, 240, 496);
+
+            // Glowing crimson obsidian circuit runes
+            ctx.strokeStyle = '#ff0033';
+            ctx.lineWidth = 4;
+            for (let x of [48, 128, 208]) {
+                ctx.beginPath();
+                ctx.moveTo(x, 40);
+                ctx.lineTo(x, 472);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#ff0033';
+            ctx.fillRect(0, 56, 256, 8);
+            ctx.fillRect(0, 448, 256, 8);
+            for (let y = 120; y <= 392; y += 68) {
+                ctx.fillRect(36, y - 5, 24, 10);
+                ctx.fillRect(116, y - 5, 24, 10);
+                ctx.fillRect(196, y - 5, 24, 10);
+            }
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
         /********************************************************************
          * 3. THREE.JS SCENE, CAMERA, LIGHTING & WEAPON VIEWMODEL
          ********************************************************************/
@@ -1483,9 +1810,13 @@
 
         // Arena Floor
         const ARENA_LIMIT = 58;
+        const gridFloorTex = createGridFloorTexture();
+        const reactorFloorTex = createReactorFloorTexture();
+        const sanctumFloorTex = createSanctumFloorTexture();
+
         const floorGeo = new THREE.PlaneGeometry(140, 140);
         const floorMat = new THREE.MeshStandardMaterial({
-            map: createGridFloorTexture(),
+            map: gridFloorTex,
             roughness: 0.75,
             metalness: 0.2
         });
@@ -1493,73 +1824,623 @@
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
-        // Arena Obstacles / Pillars & Boundary Walls
+        // Arena Obstacles, Shootable Walls & Persistent Beacon Lights
         const obstacles = [];
-        const shootableWalls = [];
-        // Add floor to shootableWalls (Issue 15 Fix: downward shots hit ground instead of void)
-        shootableWalls.push(floor);
+        const shootableWalls = [floor];
+        let currentMapSafeNodes = [[35, 35], [-35, 35], [35, -35], [-35, -35], [0, 45], [0, -45], [45, 0], [-45, 0]];
 
-        const pillarTex = createPillarTexture();
-        const pillarMat = new THREE.MeshStandardMaterial({
-            map: pillarTex,
-            roughness: 0.5,
-            metalness: 0.4
-        });
+        // 4 Persistent Arena PointLight Beacons (Repositioned per map to avoid WebGL shader recompilation)
+        const arenaBeacons = [];
+        for (let i = 0; i < 4; i++) {
+            const beacon = new THREE.PointLight(0xff0033, 1.1, 22);
+            scene.add(beacon);
+            arenaBeacons.push(beacon);
+        }
 
-        const pillarPositions = [
-            [-14, -14], [14, -14], [-14, 14], [14, 14],
-            [0, -26], [0, 26], [-26, 0], [26, 0],
-            [-28, -28], [28, -28], [-28, 28], [28, 28],
-            [-40, -12], [40, -12], [-40, 12], [40, 12],
-            [-12, -40], [12, -40], [-12, 40], [12, 40]
-        ];
-
-        const pillarGeo = new THREE.CylinderGeometry(1.6, 1.8, 12, 8);
-        const neonRingGeo = new THREE.TorusGeometry(1.72, 0.08, 8, 24);
         const neonRingMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-
-        pillarPositions.forEach(([px, pz], idx) => {
-            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-            pillar.position.set(px, 6, pz);
-            scene.add(pillar);
-            shootableWalls.push(pillar);
-            obstacles.push({ x: px, z: pz, radius: 1.85 });
-
-            const ring = new THREE.Mesh(neonRingGeo, neonRingMat);
-            ring.rotation.x = Math.PI / 2;
-            ring.position.set(px, 2.5, pz);
-            scene.add(ring);
-
-            if (idx < 4) {
-                const beacon = new THREE.PointLight(0xff0033, 1.1, 22);
-                beacon.position.set(px, 4.5, pz);
-                scene.add(beacon);
-            }
-        });
-
-        // Perimeter Neon Barrier Walls (Wall strip positioned at top y=7.9: Doc/Hygiene Fix)
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x0d0205, roughness: 0.8 });
+        const neonBrightMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
+        const neonDeepMat = new THREE.MeshBasicMaterial({ color: 0x990022 });
         const wallConfigs = [
             { pos: [0, 4, -62], size: [124, 8, 2] },
             { pos: [0, 4, 62], size: [124, 8, 2] },
             { pos: [-62, 4, 0], size: [2, 8, 124] },
             { pos: [62, 4, 0], size: [2, 8, 124] }
         ];
-        wallConfigs.forEach(cfg => {
-            const wall = new THREE.Mesh(new THREE.BoxGeometry(...cfg.size), wallMat);
-            wall.position.set(...cfg.pos);
-            scene.add(wall);
-            shootableWalls.push(wall);
 
-            const stripGeo = new THREE.BoxGeometry(
-                cfg.size[0] === 2 ? 2.16 : cfg.size[0],
-                0.2,
-                cfg.size[2] === 2 ? 2.16 : cfg.size[2]
+        // ====================================================================
+        // MAP 01: SECTOR 09 — CONTAINMENT GRID (Original Classic Arena)
+        // ====================================================================
+        function buildMap1ContainmentGrid() {
+            const group = new THREE.Group();
+            const mapObstacles = [];
+            const mapShootables = [];
+
+            const pillarMat = new THREE.MeshStandardMaterial({
+                map: createPillarTexture(),
+                roughness: 0.5,
+                metalness: 0.4
+            });
+
+            const pillarPositions = [
+                [-14, -14], [14, -14], [-14, 14], [14, 14],
+                [0, -26], [0, 26], [-26, 0], [26, 0],
+                [-28, -28], [28, -28], [-28, 28], [28, 28],
+                [-40, -12], [40, -12], [-40, 12], [40, 12],
+                [-12, -40], [12, -40], [-12, 40], [12, 40]
+            ];
+
+            const pillarGeo = new THREE.CylinderGeometry(1.6, 1.8, 12, 8);
+            const neonRingGeo = new THREE.TorusGeometry(1.72, 0.08, 8, 24);
+
+            pillarPositions.forEach(([px, pz]) => {
+                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+                pillar.position.set(px, 6, pz);
+                group.add(pillar);
+                mapShootables.push(pillar);
+                mapObstacles.push({ x: px, z: pz, radius: 1.85 });
+
+                const ring = new THREE.Mesh(neonRingGeo, neonRingMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.set(px, 2.5, pz);
+                group.add(ring);
+            });
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x0d0205, roughness: 0.8 });
+            wallConfigs.forEach(cfg => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(...cfg.size), wallMat);
+                wall.position.set(...cfg.pos);
+                group.add(wall);
+                mapShootables.push(wall);
+
+                const stripGeo = new THREE.BoxGeometry(
+                    cfg.size[0] === 2 ? 2.16 : cfg.size[0],
+                    0.2,
+                    cfg.size[2] === 2 ? 2.16 : cfg.size[2]
+                );
+                const strip = new THREE.Mesh(stripGeo, neonRingMat);
+                strip.position.set(cfg.pos[0], 7.9, cfg.pos[2]);
+                group.add(strip);
+            });
+
+            scene.add(group);
+
+            return {
+                id: 'map1',
+                code: '01 // CONTAINMENT GRID',
+                shortLabel: '01 GRID',
+                name: 'CONTAINMENT GRID',
+                fullName: 'MAP 01: CONTAINMENT GRID',
+                subtitle: 'SECTOR 09 // SYMMETRICAL HAZARD PILLAR MATRIX',
+                group,
+                obstacles: mapObstacles,
+                shootableMeshes: mapShootables,
+                safeNodes: [[35, 35], [-35, 35], [35, -35], [-35, -35], [0, 45], [0, -45], [45, 0], [-45, 0]],
+                floorTexture: gridFloorTex,
+                floorRoughness: 0.75,
+                floorMetalness: 0.2,
+                bgColor: 0x050002,
+                fogColor: 0x090004,
+                fogDensity: 0.028,
+                moonColor: 0xff0033,
+                beaconConfigs: [
+                    { pos: [-14, 4.5, -14], color: 0xff0033, intensity: 1.1, distance: 22 },
+                    { pos: [14, 4.5, -14], color: 0xff0033, intensity: 1.1, distance: 22 },
+                    { pos: [-14, 4.5, 14], color: 0xff0033, intensity: 1.1, distance: 22 },
+                    { pos: [14, 4.5, 14], color: 0xff0033, intensity: 1.1, distance: 22 }
+                ],
+                update: null
+            };
+        }
+
+        // ====================================================================
+        // MAP 02: SECTOR 09 — CRIMSON REACTOR (Overloaded Core & Cooling Silos)
+        // ====================================================================
+        function buildMap2CrimsonReactor() {
+            const group = new THREE.Group();
+            const mapObstacles = [];
+            const mapShootables = [];
+
+            const reactorPylonMat = new THREE.MeshStandardMaterial({
+                map: createReactorPylonTexture(),
+                roughness: 0.38,
+                metalness: 0.62
+            });
+            const darkSteelMat = new THREE.MeshStandardMaterial({
+                color: 0x110508,
+                roughness: 0.42,
+                metalness: 0.7
+            });
+            const reactorBeamMat = new THREE.MeshBasicMaterial({
+                color: 0xff0033,
+                transparent: true,
+                opacity: 0.35,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            // 1. Walkable Central Floor Reactor Containment Sigil at (0, 0)
+            const outerFloorRing = new THREE.Mesh(
+                new THREE.RingGeometry(5.6, 5.95, 32),
+                neonRingMat
             );
-            const strip = new THREE.Mesh(stripGeo, neonRingMat);
-            strip.position.set(cfg.pos[0], 7.9, cfg.pos[2]);
-            scene.add(strip);
-        });
+            outerFloorRing.rotation.x = -Math.PI / 2;
+            outerFloorRing.position.y = 0.03;
+            group.add(outerFloorRing);
+
+            const innerFloorRing = new THREE.Mesh(
+                new THREE.RingGeometry(2.6, 2.85, 32),
+                neonBrightMat
+            );
+            innerFloorRing.rotation.x = -Math.PI / 2;
+            innerFloorRing.position.y = 0.03;
+            group.add(innerFloorRing);
+
+            // 2. Overhead Suspended Plasma Core Assembly at (0, 10.8, 0) (Non-blocking overhead centerpiece)
+            const overheadCoreGroup = new THREE.Group();
+            overheadCoreGroup.position.set(0, 10.8, 0);
+
+            const plasmaHeart = new THREE.Mesh(
+                new THREE.OctahedronGeometry(1.75, 0),
+                neonBrightMat
+            );
+            overheadCoreGroup.add(plasmaHeart);
+
+            const coreCage = new THREE.Mesh(
+                new THREE.OctahedronGeometry(2.25, 0),
+                new THREE.MeshBasicMaterial({ color: 0xff0033, wireframe: true })
+            );
+            overheadCoreGroup.add(coreCage);
+
+            const gyroRingGeo = new THREE.TorusGeometry(3.35, 0.11, 8, 32);
+            const gyroRing1 = new THREE.Mesh(gyroRingGeo, neonRingMat);
+            gyroRing1.rotation.x = Math.PI / 3;
+            overheadCoreGroup.add(gyroRing1);
+
+            const gyroRing2 = new THREE.Mesh(gyroRingGeo, neonBrightMat);
+            gyroRing2.rotation.y = Math.PI / 3;
+            overheadCoreGroup.add(gyroRing2);
+
+            const skyBeam = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.55, 0.55, 42, 16, 1, true),
+                reactorBeamMat
+            );
+            skyBeam.position.y = 18;
+            overheadCoreGroup.add(skyBeam);
+
+            group.add(overheadCoreGroup);
+
+            // 3. 4 Inner Hexagonal Plasma Reactor Pylons at [±12, ±12]
+            const innerPylonCoords = [[-12, -12], [12, -12], [-12, 12], [12, 12]];
+            const innerPylonGeo = new THREE.CylinderGeometry(1.8, 2.0, 13, 6);
+            const innerCoilGeo = new THREE.TorusGeometry(1.98, 0.09, 8, 24);
+            const gantryStrutGeo = new THREE.BoxGeometry(0.45, 0.45, 17.0);
+
+            innerPylonCoords.forEach(([px, pz]) => {
+                const pylon = new THREE.Mesh(innerPylonGeo, reactorPylonMat);
+                pylon.position.set(px, 6.5, pz);
+                group.add(pylon);
+                mapShootables.push(pylon);
+                mapObstacles.push({ x: px, z: pz, radius: 2.1 });
+
+                [2.0, 5.2, 8.4, 11.6].forEach((ry, rIdx) => {
+                    const coil = new THREE.Mesh(innerCoilGeo, rIdx % 2 === 0 ? neonRingMat : neonBrightMat);
+                    coil.rotation.x = Math.PI / 2;
+                    coil.position.set(px, ry, pz);
+                    group.add(coil);
+                });
+
+                // High overhead power strut connecting pylon top to central suspended reactor core
+                const strut = new THREE.Mesh(gantryStrutGeo, darkSteelMat);
+                strut.position.set(px * 0.5, 11.2, pz * 0.5);
+                strut.lookAt(0, 10.8, 0);
+                group.add(strut);
+            });
+
+            // 4. 4 Cardinal Cryo-Coolant Silos at [0, ±24] and [±24, 0]
+            const siloCoords = [[0, -24], [0, 24], [-24, 0], [24, 0]];
+            const siloBodyGeo = new THREE.CylinderGeometry(1.95, 2.05, 11.5, 16);
+            const siloBandGeo = new THREE.CylinderGeometry(2.1, 2.1, 0.36, 16);
+            const siloRibGeo = new THREE.BoxGeometry(0.16, 7.5, 4.25);
+
+            siloCoords.forEach(([sx, sz]) => {
+                const silo = new THREE.Mesh(siloBodyGeo, darkSteelMat);
+                silo.position.set(sx, 5.75, sz);
+                group.add(silo);
+                mapShootables.push(silo);
+                mapObstacles.push({ x: sx, z: sz, radius: 2.2 });
+
+                const bandLow = new THREE.Mesh(siloBandGeo, neonRingMat);
+                bandLow.position.set(sx, 2.2, sz);
+                group.add(bandLow);
+
+                const bandHigh = new THREE.Mesh(siloBandGeo, neonRingMat);
+                bandHigh.position.set(sx, 8.2, sz);
+                group.add(bandHigh);
+
+                const rib1 = new THREE.Mesh(siloRibGeo, neonBrightMat);
+                rib1.position.set(sx, 5.2, sz);
+                group.add(rib1);
+
+                const rib2 = new THREE.Mesh(siloRibGeo, neonBrightMat);
+                rib2.rotation.y = Math.PI / 2;
+                rib2.position.set(sx, 5.2, sz);
+                group.add(rib2);
+            });
+
+            // 5. 8 Mid-Ring Conduit Columns
+            const midConduitCoords = [
+                [-26, -26], [26, -26], [-26, 26], [26, 26],
+                [0, -38], [0, 38], [-38, 0], [38, 0]
+            ];
+            const conduitGeo = new THREE.CylinderGeometry(1.55, 1.72, 12, 8);
+            const conduitRingGeo = new THREE.TorusGeometry(1.7, 0.08, 8, 24);
+
+            midConduitCoords.forEach(([cx, cz]) => {
+                const col = new THREE.Mesh(conduitGeo, reactorPylonMat);
+                col.position.set(cx, 6, cz);
+                group.add(col);
+                mapShootables.push(col);
+                mapObstacles.push({ x: cx, z: cz, radius: 1.8 });
+
+                [2.0, 6.8].forEach(ry => {
+                    const ring = new THREE.Mesh(conduitRingGeo, neonRingMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(cx, ry, cz);
+                    group.add(ring);
+                });
+            });
+
+            // 6. 8 Outer Capacitor Towers
+            const outerCapCoords = [
+                [-42, -22], [42, -22], [-42, 22], [42, 22],
+                [-22, -42], [22, -42], [-22, 42], [22, 42]
+            ];
+            outerCapCoords.forEach(([ox, oz]) => {
+                const tower = new THREE.Mesh(conduitGeo, darkSteelMat);
+                tower.position.set(ox, 6, oz);
+                group.add(tower);
+                mapShootables.push(tower);
+                mapObstacles.push({ x: ox, z: oz, radius: 1.85 });
+
+                [1.8, 4.4, 9.2].forEach(ry => {
+                    const ring = new THREE.Mesh(conduitRingGeo, neonRingMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(ox, ry, oz);
+                    group.add(ring);
+                });
+            });
+
+            // 7. Perimeter Reactor Containment Walls (Double Neon Strips)
+            const reactorWallMat = new THREE.MeshStandardMaterial({ color: 0x0b0205, roughness: 0.65, metalness: 0.35 });
+            wallConfigs.forEach(cfg => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(cfg.size[0], 9, cfg.size[2]), reactorWallMat);
+                wall.position.set(cfg.pos[0], 4.5, cfg.pos[2]);
+                group.add(wall);
+                mapShootables.push(wall);
+
+                const stripGeo = new THREE.BoxGeometry(
+                    cfg.size[0] === 2 ? 2.18 : cfg.size[0],
+                    0.22,
+                    cfg.size[2] === 2 ? 2.18 : cfg.size[2]
+                );
+                const stripTop = new THREE.Mesh(stripGeo, neonRingMat);
+                stripTop.position.set(cfg.pos[0], 8.85, cfg.pos[2]);
+                group.add(stripTop);
+
+                const stripMid = new THREE.Mesh(stripGeo, neonBrightMat);
+                stripMid.position.set(cfg.pos[0], 3.8, cfg.pos[2]);
+                group.add(stripMid);
+            });
+
+            group.visible = false;
+            scene.add(group);
+
+            return {
+                id: 'map2',
+                code: '02 // CRIMSON REACTOR',
+                shortLabel: '02 REACTOR',
+                name: 'CRIMSON REACTOR',
+                fullName: 'MAP 02: CRIMSON REACTOR',
+                subtitle: 'SECTOR 09 // OVERLOADED PLASMA CORE & COOLING TOWERS',
+                group,
+                obstacles: mapObstacles,
+                shootableMeshes: mapShootables,
+                safeNodes: [[32, 32], [-32, 32], [32, -32], [-32, -32], [0, 48], [0, -48], [48, 0], [-48, 0]],
+                floorTexture: reactorFloorTex,
+                floorRoughness: 0.58,
+                floorMetalness: 0.42,
+                bgColor: 0x060002,
+                fogColor: 0x0c0005,
+                fogDensity: 0.026,
+                moonColor: 0xff1144,
+                beaconConfigs: [
+                    { pos: [-12, 5.0, -12], color: 0xff1133, intensity: 1.35, distance: 25 },
+                    { pos: [12, 5.0, -12], color: 0xff1133, intensity: 1.35, distance: 25 },
+                    { pos: [-12, 5.0, 12], color: 0xff1133, intensity: 1.35, distance: 25 },
+                    { pos: [12, 5.0, 12], color: 0xff1133, intensity: 1.35, distance: 25 }
+                ],
+                update(now) {
+                    const t = now * 0.001;
+                    plasmaHeart.rotation.y = t * 1.4;
+                    coreCage.rotation.y = -t * 0.9;
+                    gyroRing1.rotation.z = t * 1.1;
+                    gyroRing2.rotation.x = -t * 0.85;
+                }
+            };
+        }
+
+        // ====================================================================
+        // MAP 03: SECTOR 09 — OBSIDIAN SANCTUM (Monoliths, Bio-Vats & Arches)
+        // ====================================================================
+        function buildMap3ObsidianSanctum() {
+            const group = new THREE.Group();
+            const mapObstacles = [];
+            const mapShootables = [];
+
+            const monolithMat = new THREE.MeshStandardMaterial({
+                map: createSanctumMonolithTexture(),
+                roughness: 0.32,
+                metalness: 0.65
+            });
+            const obsidianMat = new THREE.MeshStandardMaterial({
+                color: 0x090205,
+                roughness: 0.28,
+                metalness: 0.75
+            });
+            const bioFluidMat = new THREE.MeshStandardMaterial({
+                color: 0xff0033,
+                emissive: 0xcc0029,
+                emissiveIntensity: 0.85,
+                roughness: 0.2,
+                metalness: 0.3
+            });
+
+            // 1. Walkable Central Quarantine Octagon Sigil at (0, 0)
+            const octRingOuter = new THREE.Mesh(
+                new THREE.RingGeometry(4.6, 4.95, 8),
+                neonRingMat
+            );
+            octRingOuter.rotation.x = -Math.PI / 2;
+            octRingOuter.position.y = 0.03;
+            group.add(octRingOuter);
+
+            const octRingInner = new THREE.Mesh(
+                new THREE.RingGeometry(1.9, 2.15, 8),
+                neonBrightMat
+            );
+            octRingInner.rotation.x = -Math.PI / 2;
+            octRingInner.position.y = 0.03;
+            group.add(octRingInner);
+
+            // 2. Overhead Floating Inverted Obsidian Spire at (0, 10.6, 0)
+            const sanctumApexGroup = new THREE.Group();
+            sanctumApexGroup.position.set(0, 10.6, 0);
+
+            const invertedSpireGeo = new THREE.ConeGeometry(2.1, 5.2, 4);
+            const invertedSpire = new THREE.Mesh(invertedSpireGeo, obsidianMat);
+            invertedSpire.rotation.x = Math.PI;
+            sanctumApexGroup.add(invertedSpire);
+
+            const spireWire = new THREE.Mesh(
+                new THREE.ConeGeometry(2.18, 5.3, 4),
+                new THREE.MeshBasicMaterial({ color: 0xff0033, wireframe: true })
+            );
+            spireWire.rotation.x = Math.PI;
+            sanctumApexGroup.add(spireWire);
+
+            const apexDiamondRing = new THREE.Mesh(
+                new THREE.TorusGeometry(3.3, 0.11, 6, 4),
+                neonRingMat
+            );
+            apexDiamondRing.rotation.x = Math.PI / 2;
+            apexDiamondRing.position.y = 1.2;
+            sanctumApexGroup.add(apexDiamondRing);
+
+            group.add(sanctumApexGroup);
+
+            // 3. 4 Inner Breached Bio-Stasis Vats at [0, ±15] and [±15, 0]
+            const bioVatCoords = [[0, -15], [0, 15], [-15, 0], [15, 0]];
+            const vatCapGeo = new THREE.CylinderGeometry(1.92, 2.02, 1.8, 12);
+            const vatChamberGeo = new THREE.CylinderGeometry(1.42, 1.42, 8.6, 12);
+            const vatRingGeo = new THREE.TorusGeometry(1.88, 0.09, 8, 24);
+            const vatStrutGeo = new THREE.BoxGeometry(0.18, 8.8, 3.85);
+
+            bioVatCoords.forEach(([vx, vz]) => {
+                const baseCap = new THREE.Mesh(vatCapGeo, obsidianMat);
+                baseCap.position.set(vx, 0.9, vz);
+                group.add(baseCap);
+                mapShootables.push(baseCap);
+
+                const topCap = new THREE.Mesh(vatCapGeo, obsidianMat);
+                topCap.position.set(vx, 10.2, vz);
+                group.add(topCap);
+                mapShootables.push(topCap);
+
+                const chamber = new THREE.Mesh(vatChamberGeo, bioFluidMat);
+                chamber.position.set(vx, 5.5, vz);
+                group.add(chamber);
+                mapShootables.push(chamber);
+                mapObstacles.push({ x: vx, z: vz, radius: 2.0 });
+
+                const strut1 = new THREE.Mesh(vatStrutGeo, obsidianMat);
+                strut1.position.set(vx, 5.5, vz);
+                group.add(strut1);
+
+                const strut2 = new THREE.Mesh(vatStrutGeo, obsidianMat);
+                strut2.rotation.y = Math.PI / 2;
+                strut2.position.set(vx, 5.5, vz);
+                group.add(strut2);
+
+                [2.0, 5.5, 9.0].forEach(ry => {
+                    const ring = new THREE.Mesh(vatRingGeo, neonRingMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(vx, ry, vz);
+                    group.add(ring);
+                });
+            });
+
+            // 4. 4 Diagonal Tapered Obsidian Monoliths at [±19, ±19]
+            const monolithCoords = [[-19, -19], [19, -19], [-19, 19], [19, 19]];
+            const monolithGeo = new THREE.CylinderGeometry(1.1, 1.98, 13.5, 4);
+            const monoCollarLowGeo = new THREE.TorusGeometry(1.88, 0.09, 6, 4);
+            const monoCollarMidGeo = new THREE.TorusGeometry(1.56, 0.08, 6, 4);
+            const peakCrystalGeo = new THREE.OctahedronGeometry(0.72, 0);
+            const peakCrystals = [];
+
+            monolithCoords.forEach(([mx, mz]) => {
+                const monolith = new THREE.Mesh(monolithGeo, monolithMat);
+                monolith.position.set(mx, 6.75, mz);
+                monolith.rotation.y = Math.PI / 4;
+                group.add(monolith);
+                mapShootables.push(monolith);
+                mapObstacles.push({ x: mx, z: mz, radius: 2.1 });
+
+                const collarLow = new THREE.Mesh(monoCollarLowGeo, neonRingMat);
+                collarLow.rotation.x = Math.PI / 2;
+                collarLow.rotation.z = Math.PI / 4;
+                collarLow.position.set(mx, 2.2, mz);
+                group.add(collarLow);
+
+                const collarMid = new THREE.Mesh(monoCollarMidGeo, neonBrightMat);
+                collarMid.rotation.x = Math.PI / 2;
+                collarMid.rotation.z = Math.PI / 4;
+                collarMid.position.set(mx, 7.2, mz);
+                group.add(collarMid);
+
+                const crystal = new THREE.Mesh(peakCrystalGeo, neonRingMat);
+                crystal.position.set(mx, 14.4, mz);
+                group.add(crystal);
+                peakCrystals.push(crystal);
+            });
+
+            // 5. 4 Cardinal Quarantine Gate Archways (8 Gate Pillars + 4 Overhead Neon Arch Lintels)
+            const gatePillarGeo = new THREE.CylinderGeometry(1.45, 1.62, 10.5, 8);
+            const gateRingGeo = new THREE.TorusGeometry(1.6, 0.08, 8, 24);
+            const archConfigs = [
+                { p1: [-7, -31], p2: [7, -31], center: [0, 9.6, -31], beamSize: [16.8, 1.2, 1.8], stripSize: [17.0, 0.18, 1.95] },
+                { p1: [-7, 31], p2: [7, 31], center: [0, 9.6, 31], beamSize: [16.8, 1.2, 1.8], stripSize: [17.0, 0.18, 1.95] },
+                { p1: [-31, -7], p2: [-31, 7], center: [-31, 9.6, 0], beamSize: [1.8, 1.2, 16.8], stripSize: [1.95, 0.18, 17.0] },
+                { p1: [31, -7], p2: [31, 7], center: [31, 9.6, 0], beamSize: [1.8, 1.2, 16.8], stripSize: [1.95, 0.18, 17.0] }
+            ];
+
+            archConfigs.forEach(arch => {
+                [arch.p1, arch.p2].forEach(([gx, gz]) => {
+                    const gPillar = new THREE.Mesh(gatePillarGeo, monolithMat);
+                    gPillar.position.set(gx, 5.25, gz);
+                    group.add(gPillar);
+                    mapShootables.push(gPillar);
+                    mapObstacles.push({ x: gx, z: gz, radius: 1.65 });
+
+                    [2.0, 5.8].forEach(ry => {
+                        const gRing = new THREE.Mesh(gateRingGeo, neonRingMat);
+                        gRing.rotation.x = Math.PI / 2;
+                        gRing.position.set(gx, ry, gz);
+                        group.add(gRing);
+                    });
+                });
+
+                const lintel = new THREE.Mesh(new THREE.BoxGeometry(...arch.beamSize), obsidianMat);
+                lintel.position.set(...arch.center);
+                group.add(lintel);
+                mapShootables.push(lintel);
+
+                const lintelStripLow = new THREE.Mesh(new THREE.BoxGeometry(...arch.stripSize), neonRingMat);
+                lintelStripLow.position.set(arch.center[0], arch.center[1] - 0.58, arch.center[2]);
+                group.add(lintelStripLow);
+
+                const lintelStripHigh = new THREE.Mesh(new THREE.BoxGeometry(...arch.stripSize), neonBrightMat);
+                lintelStripHigh.position.set(arch.center[0], arch.center[1] + 0.58, arch.center[2]);
+                group.add(lintelStripHigh);
+            });
+
+            // 6. 8 Outer Sentinel Spires
+            const sentinelCoords = [
+                [-32, -32], [32, -32], [-32, 32], [32, 32],
+                [-44, -20], [44, -20], [-44, 20], [44, 20]
+            ];
+            const sentinelGeo = new THREE.CylinderGeometry(1.35, 1.78, 13, 6);
+            const sentinelRingGeo = new THREE.TorusGeometry(1.68, 0.08, 6, 24);
+
+            sentinelCoords.forEach(([sx, sz]) => {
+                const spire = new THREE.Mesh(sentinelGeo, monolithMat);
+                spire.position.set(sx, 6.5, sz);
+                group.add(spire);
+                mapShootables.push(spire);
+                mapObstacles.push({ x: sx, z: sz, radius: 1.85 });
+
+                [1.8, 6.2].forEach(ry => {
+                    const sRing = new THREE.Mesh(sentinelRingGeo, neonRingMat);
+                    sRing.rotation.x = Math.PI / 2;
+                    sRing.position.set(sx, ry, sz);
+                    group.add(sRing);
+                });
+            });
+
+            // 7. Perimeter Sanctum Walls (Triple Neon Laser Strips)
+            const sanctumWallMat = new THREE.MeshStandardMaterial({ color: 0x070103, roughness: 0.5, metalness: 0.5 });
+            wallConfigs.forEach(cfg => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(cfg.size[0], 9.5, cfg.size[2]), sanctumWallMat);
+                wall.position.set(cfg.pos[0], 4.75, cfg.pos[2]);
+                group.add(wall);
+                mapShootables.push(wall);
+
+                const stripGeo = new THREE.BoxGeometry(
+                    cfg.size[0] === 2 ? 2.18 : cfg.size[0],
+                    0.18,
+                    cfg.size[2] === 2 ? 2.18 : cfg.size[2]
+                );
+                [2.2, 5.6, 9.35].forEach((sy, sIdx) => {
+                    const strip = new THREE.Mesh(stripGeo, sIdx === 1 ? neonBrightMat : neonRingMat);
+                    strip.position.set(cfg.pos[0], sy, cfg.pos[2]);
+                    group.add(strip);
+                });
+            });
+
+            group.visible = false;
+            scene.add(group);
+
+            return {
+                id: 'map3',
+                code: '03 // OBSIDIAN SANCTUM',
+                shortLabel: '03 SANCTUM',
+                name: 'OBSIDIAN SANCTUM',
+                fullName: 'MAP 03: OBSIDIAN SANCTUM',
+                subtitle: 'SECTOR 09 // DARK MONOLITHS & BIO-STASIS CRYPTS',
+                group,
+                obstacles: mapObstacles,
+                shootableMeshes: mapShootables,
+                safeNodes: [[42, 42], [-42, 42], [42, -42], [-42, -42], [0, 46], [0, -46], [46, 0], [-46, 0]],
+                floorTexture: sanctumFloorTex,
+                floorRoughness: 0.45,
+                floorMetalness: 0.55,
+                bgColor: 0x040002,
+                fogColor: 0x080004,
+                fogDensity: 0.027,
+                moonColor: 0xff0033,
+                beaconConfigs: [
+                    { pos: [0, 4.8, -15], color: 0xff0033, intensity: 1.3, distance: 24 },
+                    { pos: [0, 4.8, 15], color: 0xff0033, intensity: 1.3, distance: 24 },
+                    { pos: [-15, 4.8, 0], color: 0xff0033, intensity: 1.3, distance: 24 },
+                    { pos: [15, 4.8, 0], color: 0xff0033, intensity: 1.3, distance: 24 }
+                ],
+                update(now) {
+                    const t = now * 0.001;
+                    sanctumApexGroup.rotation.y = t * 0.65;
+                    sanctumApexGroup.position.y = 10.6 + Math.sin(t * 2.0) * 0.35;
+                    for (let i = 0; i < peakCrystals.length; i++) {
+                        peakCrystals[i].rotation.y = -t * 1.8 + i;
+                        peakCrystals[i].position.y = 14.4 + Math.sin(t * 2.5 + i) * 0.22;
+                    }
+                }
+            };
+        }
+
+        const ARENA_MAPS = [
+            buildMap1ContainmentGrid(),
+            buildMap2CrimsonReactor(),
+            buildMap3ObsidianSanctum()
+        ];
 
         /********************************************************************
          * 4. 3D WEAPON VIEWMODEL
@@ -2722,10 +3603,20 @@
             }
 
             if (!validSpawnFound) {
-                const safeNodes = [[35, 35], [-35, 35], [35, -35], [-35, -35], [0, 45], [0, -45], [45, 0], [-45, 0]];
-                const node = safeNodes[Math.floor(Math.random() * safeNodes.length)];
-                spawnX = node[0];
-                spawnZ = node[1];
+                const safeNodes = currentMapSafeNodes;
+                let chosenNode = safeNodes[Math.floor(Math.random() * safeNodes.length)];
+                if (Math.hypot(chosenNode[0] - camera.position.x, chosenNode[1] - camera.position.z) < 16) {
+                    let bestDist = -1;
+                    for (let k = 0; k < safeNodes.length; k++) {
+                        const d = Math.hypot(safeNodes[k][0] - camera.position.x, safeNodes[k][1] - camera.position.z);
+                        if (d > bestDist) {
+                            bestDist = d;
+                            chosenNode = safeNodes[k];
+                        }
+                    }
+                }
+                spawnX = chosenNode[0];
+                spawnZ = chosenNode[1];
             }
 
             parts.root.position.set(spawnX, 0, spawnZ);
@@ -2827,6 +3718,11 @@
             // Intermission Breather (Improvement 6)
             isIntermission: false,
             intermissionTimer: 0,
+
+            // Map Rotation & Random Map Mode
+            mapMode: safeStorage.getEnum('mr_map_mode', VALID_MAP_MODES, 'cycle'),
+            currentMapIndex: 0,
+            nextWaveMapIndex: null,
 
             recoilOffset: 0,
             recoilPitch: 0,
@@ -2986,9 +3882,12 @@
             const pauseWave = document.getElementById('pause-wave');
             const pauseScore = document.getElementById('pause-score');
             const pauseKills = document.getElementById('pause-kills');
+            const pauseMap = document.getElementById('pause-map');
             if (pauseWave) pauseWave.textContent = String(state.wave).padStart(2, '0');
             if (pauseScore) pauseScore.textContent = String(state.score).padStart(4, '0');
             if (pauseKills) pauseKills.textContent = state.kills;
+            const activeMap = ARENA_MAPS[state.currentMapIndex] || ARENA_MAPS[0];
+            if (pauseMap && activeMap) pauseMap.textContent = activeMap.shortLabel;
         }
 
         function pauseGame() {
@@ -3119,7 +4018,17 @@
                     return { x, z };
                 }
             }
-            return { x: 32, z: 32 };
+            const safeNodes = currentMapSafeNodes;
+            let bestNode = safeNodes[0];
+            let bestDist = -1;
+            for (let i = 0; i < safeNodes.length; i++) {
+                const d = Math.hypot(safeNodes[i][0] - camera.position.x, safeNodes[i][1] - camera.position.z);
+                if (d > bestDist) {
+                    bestDist = d;
+                    bestNode = safeNodes[i];
+                }
+            }
+            return { x: bestNode[0], z: bestNode[1] };
         }
 
         function spawnHealthJewel() {
@@ -3306,10 +4215,149 @@
             }
         }
 
-        function renderWaveBanner(subClass, subText, titleClass, titleText) {
+        function ensurePlayerSafePosition() {
+            resolveArenaCollisions(camera.position, 1.25);
+            resolveArenaCollisions(camera.position, 0.85);
+        }
+
+        function updateMapUI() {
+            const activeMap = ARENA_MAPS[state.currentMapIndex] || ARENA_MAPS[0];
+            const modeLabel = state.mapMode === 'random' ? 'RANDOM' : 'CYCLE';
+            const modeFullLabel = state.mapMode === 'random' ? 'RANDOM MAP' : 'WAVE CYCLE';
+
+            const hudMapName = document.getElementById('hud-map-name');
+            const hudMapMode = document.getElementById('hud-map-mode');
+            if (hudMapName && activeMap) hudMapName.textContent = activeMap.code;
+            if (hudMapMode) hudMapMode.textContent = modeLabel;
+
+            const titleBadge = document.getElementById('title-map-mode-badge');
+            const pauseLabel = document.getElementById('pause-map-mode-label');
+            const settingLabel = document.getElementById('setting-map-mode-label');
+            const previewLabel = document.getElementById('title-preview-label');
+
+            if (titleBadge) titleBadge.textContent = modeFullLabel;
+            if (pauseLabel) pauseLabel.textContent = modeFullLabel;
+            if (settingLabel) settingLabel.textContent = modeFullLabel;
+            if (previewLabel && activeMap) previewLabel.textContent = activeMap.fullName;
+
+            document.querySelectorAll('.map-mode-btn').forEach(btn => {
+                const m = btn.getAttribute('data-map-mode');
+                if (m === state.mapMode) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            document.querySelectorAll('.map-preview-btn').forEach(btn => {
+                const idx = parseInt(btn.getAttribute('data-map-preview'), 10);
+                if (idx === state.currentMapIndex) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            updatePauseTelemetry();
+        }
+
+        function setActiveMap(mapIndex, playTransitionEffect = false) {
+            const safeIdx = ((mapIndex % ARENA_MAPS.length) + ARENA_MAPS.length) % ARENA_MAPS.length;
+            const prevIdx = state.currentMapIndex;
+            state.currentMapIndex = safeIdx;
+
+            for (let i = 0; i < ARENA_MAPS.length; i++) {
+                ARENA_MAPS[i].group.visible = (i === safeIdx);
+            }
+
+            const activeMap = ARENA_MAPS[safeIdx];
+
+            obstacles.length = 0;
+            for (let i = 0; i < activeMap.obstacles.length; i++) {
+                obstacles.push(activeMap.obstacles[i]);
+            }
+
+            shootableWalls.length = 0;
+            shootableWalls.push(floor);
+            for (let i = 0; i < activeMap.shootableMeshes.length; i++) {
+                shootableWalls.push(activeMap.shootableMeshes[i]);
+            }
+
+            currentMapSafeNodes = activeMap.safeNodes;
+
+            if (floorMat.map !== activeMap.floorTexture) {
+                floorMat.map = activeMap.floorTexture;
+                floorMat.roughness = activeMap.floorRoughness;
+                floorMat.metalness = activeMap.floorMetalness;
+                floorMat.needsUpdate = true;
+            }
+
+            scene.background.setHex(activeMap.bgColor);
+            scene.fog.color.setHex(activeMap.fogColor);
+            scene.fog.density = activeMap.fogDensity;
+            bloodMoon.material.color.setHex(activeMap.moonColor);
+
+            for (let i = 0; i < arenaBeacons.length; i++) {
+                const cfg = activeMap.beaconConfigs[i];
+                const light = arenaBeacons[i];
+                if (cfg && light) {
+                    light.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+                    light.color.setHex(cfg.color);
+                    light.intensity = cfg.intensity;
+                    light.distance = cfg.distance;
+                }
+            }
+
+            if (state.mode === 'PLAYING') {
+                ensurePlayerSafePosition();
+                if (playTransitionEffect && prevIdx !== safeIdx) {
+                    sound.playMapTransition();
+                }
+            }
+
+            updateMapUI();
+        }
+
+        function setMapMode(mode) {
+            const safeMode = VALID_MAP_MODES.includes(mode) ? mode : 'cycle';
+            state.mapMode = safeMode;
+            safeStorage.setItem('mr_map_mode', safeMode);
+            if (safeMode === 'cycle') {
+                state.nextWaveMapIndex = null;
+            } else if (state.isIntermission && state.nextWaveMapIndex === null) {
+                const candidates = [];
+                for (let i = 0; i < ARENA_MAPS.length; i++) {
+                    if (i !== state.currentMapIndex) candidates.push(i);
+                }
+                state.nextWaveMapIndex = candidates[Math.floor(Math.random() * candidates.length)];
+            }
+            updateMapUI();
+        }
+
+        function selectMapIndexForWave(waveNumber) {
+            if (state.mapMode === 'random') {
+                if (waveNumber === 1) {
+                    return Math.floor(Math.random() * ARENA_MAPS.length);
+                }
+                if (state.nextWaveMapIndex !== null && state.nextWaveMapIndex >= 0 && state.nextWaveMapIndex < ARENA_MAPS.length) {
+                    const chosen = state.nextWaveMapIndex;
+                    state.nextWaveMapIndex = null;
+                    return chosen;
+                }
+                const candidates = [];
+                for (let i = 0; i < ARENA_MAPS.length; i++) {
+                    if (i !== state.currentMapIndex) candidates.push(i);
+                }
+                return candidates[Math.floor(Math.random() * candidates.length)];
+            }
+            // Cycle mode: Wave 1 = Map 1 (0), Wave 2 = Map 2 (1), Wave 3 = Map 3 (2), Wave 4 = Map 1 (0)...
+            return (waveNumber - 1) % ARENA_MAPS.length;
+        }
+
+        function renderWaveBanner(subClass, subText, titleClass, titleText, mapText = '') {
             if (!waveBannerContainer) return;
             const wrapper = document.createElement('div');
             wrapper.className = 'wave-announce';
+            if (mapText) {
+                const mapEl = document.createElement('div');
+                mapEl.className = 'font-neon text-[10px] sm:text-xs tracking-[0.28em] text-rose-300 bg-red-950/75 border border-red-600/60 px-3 py-0.5 rounded-full inline-block mb-1 uppercase font-bold shadow-[0_0_12px_rgba(255,0,51,0.35)]';
+                mapEl.textContent = mapText;
+                wrapper.appendChild(mapEl);
+            }
             const subEl = document.createElement('div');
             subEl.className = subClass;
             subEl.textContent = subText;
@@ -3334,11 +4382,15 @@
                 bannerColor = 'text-red-500 font-bold';
             }
 
+            const activeMap = ARENA_MAPS[state.currentMapIndex] || ARENA_MAPS[0];
+            const modeTag = state.mapMode === 'random' ? 'RANDOM SECTOR' : 'WAVE CYCLE';
+
             renderWaveBanner(
                 `font-neon text-xs sm:text-sm tracking-[0.3em] ${bannerColor} uppercase`,
                 subTitle,
                 'font-neon neon-title text-3xl sm:text-5xl font-black tracking-widest uppercase',
-                `WAVE ${String(waveNumber).padStart(2, '0')}`
+                `WAVE ${String(waveNumber).padStart(2, '0')}`,
+                `${activeMap.fullName} // ${modeTag}`
             );
         }
 
@@ -3346,6 +4398,10 @@
             state.wave = waveNumber;
             state.isIntermission = false;
             state.bruteAnnouncedThisWave = false;
+
+            const targetMapIdx = selectMapIndexForWave(waveNumber);
+            setActiveMap(targetMapIdx, waveNumber > 1);
+
             const totalZombies = 6 + waveNumber * 4;
 
             const roster = [];
@@ -3477,6 +4533,12 @@
             document.getElementById('final-wave').textContent = state.wave;
             document.getElementById('final-kills').textContent = state.kills;
             document.getElementById('final-headshots').textContent = state.headshots;
+
+            const activeMap = ARENA_MAPS[state.currentMapIndex] || ARENA_MAPS[0];
+            const sectorTextEl = document.getElementById('gameover-sector-text');
+            if (sectorTextEl && activeMap) {
+                sectorTextEl.textContent = `The horde consumed your position in Sector 09 (${activeMap.fullName}).`;
+            }
 
             const bestScore = safeStorage.getInt('mr_high_score', 0, 0, 999999999);
             const bestWv = safeStorage.getInt('mr_best_wave', 1, 1, 99999);
@@ -3888,6 +4950,35 @@
 
         updateSprintOptionUI();
 
+        document.querySelectorAll('.map-mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const mode = btn.getAttribute('data-map-mode');
+                if (mode) setMapMode(mode);
+            });
+            btn.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                const mode = btn.getAttribute('data-map-mode');
+                if (mode) setMapMode(mode);
+            }, { passive: true });
+        });
+
+        document.querySelectorAll('.map-preview-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.getAttribute('data-map-preview'), 10);
+                if (Number.isFinite(idx)) setActiveMap(idx, false);
+            });
+            btn.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.getAttribute('data-map-preview'), 10);
+                if (Number.isFinite(idx)) setActiveMap(idx, false);
+            }, { passive: true });
+        });
+
+        // Initialize Map 01 on load
+        setActiveMap(0, false);
+
         // 8b. TOUCH CONTROLS & VIRTUAL JOYSTICK SETUP
         let joystickTouchId = null;
         const joystickCenter = { x: 0, y: 0 };
@@ -4262,18 +5353,37 @@
                 const dz = pos.z - obs.z;
                 const dist = Math.hypot(dx, dz);
                 const minDist = obs.radius + entityRadius;
-                if (dist < minDist && dist > 0.0001) {
-                    const push = (minDist - dist) / dist;
-                    pos.x += dx * push;
-                    pos.z += dz * push;
+                if (dist < minDist) {
+                    if (dist > 0.0001) {
+                        const push = (minDist - dist) / dist;
+                        pos.x += dx * push;
+                        pos.z += dz * push;
+                    } else {
+                        // Exact center overlap fallback: push toward arena center or +X
+                        const toCenterLen = Math.hypot(obs.x, obs.z);
+                        if (toCenterLen > 0.001) {
+                            pos.x -= (obs.x / toCenterLen) * minDist;
+                            pos.z -= (obs.z / toCenterLen) * minDist;
+                        } else {
+                            pos.x += minDist;
+                        }
+                    }
                 }
             }
+
+            pos.x = THREE.MathUtils.clamp(pos.x, -ARENA_LIMIT, ARENA_LIMIT);
+            pos.z = THREE.MathUtils.clamp(pos.z, -ARENA_LIMIT, ARENA_LIMIT);
         }
 
         let lastTime = performance.now();
 
         function animate(now) {
             requestAnimationFrame(animate);
+
+            const activeArenaMap = ARENA_MAPS[state.currentMapIndex];
+            if (activeArenaMap && typeof activeArenaMap.update === 'function') {
+                activeArenaMap.update(now);
+            }
 
             if (state.mode !== 'PLAYING') {
                 const t = now * 0.00025;
@@ -4431,11 +5541,16 @@
             if (state.isIntermission) {
                 state.intermissionTimer -= dt;
                 const secLeft = Math.max(1, Math.ceil(state.intermissionTimer));
+                const upcomingIdx = state.mapMode === 'cycle'
+                    ? (state.wave % ARENA_MAPS.length)
+                    : (state.nextWaveMapIndex !== null ? state.nextWaveMapIndex : ((state.currentMapIndex + 1) % ARENA_MAPS.length));
+                const upcomingMap = ARENA_MAPS[upcomingIdx] || ARENA_MAPS[0];
                 renderWaveBanner(
                     'font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold',
                     'SECTOR PURGED // TACTICAL RESUPPLY',
                     'font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase',
-                    `NEXT IN ${secLeft}S`
+                    `NEXT IN ${secLeft}S`,
+                    `DEPLOYING TO ${upcomingMap.fullName}`
                 );
                 if (state.intermissionTimer <= 0) {
                     state.isIntermission = false;
@@ -4454,6 +5569,15 @@
                 // Trigger 3.5s Breather Intermission before next wave
                 state.isIntermission = true;
                 state.intermissionTimer = 3.5;
+                if (state.mapMode === 'random') {
+                    const candidates = [];
+                    for (let i = 0; i < ARENA_MAPS.length; i++) {
+                        if (i !== state.currentMapIndex) candidates.push(i);
+                    }
+                    state.nextWaveMapIndex = candidates[Math.floor(Math.random() * candidates.length)];
+                } else {
+                    state.nextWaveMapIndex = state.wave % ARENA_MAPS.length;
+                }
                 sound.duckAmbient(true);
             }
 
