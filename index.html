@@ -3143,173 +3143,866 @@
         }
 
         /********************************************************************
-         * 5. ZOMBIE FACTORY & AI SYSTEM
+         * 5. ZOMBIE FACTORY & AI SYSTEM (SCULPTED 3D ANATOMICAL & CYBERNETIC MODELS)
          ********************************************************************/
         const zombies = [];
 
-        // Shared zombie geometries for zero GPU memory bloat
-        const zombieTorsoGeo = new THREE.BoxGeometry(0.75, 1.05, 0.42);
-        const zombieCoreGeo = new THREE.BoxGeometry(0.35, 0.4, 0.44);
-        const zombieHeadGeo = new THREE.BoxGeometry(0.5, 0.52, 0.5);
-        const zombieEyeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.05);
-        const zombieArmGeo = new THREE.BoxGeometry(0.22, 0.22, 0.85);
-        zombieArmGeo.translate(0, 0, 0.35);
-        const zombieLegGeo = new THREE.BoxGeometry(0.28, 0.75, 0.3);
-        zombieLegGeo.translate(0, -0.375, 0);
+        // Vertex sculpting helper to deform standard primitives into organic/armored 3D meshes once at startup
+        function sculptGeometry(geo, deformFn) {
+            const pos = geo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+                const res = deformFn(vx, vy, vz);
+                pos.setXYZ(i, res[0], res[1], res[2]);
+            }
+            pos.needsUpdate = true;
+            geo.computeVertexNormals();
+            return geo;
+        }
 
-        const runnerClawGeo = new THREE.BoxGeometry(0.06, 0.06, 0.35);
-        const bruteShoulderGeo = new THREE.BoxGeometry(0.55, 0.42, 0.55);
-        const bruteHelmGeo = new THREE.BoxGeometry(0.56, 0.22, 0.56);
-        const bruteFistGeo = new THREE.BoxGeometry(0.36, 0.36, 0.36);
-        const bruteChestPlateGeo = new THREE.BoxGeometry(0.85, 0.72, 0.12);
-        const bruteCoreGeo = new THREE.BoxGeometry(0.38, 0.38, 0.16);
-        const bruteVisorGeo = new THREE.BoxGeometry(0.32, 0.08, 0.06);
+        // Procedural surface textures shared across all spawned hostiles (Zero per-spawn texture allocation)
+        function createHostileFleshTexture(baseColor, darkColor, veinColor, highlightColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
+            bgGrad.addColorStop(0.0, baseColor);
+            bgGrad.addColorStop(0.5, darkColor);
+            bgGrad.addColorStop(1.0, baseColor);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Striated anatomical muscle fiber bundles
+            for (let i = 0; i < 180; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const h = 18 + Math.random() * 44;
+                ctx.strokeStyle = i % 3 === 0 ? highlightColor : darkColor;
+                ctx.globalAlpha = 0.22 + Math.random() * 0.2;
+                ctx.lineWidth = 1 + Math.random() * 2.2;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.bezierCurveTo(x + (Math.random() - 0.5) * 14, y + h * 0.33, x + (Math.random() - 0.5) * 14, y + h * 0.66, x, y + h);
+                ctx.stroke();
+            }
+
+            // Mottled necrotic dermal patches
+            for (let i = 0; i < 65; i++) {
+                const rx = Math.random() * 256;
+                const ry = Math.random() * 256;
+                const rad = 6 + Math.random() * 18;
+                const g = ctx.createRadialGradient(rx, ry, 1, rx, ry, rad);
+                g.addColorStop(0, i % 2 === 0 ? darkColor : highlightColor);
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.globalAlpha = 0.28;
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Branched sub-dermal vascular/bioluminescent veins
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = veinColor;
+            for (let i = 0; i < 28; i++) {
+                let vx = Math.random() * 256;
+                let vy = Math.random() * 256;
+                ctx.lineWidth = 1.2 + Math.random() * 1.4;
+                ctx.beginPath();
+                ctx.moveTo(vx, vy);
+                for (let s = 0; s < 5; s++) {
+                    vx += (Math.random() - 0.5) * 26;
+                    vy += 8 + Math.random() * 16;
+                    ctx.lineTo(vx, vy);
+                }
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1.0;
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createHostileSuitTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#140e12';
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Industrial ballistic weave & ribbed containment suit seams
+            ctx.strokeStyle = '#241820';
+            ctx.lineWidth = 2;
+            for (let y = 0; y < 256; y += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(256, y);
+                ctx.stroke();
+            }
+            for (let x = 0; x < 256; x += 32) {
+                ctx.strokeStyle = '#090508';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 256);
+                ctx.stroke();
+            }
+
+            // Weathered grime & dark crimson bio-stains
+            for (let i = 0; i < 50; i++) {
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(65, 5, 18, 0.32)' : 'rgba(5, 2, 4, 0.4)';
+                ctx.beginPath();
+                ctx.arc(Math.random() * 256, Math.random() * 256, 8 + Math.random() * 22, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Sector 09 hazard trim stripe
+            ctx.fillStyle = '#55091a';
+            ctx.fillRect(0, 118, 256, 10);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createBruteArmorPlateTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 256, 256);
+            grad.addColorStop(0.0, '#260910');
+            grad.addColorStop(0.5, '#130408');
+            grad.addColorStop(1.0, '#2b0a12');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Bevelled titanium-obsidian armor panel seams
+            ctx.strokeStyle = '#4a1020';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(8, 8, 240, 240);
+            ctx.strokeRect(28, 28, 200, 200);
+
+            ctx.strokeStyle = '#070103';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 128);
+            ctx.lineTo(256, 128);
+            ctx.moveTo(128, 0);
+            ctx.lineTo(128, 256);
+            ctx.stroke();
+
+            // Corner armor rivets
+            ctx.fillStyle = '#6e1b2e';
+            const rivets = [[20, 20], [236, 20], [20, 236], [236, 236], [42, 42], [214, 42], [42, 214], [214, 214]];
+            for (let i = 0; i < rivets.length; i++) {
+                ctx.beginPath();
+                ctx.arc(rivets[i][0], rivets[i][1], 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Metallic battle scratches
+            ctx.strokeStyle = 'rgba(255, 90, 110, 0.22)';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 24; i++) {
+                const sx = Math.random() * 256;
+                const sy = Math.random() * 256;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + (Math.random() - 0.5) * 32, sy + (Math.random() - 0.5) * 32);
+                ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        const shamblerFleshTex = createHostileFleshTexture('#364736', '#1e291e', '#26ff26', '#50664e');
+        const runnerFleshTex = createHostileFleshTexture('#8f0d20', '#42030c', '#ff1a40', '#c9223b');
+        const bruteFleshTex = createHostileFleshTexture('#251f2b', '#120e17', '#ff5500', '#3d3347');
+        const hostileSuitTex = createHostileSuitTexture();
+        const bruteArmorTex = createBruteArmorPlateTexture();
+
+        // Invisible material for generous raycast hitboxes (Zero fillrate cost, 100% reliable Three.js Raycaster hit detection)
+        const invisibleHitboxMat = new THREE.MeshBasicMaterial({ visible: false });
+
+        // ---- 1. SCULPTED HEAD, SKULL, JAW & HELMET GEOMETRIES ----
+        const shamblerCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.245, 18, 15), (x, y, z) => {
+            let nx = x, ny = y, nz = z;
+            // Taper temples and hollow cheeks below zygomatic arch
+            if (y < 0) {
+                const cheekHollow = Math.max(0, -y / 0.245);
+                nx *= (1.0 - cheekHollow * 0.28);
+                nz *= (1.0 - cheekHollow * 0.12);
+            } else {
+                // Slightly elongated cranial vault
+                ny *= 1.08;
+                nz *= 1.06;
+            }
+            // Prominent supraorbital brow ridge & recessed orbital sockets
+            if (z > 0.08 && y > -0.04 && y < 0.11) {
+                const browFactor = Math.exp(-Math.pow((y - 0.065) / 0.035, 2));
+                nz += browFactor * 0.042;
+                const eyeSocketX = Math.abs(x) - 0.095;
+                const socketFactor = Math.exp(-(eyeSocketX * eyeSocketX) / 0.0028) * Math.exp(-Math.pow((y - 0.01) / 0.04, 2));
+                nz -= socketFactor * 0.048;
+            }
+            // Projecting cheekbones
+            if (z > 0.02 && y > -0.09 && y < 0.01 && Math.abs(x) > 0.11) {
+                nx *= 1.12;
+                nz += 0.02;
+            }
+            return [nx, ny, nz];
+        });
+
+        const runnerCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.235, 18, 15), (x, y, z) => {
+            let nx = x * 0.88, ny = y * 0.95, nz = z * 1.32;
+            // Swept-back predatory raptor/xenomorph sagittal crest
+            if (z < 0) {
+                const backFactor = Math.min(1, -z / 0.235);
+                ny += backFactor * 0.14;
+                nz -= backFactor * 0.16;
+                nx *= (1.0 - backFactor * 0.38);
+            }
+            // Forward snarling snout & sharp brow
+            if (z > 0.05) {
+                const frontFactor = z / 0.235;
+                nx *= (1.0 - frontFactor * 0.22);
+                if (y > 0.02 && y < 0.10) nz += 0.045;
+            }
+            return [nx, ny, nz];
+        });
+
+        const bruteCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.265, 16, 14), (x, y, z) => {
+            let nx = x * 1.08, ny = y * 1.02, nz = z * 1.06;
+            // Heavy square cybernetic jaw & brow
+            if (y < 0) {
+                nx *= 1.06;
+                if (z > 0) nz += 0.03;
+            }
+            return [nx, ny, nz];
+        });
+
+        // Articulated lower mandible / jaw
+        const hostileJawGeo = sculptGeometry(new THREE.CylinderGeometry(0.135, 0.095, 0.13, 12, 2), (x, y, z) => {
+            let nx = x * 0.92, ny = y, nz = z * 1.15;
+            if (z > 0) nz += 0.035;
+            if (z < -0.04) ny += 0.03;
+            return [nx, ny, nz];
+        });
+        hostileJawGeo.translate(0, -0.04, 0.06);
+
+        // Teeth ridge inside jaw
+        const teethRidgeGeo = new THREE.CylinderGeometry(0.11, 0.10, 0.035, 10, 1, true, -Math.PI * 0.42, Math.PI * 0.84);
+        teethRidgeGeo.rotation?.set(0, 0, 0);
+
+        // Glowing eye & photoreceptor geometries
+        const eyeOrbGeo = new THREE.SphereGeometry(0.038, 10, 8);
+        eyeOrbGeo.scale(1.25, 0.82, 0.7);
+        const runnerSecondaryEyeGeo = new THREE.SphereGeometry(0.024, 8, 6);
+        const runnerHornGeo = sculptGeometry(new THREE.ConeGeometry(0.038, 0.24, 7), (x, y, z) => {
+            const bend = (y + 0.12) / 0.24;
+            return [x, y, z - bend * bend * 0.08];
+        });
+        runnerHornGeo.translate(0, 0.10, 0);
+
+        // Brute Tactical Helmet, Visor & Respirator
+        const bruteHelmDomeGeo = sculptGeometry(new THREE.CylinderGeometry(0.24, 0.29, 0.26, 8, 3), (x, y, z) => {
+            let nx = x, ny = y, nz = z;
+            if (y > 0.05) {
+                nx *= 0.85;
+                nz *= 0.90;
+            }
+            // Angled front brow guard
+            if (z > 0.1 && y < 0) {
+                ny -= 0.035;
+                nz += 0.025;
+            }
+            return [nx, ny, nz];
+        });
+        const bruteHelmCrestGeo = new THREE.BoxGeometry(0.07, 0.11, 0.44);
+        const bruteVisorSlitGeo = new THREE.CylinderGeometry(0.265, 0.265, 0.068, 12, 1, false, -Math.PI * 0.34, Math.PI * 0.68);
+        const bruteRespiratorGeo = new THREE.CylinderGeometry(0.065, 0.055, 0.16, 8);
+
+        // Generous Headshot Hitbox Volume (matches/exceeds original 0.5x0.52x0.5 box so headshots feel crisp & fair)
+        const headHitboxGeo = new THREE.SphereGeometry(0.33, 10, 10);
+
+        // ---- 2. SCULPTED ANATOMICAL TORSO, RIBCAGE, PELVIS & EXPOSED REACTOR CORE GEOMETRIES ----
+        const shamblerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.36, 0.25, 0.78, 16, 8), (x, y, z) => {
+            const normY = (y + 0.39) / 0.78; // 0 at waist, 1 at shoulders
+            let nx = x * (0.92 + normY * 0.28); // V-tapered upper back & shoulders
+            let nz = z * (0.72 + Math.sin(normY * Math.PI) * 0.16);
+            // Pectoral projection & spinal groove
+            if (z > 0.05 && normY > 0.42 && normY < 0.86) {
+                nz += 0.045 * Math.sin(((normY - 0.42) / 0.44) * Math.PI);
+            }
+            if (z < -0.08 && Math.abs(x) < 0.08) {
+                nz += 0.03; // Recessed spinal channel
+            }
+            return [nx, y, nz];
+        });
+
+        const runnerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.33, 0.20, 0.76, 16, 8), (x, y, z) => {
+            const normY = (y + 0.38) / 0.76;
+            let nx = x * (0.82 + normY * 0.35);
+            let nz = z * (0.68 + Math.sin(normY * Math.PI) * 0.18);
+            // Rippled ribcage ridges
+            const ribWave = Math.sin(normY * Math.PI * 7) * 0.016;
+            if (normY > 0.25 && normY < 0.85) {
+                nx += Math.sign(x) * ribWave;
+                nz += Math.sign(z) * ribWave;
+            }
+            return [nx, y, nz];
+        });
+
+        const bruteTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.45, 0.31, 0.84, 16, 8), (x, y, z) => {
+            const normY = (y + 0.42) / 0.84;
+            let nx = x * (0.95 + normY * 0.32);
+            let nz = z * (0.78 + Math.sin(normY * Math.PI) * 0.20);
+            return [nx, y, nz];
+        });
+
+        const hostilePelvisGeo = sculptGeometry(new THREE.CylinderGeometry(0.25, 0.22, 0.28, 14, 3), (x, y, z) => {
+            return [x * 1.05, y, z * 0.76];
+        });
+
+        const neckCollarGeo = new THREE.CylinderGeometry(0.13, 0.16, 0.16, 12);
+        const ribBoneArcGeo = new THREE.TorusGeometry(0.165, 0.022, 7, 14, Math.PI * 0.72);
+        ribBoneArcGeo.rotateZ(Math.PI * 0.14);
+        ribBoneArcGeo.rotateX(Math.PI * 0.5);
+        const dorsalSpineSpikeGeo = sculptGeometry(new THREE.ConeGeometry(0.036, 0.22, 6), (x, y, z) => {
+            const t = (y + 0.11) / 0.22;
+            return [x, y, z - t * t * 0.06];
+        });
+        const bioCoreCrystalGeo = new THREE.OctahedronGeometry(0.145, 1);
+        bioCoreCrystalGeo.scale(0.95, 1.25, 0.65);
+        const bioCoreBezelGeo = new THREE.TorusGeometry(0.155, 0.028, 8, 12);
+
+        // Brute Heavy Split Chestplate & Exposed Reactor Core Weakpoint Assembly
+        const bruteSideBreastplateGeo = sculptGeometry(new THREE.BoxGeometry(0.28, 0.64, 0.16), (x, y, z) => {
+            let nx = x, ny = y, nz = z;
+            if (z > 0) {
+                nz += (0.32 - Math.abs(y)) * 0.12;
+            }
+            return [nx, ny, nz];
+        });
+        const bruteGorgetGeo = new THREE.CylinderGeometry(0.32, 0.38, 0.18, 8, 1, false, -Math.PI * 0.42, Math.PI * 0.84);
+        const bruteBackPackGeo = new THREE.BoxGeometry(0.56, 0.54, 0.22);
+        const bruteExhaustNozzleGeo = new THREE.CylinderGeometry(0.075, 0.095, 0.18, 8);
+        bruteExhaustNozzleGeo.rotateX(Math.PI * 0.35);
+
+        // Brute Exposed Reactor Core Weakpoint Geometries
+        const bruteReactorHousingGeo = new THREE.TorusGeometry(0.215, 0.042, 8, 8);
+        const bruteReactorChamberGeo = new THREE.CylinderGeometry(0.185, 0.185, 0.14, 12);
+        bruteReactorChamberGeo.rotateX(Math.PI / 2);
+        const bruteReactorCrystalGeo = new THREE.OctahedronGeometry(0.16, 1);
+        bruteReactorCrystalGeo.scale(1.0, 1.0, 0.65);
+        const bruteReactorGyroGeo = new THREE.TorusGeometry(0.175, 0.018, 6, 16);
+        const bruteCoreHitboxGeo = new THREE.BoxGeometry(0.42, 0.42, 0.22);
+
+        // ---- 3. MULTI-JOINT ARTICULATED ARM, CLAW, BLADE & GAUNTLET GEOMETRIES ----
+        const deltoidCapGeo = sculptGeometry(new THREE.SphereGeometry(0.145, 12, 10), (x, y, z) => [x * 0.95, y * 1.05, z * 0.95]);
+
+        // Upper arm extends from shoulder (0,0,0) forward/down along +Z to elbow (0,0,0.42)
+        const upperArmGeo = sculptGeometry(new THREE.CylinderGeometry(0.105, 0.088, 0.42, 12, 4), (x, y, z) => {
+            const bulge = Math.sin(((y + 0.21) / 0.42) * Math.PI) * 0.018;
+            return [x + Math.sign(x) * bulge, y, z + Math.sign(z) * bulge];
+        });
+        upperArmGeo.rotateX(Math.PI / 2);
+        upperArmGeo.translate(0, 0, 0.21);
+
+        const elbowJointGeo = new THREE.SphereGeometry(0.086, 10, 8);
+
+        // Forearm extends from elbow (0,0,0) along +Z to wrist (0,0,0.40)
+        const forearmGeo = sculptGeometry(new THREE.CylinderGeometry(0.088, 0.068, 0.40, 12, 4), (x, y, z) => {
+            const taper = (y + 0.20) / 0.40;
+            return [x * (0.88 + taper * 0.18), y, z * (0.92 + taper * 0.16)];
+        });
+        forearmGeo.rotateX(Math.PI / 2);
+        forearmGeo.translate(0, 0, 0.20);
+
+        const handPalmGeo = new THREE.SphereGeometry(0.072, 10, 8);
+        handPalmGeo.scale(0.85, 0.65, 1.25);
+
+        const clawFingerGeo = sculptGeometry(new THREE.ConeGeometry(0.022, 0.16, 6), (x, y, z) => {
+            const t = (y + 0.08) / 0.16;
+            return [x, y - t * t * 0.035, z];
+        });
+        clawFingerGeo.rotateX(Math.PI / 2);
+        clawFingerGeo.translate(0, 0, 0.08);
+
+        // Runner Forearm Scythe Bone-Blades
+        const runnerScytheBladeGeo = sculptGeometry(new THREE.ConeGeometry(0.055, 0.52, 6), (x, y, z) => {
+            const t = (y + 0.26) / 0.52;
+            return [x * 0.32, y, z - Math.sin(t * Math.PI) * 0.065];
+        });
+        runnerScytheBladeGeo.rotateX(Math.PI * 0.46);
+        runnerScytheBladeGeo.translate(0, -0.03, 0.36);
+
+        // Brute Layered Pauldrons & Hydraulic Power-Gauntlets
+        const brutePauldronGeo = sculptGeometry(new THREE.SphereGeometry(0.28, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), (x, y, z) => {
+            return [x * 1.15, y * 0.95, z * 1.08];
+        });
+        const brutePauldronRimGeo = new THREE.TorusGeometry(0.255, 0.024, 6, 12);
+        brutePauldronRimGeo.rotateX(Math.PI * 0.45);
+
+        const bruteGauntletGeo = sculptGeometry(new THREE.CylinderGeometry(0.145, 0.12, 0.44, 8, 2), (x, y, z) => {
+            return [x * 1.05, y, z * 1.12];
+        });
+        bruteGauntletGeo.rotateX(Math.PI / 2);
+        bruteGauntletGeo.translate(0, 0, 0.22);
+
+        const bruteKnuckleGuardGeo = new THREE.BoxGeometry(0.24, 0.18, 0.12);
+        const bruteGauntletPlasmaStripGeo = new THREE.BoxGeometry(0.035, 0.04, 0.32);
+
+        // ---- 4. MULTI-JOINT ARTICULATED LEG, GREAVE & BOOT/TALON GEOMETRIES ----
+        // Thigh hangs from hip (0,0,0) down along -Y to knee (0,-0.40,0)
+        const thighGeo = sculptGeometry(new THREE.CylinderGeometry(0.145, 0.108, 0.42, 12, 4), (x, y, z) => {
+            const quadBulge = Math.sin(((y + 0.21) / 0.42) * Math.PI) * 0.022;
+            return [x, y, z + (z > 0 ? quadBulge * 1.4 : -quadBulge * 0.5)];
+        });
+        thighGeo.translate(0, -0.20, 0);
+
+        const kneePadGeo = new THREE.OctahedronGeometry(0.095, 1);
+        kneePadGeo.scale(1.0, 1.15, 0.75);
+
+        // Shin hangs from knee (0,0,0) down along -Y to ankle (0,-0.36,0)
+        const shinGeo = sculptGeometry(new THREE.CylinderGeometry(0.105, 0.078, 0.38, 12, 4), (x, y, z) => {
+            const calfBulge = Math.sin(((y + 0.19) / 0.38) * Math.PI) * 0.02;
+            return [x, y, z - (z < 0 ? calfBulge * 1.5 : 0)];
+        });
+        shinGeo.translate(0, -0.18, 0);
+
+        const combatBootGeo = sculptGeometry(new THREE.BoxGeometry(0.16, 0.11, 0.28), (x, y, z) => {
+            let nx = x, ny = y, nz = z;
+            if (y > 0 && z > 0.04) ny -= 0.025;
+            if (z > 0.08) nx *= 0.82;
+            return [nx, ny, nz];
+        });
+        combatBootGeo.translate(0, -0.35, 0.05);
+
+        const bruteGreavePlateGeo = new THREE.CylinderGeometry(0.14, 0.125, 0.36, 6, 1, false, -Math.PI * 0.38, Math.PI * 0.76);
+        bruteGreavePlateGeo.translate(0, -0.18, 0.02);
 
         function createZombieMesh(type) {
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
 
-            let skinColor = 0x2e3d2e;
-            let coatColor = 0x181316;
+            let skinColor = 0x5c755c;
+            let coatColor = 0x261d22;
             let eyeColor = 0x39ff14;
             let coreColor = 0x2aff2a;
             let scale = 1.0;
+            let fleshTex = shamblerFleshTex;
             let armorMat = null;
 
             if (type === 'runner') {
-                skinColor = 0x8a0b1c;
-                coatColor = 0x0e0205;
+                skinColor = 0xc4162e;
+                coatColor = 0x1c050a;
                 eyeColor = 0xff0033;
                 coreColor = 0xff1144;
                 scale = 0.88;
+                fleshTex = runnerFleshTex;
             } else if (type === 'brute') {
-                skinColor = 0x1e1a22;
-                coatColor = 0x140408;
+                skinColor = 0x453b4f;
+                coatColor = 0x240910;
                 eyeColor = 0xff7700;
                 coreColor = 0xff5500;
                 scale = 1.48;
+                fleshTex = bruteFleshTex;
                 armorMat = new THREE.MeshStandardMaterial({
-                    color: 0x1f060b,
-                    metalness: 0.75,
-                    roughness: 0.28,
+                    color: 0x3b0d18,
+                    map: bruteArmorTex,
+                    metalness: 0.78,
+                    roughness: 0.26,
                     emissive: 0x000000
                 });
             }
 
             const skinMat = new THREE.MeshStandardMaterial({
                 color: skinColor,
-                roughness: 0.8,
+                map: fleshTex,
+                bumpMap: fleshTex,
+                bumpScale: type === 'runner' ? 0.035 : 0.022,
+                roughness: type === 'runner' ? 0.42 : 0.68,
+                metalness: type === 'runner' ? 0.18 : 0.08,
                 emissive: 0x000000
             });
             const clothesMat = new THREE.MeshStandardMaterial({
                 color: coatColor,
-                roughness: 0.9,
+                map: hostileSuitTex,
+                bumpMap: hostileSuitTex,
+                bumpScale: 0.018,
+                roughness: 0.78,
+                metalness: 0.22,
                 emissive: 0x000000
             });
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
             const coreMat = new THREE.MeshBasicMaterial({ color: coreColor });
 
-            const torso = new THREE.Mesh(zombieTorsoGeo, clothesMat);
-            torso.position.y = 1.25;
-            if (type === 'runner') torso.rotation.x = 0.25;
-            root.add(torso);
+            // 1. PELVIS & ARTICULATED UPPER TORSO GROUP
+            const pelvis = new THREE.Mesh(hostilePelvisGeo, clothesMat);
+            pelvis.position.set(0, 0.86, 0);
+            root.add(pelvis);
 
+            const torsoGroup = new THREE.Group();
+            torsoGroup.position.set(0, 1.32, 0);
+            if (type === 'runner') torsoGroup.rotation.x = 0.28;
+            root.add(torsoGroup);
+
+            const thoraxGeo = type === 'brute' ? bruteTorsoGeo : (type === 'runner' ? runnerTorsoGeo : shamblerTorsoGeo);
+            const thoraxMat = type === 'runner' ? skinMat : clothesMat;
+            const torso = new THREE.Mesh(thoraxGeo, thoraxMat);
+            torsoGroup.add(torso);
+
+            const neck = new THREE.Mesh(neckCollarGeo, skinMat);
+            neck.position.set(0, 0.44, 0.02);
+            torsoGroup.add(neck);
+
+            // 2. CHEST CORE / EXPOSED REACTOR CORE WEAKPOINT
             let coreMesh;
+            let coreRing = null;
             if (type === 'brute') {
-                const chestPlate = new THREE.Mesh(bruteChestPlateGeo, armorMat);
-                chestPlate.position.set(0, 1.3, 0.24);
-                root.add(chestPlate);
+                // Split Composite Ballistic Breastplates flanking the exposed central reactor core
+                const leftBreastplate = new THREE.Mesh(bruteSideBreastplateGeo, armorMat);
+                leftBreastplate.position.set(-0.26, 0.04, 0.22);
+                leftBreastplate.rotation.y = 0.22;
+                torsoGroup.add(leftBreastplate);
 
-                coreMesh = new THREE.Mesh(bruteCoreGeo, coreMat);
-                coreMesh.position.set(0, 1.3, 0.31);
+                const rightBreastplate = new THREE.Mesh(bruteSideBreastplateGeo, armorMat);
+                rightBreastplate.position.set(0.26, 0.04, 0.22);
+                rightBreastplate.rotation.y = -0.22;
+                torsoGroup.add(rightBreastplate);
+
+                // Reinforced Armored Collar Gorget
+                const gorget = new THREE.Mesh(bruteGorgetGeo, armorMat);
+                gorget.position.set(0, 0.36, 0.04);
+                torsoGroup.add(gorget);
+
+                // Dorsal Cyber-Reactor Pack & Dual Plasma Exhaust Vents
+                const backPack = new THREE.Mesh(bruteBackPackGeo, armorMat);
+                backPack.position.set(0, 0.08, -0.26);
+                torsoGroup.add(backPack);
+
+                const leftExhaust = new THREE.Mesh(bruteExhaustNozzleGeo, coreMat);
+                leftExhaust.position.set(-0.18, 0.26, -0.36);
+                torsoGroup.add(leftExhaust);
+
+                const rightExhaust = new THREE.Mesh(bruteExhaustNozzleGeo, coreMat);
+                rightExhaust.position.set(0.18, 0.26, -0.36);
+                torsoGroup.add(rightExhaust);
+
+                // Glowing Exposed Reactor Core Weakpoint Assembly (Center Sternum)
+                const reactorHousing = new THREE.Mesh(bruteReactorHousingGeo, armorMat);
+                reactorHousing.position.set(0, 0.0, 0.29);
+                reactorHousing.userData.isCore = true;
+                torsoGroup.add(reactorHousing);
+
+                coreMesh = new THREE.Mesh(bruteReactorChamberGeo, coreMat);
+                coreMesh.position.set(0, 0.0, 0.31);
                 coreMesh.userData.isCore = true;
-                root.add(coreMesh);
+                torsoGroup.add(coreMesh);
 
-                const leftShoulder = new THREE.Mesh(bruteShoulderGeo, armorMat);
-                leftShoulder.position.set(-0.62, 1.82, 0);
-                root.add(leftShoulder);
+                const reactorCrystal = new THREE.Mesh(bruteReactorCrystalGeo, eyeMat);
+                reactorCrystal.position.set(0, 0.0, 0.35);
+                reactorCrystal.userData.isCore = true;
+                torsoGroup.add(reactorCrystal);
 
-                const rightShoulder = new THREE.Mesh(bruteShoulderGeo, armorMat);
-                rightShoulder.position.set(0.62, 1.82, 0);
-                root.add(rightShoulder);
+                coreRing = new THREE.Mesh(bruteReactorGyroGeo, eyeMat);
+                coreRing.position.set(0, 0.0, 0.35);
+                coreRing.userData.isCore = true;
+                torsoGroup.add(coreRing);
+
+                // Dedicated front-facing weakpoint hitbox proxy so shots aimed at the glowing core always register isCore
+                const coreHitbox = new THREE.Mesh(bruteCoreHitboxGeo, invisibleHitboxMat);
+                coreHitbox.position.set(0, 0.0, 0.32);
+                coreHitbox.userData.isCore = true;
+                torsoGroup.add(coreHitbox);
             } else {
-                coreMesh = new THREE.Mesh(zombieCoreGeo, coreMat);
-                coreMesh.position.y = 1.3;
-                root.add(coreMesh);
+                // Shambler & Runner Bioluminescent / Arterial Chest Core framed by exposed ribs
+                const coreBezel = new THREE.Mesh(bioCoreBezelGeo, clothesMat);
+                coreBezel.position.set(0, 0.04, 0.21);
+                torsoGroup.add(coreBezel);
+
+                coreMesh = new THREE.Mesh(bioCoreCrystalGeo, coreMat);
+                coreMesh.position.set(0, 0.04, 0.23);
+                torsoGroup.add(coreMesh);
+
+                // Exposed anatomical rib arcs curving over chest lesion
+                for (let r = -1; r <= 1; r += 2) {
+                    const rib = new THREE.Mesh(ribBoneArcGeo, skinMat);
+                    rib.position.set(0, 0.04 + r * 0.085, 0.14);
+                    torsoGroup.add(rib);
+                }
+
+                if (type === 'runner') {
+                    // Predatory dorsal bone spikes along hunched spine
+                    for (let s = 0; s < 4; s++) {
+                        const spike = new THREE.Mesh(dorsalSpineSpikeGeo, clothesMat);
+                        spike.position.set(0, 0.26 - s * 0.15, -0.22);
+                        spike.rotation.x = -Math.PI * 0.42;
+                        torsoGroup.add(spike);
+                    }
+                } else {
+                    // Shambler ruptured Sector 09 containment canister on upper back
+                    const canister = new THREE.Mesh(bruteRespiratorGeo, clothesMat);
+                    canister.position.set(0.11, 0.12, -0.24);
+                    canister.rotation.z = 0.2;
+                    torsoGroup.add(canister);
+                }
             }
 
-            const head = new THREE.Mesh(zombieHeadGeo, skinMat);
+            // 3. SCULPTED HEAD, ARTICULATED JAW, OPTICS & HEADSHOT HITBOX
+            const head = new THREE.Group();
             head.userData.isHead = true;
             if (type === 'runner') {
-                head.position.set(0, 1.95, 0.26);
-                head.rotation.x = -0.15;
+                head.position.set(0, 1.94, 0.26);
+                head.rotation.x = -0.12;
             } else {
-                head.position.y = 2.08;
+                head.position.set(0, 2.08, 0.03);
                 if (type === 'shambler') head.rotation.z = 0.08;
             }
             root.add(head);
 
+            const craniumGeo = type === 'brute' ? bruteCraniumGeo : (type === 'runner' ? runnerCraniumGeo : shamblerCraniumGeo);
+            const craniumMesh = new THREE.Mesh(craniumGeo, skinMat);
+            craniumMesh.userData.isHead = true;
+            head.add(craniumMesh);
+
+            // Articulated Lower Mandible / Jaw
+            const jaw = new THREE.Mesh(hostileJawGeo, type === 'brute' ? armorMat : skinMat);
+            jaw.position.set(0, -0.08, 0.02);
+            jaw.userData.isHead = true;
+            head.add(jaw);
+
+            const teeth = new THREE.Mesh(teethRidgeGeo, eyeMat);
+            teeth.position.set(0, 0.01, 0.08);
+            teeth.userData.isHead = true;
+            jaw.add(teeth);
+
             if (type === 'brute') {
-                const visor = new THREE.Mesh(bruteVisorGeo, eyeMat);
-                visor.position.set(0, 0.06, 0.26);
+                // Heavy Faceted Juggernaut Helmet, Glowing Tactical Visor & Twin Respirators
+                const helm = new THREE.Mesh(bruteHelmDomeGeo, armorMat);
+                helm.position.set(0, 0.12, 0.0);
+                helm.rotation.y = Math.PI / 8;
+                helm.userData.isHead = true;
+                head.add(helm);
+
+                const helmCrest = new THREE.Mesh(bruteHelmCrestGeo, coreMat);
+                helmCrest.position.set(0, 0.25, -0.02);
+                helmCrest.userData.isHead = true;
+                head.add(helmCrest);
+
+                const visor = new THREE.Mesh(bruteVisorSlitGeo, eyeMat);
+                visor.position.set(0, 0.04, 0.02);
+                visor.userData.isHead = true;
                 head.add(visor);
 
-                const helm = new THREE.Mesh(bruteHelmGeo, armorMat);
-                helm.position.set(0, 0.22, 0);
-                head.add(helm);
+                const leftResp = new THREE.Mesh(bruteRespiratorGeo, armorMat);
+                leftResp.position.set(-0.18, -0.10, 0.14);
+                leftResp.rotation.z = Math.PI * 0.38;
+                leftResp.userData.isHead = true;
+                head.add(leftResp);
+
+                const rightResp = new THREE.Mesh(bruteRespiratorGeo, armorMat);
+                rightResp.position.set(0.18, -0.10, 0.14);
+                rightResp.rotation.z = -Math.PI * 0.38;
+                rightResp.userData.isHead = true;
+                head.add(rightResp);
             } else {
-                const leftEye = new THREE.Mesh(zombieEyeGeo, eyeMat);
-                leftEye.position.set(-0.12, 0.05, 0.24);
+                // Glowing Bioluminescent Eyes in sunken orbital sockets
+                const leftEye = new THREE.Mesh(eyeOrbGeo, eyeMat);
+                leftEye.position.set(-0.092, 0.025, 0.215);
+                leftEye.rotation.y = -0.18;
+                leftEye.userData.isHead = true;
                 head.add(leftEye);
 
-                const rightEye = new THREE.Mesh(zombieEyeGeo, eyeMat);
-                rightEye.position.set(0.12, 0.05, 0.24);
+                const rightEye = new THREE.Mesh(eyeOrbGeo, eyeMat);
+                rightEye.position.set(0.092, 0.025, 0.215);
+                rightEye.rotation.y = 0.18;
+                rightEye.userData.isHead = true;
                 head.add(rightEye);
+
+                if (type === 'runner') {
+                    // Runner secondary predatory photoreceptor eyes & swept cranial horns
+                    const leftUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
+                    leftUpperEye.position.set(-0.12, 0.075, 0.18);
+                    leftUpperEye.userData.isHead = true;
+                    head.add(leftUpperEye);
+
+                    const rightUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
+                    rightUpperEye.position.set(0.12, 0.075, 0.18);
+                    rightUpperEye.userData.isHead = true;
+                    head.add(rightUpperEye);
+
+                    const leftHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
+                    leftHorn.position.set(-0.11, 0.12, -0.04);
+                    leftHorn.rotation.set(-0.65, 0, 0.28);
+                    leftHorn.userData.isHead = true;
+                    head.add(leftHorn);
+
+                    const rightHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
+                    rightHorn.position.set(0.11, 0.12, -0.04);
+                    rightHorn.rotation.set(-0.65, 0, -0.28);
+                    rightHorn.userData.isHead = true;
+                    head.add(rightHorn);
+                }
             }
 
-            const leftArm = new THREE.Mesh(zombieArmGeo, skinMat);
-            leftArm.position.set(-0.52, 1.55, 0);
-            root.add(leftArm);
+            // Generous Headshot Raycast Proxy (Guarantees clean headshot registration from all angles)
+            const headHitbox = new THREE.Mesh(headHitboxGeo, invisibleHitboxMat);
+            headHitbox.position.set(0, 0.02, 0.02);
+            headHitbox.userData.isHead = true;
+            head.add(headHitbox);
 
-            const rightArm = new THREE.Mesh(zombieArmGeo, skinMat);
-            rightArm.position.set(0.52, 1.55, 0);
-            root.add(rightArm);
+            // 4. MULTI-JOINTED ARTICULATED ARMS (Shoulder -> Upper Arm -> Elbow -> Forearm -> Claws/Gauntlets)
+            function buildArticulatedArm(isLeft) {
+                const side = isLeft ? -1 : 1;
+                const shoulderGroup = new THREE.Group();
+                const shoulderX = type === 'brute' ? 0.56 : (type === 'runner' ? 0.44 : 0.48);
+                const shoulderY = type === 'runner' ? 1.54 : 1.62;
+                const shoulderZ = type === 'runner' ? 0.12 : 0.0;
+                shoulderGroup.position.set(side * shoulderX, shoulderY, shoulderZ);
 
-            if (type === 'runner') {
-                const leftClaw = new THREE.Mesh(runnerClawGeo, skinMat);
-                leftClaw.position.set(0, 0, 0.87);
-                leftArm.add(leftClaw);
+                const deltoid = new THREE.Mesh(deltoidCapGeo, type === 'runner' ? skinMat : clothesMat);
+                shoulderGroup.add(deltoid);
 
-                const rightClaw = new THREE.Mesh(runnerClawGeo, skinMat);
-                rightClaw.position.set(0, 0, 0.87);
-                rightArm.add(rightClaw);
-            } else if (type === 'brute') {
-                const leftFist = new THREE.Mesh(bruteFistGeo, skinMat);
-                leftFist.position.set(0, 0, 0.8);
-                leftArm.add(leftFist);
+                if (type === 'brute') {
+                    // Heavy Layered Juggernaut Pauldron with neon hazard trim
+                    const pauldron = new THREE.Mesh(brutePauldronGeo, armorMat);
+                    pauldron.position.set(side * 0.06, 0.06, 0);
+                    pauldron.rotation.z = -side * 0.35;
+                    shoulderGroup.add(pauldron);
 
-                const rightFist = new THREE.Mesh(bruteFistGeo, skinMat);
-                rightFist.position.set(0, 0, 0.8);
-                rightArm.add(rightFist);
+                    const pauldronRim = new THREE.Mesh(brutePauldronRimGeo, coreMat);
+                    pauldronRim.position.set(side * 0.06, 0.02, 0);
+                    pauldronRim.rotation.y = side * 0.25;
+                    shoulderGroup.add(pauldronRim);
+                } else if (type === 'runner') {
+                    const shoulderSpur = new THREE.Mesh(dorsalSpineSpikeGeo, clothesMat);
+                    shoulderSpur.position.set(side * 0.06, 0.12, -0.02);
+                    shoulderSpur.rotation.z = -side * 0.45;
+                    shoulderGroup.add(shoulderSpur);
+                }
+
+                const upperArm = new THREE.Mesh(upperArmGeo, type === 'shambler' ? clothesMat : skinMat);
+                shoulderGroup.add(upperArm);
+
+                const forearmGroup = new THREE.Group();
+                forearmGroup.position.set(0, 0, 0.42);
+                shoulderGroup.add(forearmGroup);
+
+                const elbow = new THREE.Mesh(elbowJointGeo, skinMat);
+                forearmGroup.add(elbow);
+
+                if (type === 'brute') {
+                    // Massive Hydraulic Power-Gauntlet & Plasma Knuckle Crusher
+                    const gauntlet = new THREE.Mesh(bruteGauntletGeo, armorMat);
+                    forearmGroup.add(gauntlet);
+
+                    const plasmaStrip = new THREE.Mesh(bruteGauntletPlasmaStripGeo, coreMat);
+                    plasmaStrip.position.set(side * 0.12, 0.04, 0.22);
+                    forearmGroup.add(plasmaStrip);
+
+                    const knuckles = new THREE.Mesh(bruteKnuckleGuardGeo, armorMat);
+                    knuckles.position.set(0, 0, 0.45);
+                    forearmGroup.add(knuckles);
+                } else {
+                    const forearm = new THREE.Mesh(forearmGeo, skinMat);
+                    forearmGroup.add(forearm);
+
+                    const palm = new THREE.Mesh(handPalmGeo, skinMat);
+                    palm.position.set(0, 0, 0.41);
+                    forearmGroup.add(palm);
+
+                    // 3 Articulated Razor Claws per hand
+                    for (let c = -1; c <= 1; c++) {
+                        const claw = new THREE.Mesh(clawFingerGeo, type === 'runner' ? coreMat : clothesMat);
+                        claw.position.set(c * 0.032, 0.01, 0.44);
+                        claw.rotation.y = c * 0.14;
+                        forearmGroup.add(claw);
+                    }
+
+                    if (type === 'runner') {
+                        // Swept-back Forearm Scythe Bone-Blade
+                        const scythe = new THREE.Mesh(runnerScytheBladeGeo, clothesMat);
+                        scythe.position.x = side * 0.055;
+                        forearmGroup.add(scythe);
+                    }
+                }
+
+                root.add(shoulderGroup);
+                return { shoulderGroup, forearmGroup };
             }
 
-            const leftLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
-            leftLeg.position.set(-0.2, 0.75, 0);
-            root.add(leftLeg);
+            const leftArmRig = buildArticulatedArm(true);
+            const rightArmRig = buildArticulatedArm(false);
 
-            const rightLeg = new THREE.Mesh(zombieLegGeo, clothesMat);
-            rightLeg.position.set(0.2, 0.75, 0);
-            root.add(rightLeg);
+            // 5. MULTI-JOINTED ARTICULATED LEGS (Hip -> Thigh -> Knee -> Shin/Greave -> Boot/Talon)
+            function buildArticulatedLeg(isLeft) {
+                const side = isLeft ? -1 : 1;
+                const hipGroup = new THREE.Group();
+                const hipX = type === 'brute' ? 0.24 : 0.19;
+                hipGroup.position.set(side * hipX, 0.78, 0);
+
+                const thigh = new THREE.Mesh(thighGeo, type === 'runner' ? skinMat : clothesMat);
+                hipGroup.add(thigh);
+
+                const shinGroup = new THREE.Group();
+                shinGroup.position.set(0, -0.40, 0);
+                hipGroup.add(shinGroup);
+
+                const kneePad = new THREE.Mesh(kneePadGeo, type === 'brute' ? armorMat : clothesMat);
+                kneePad.position.set(0, 0, 0.06);
+                shinGroup.add(kneePad);
+
+                const shin = new THREE.Mesh(shinGeo, type === 'runner' ? skinMat : clothesMat);
+                shinGroup.add(shin);
+
+                if (type === 'brute') {
+                    const greave = new THREE.Mesh(bruteGreavePlateGeo, armorMat);
+                    shinGroup.add(greave);
+                }
+
+                const boot = new THREE.Mesh(combatBootGeo, type === 'brute' ? armorMat : clothesMat);
+                shinGroup.add(boot);
+
+                root.add(hipGroup);
+                return { hipGroup, shinGroup };
+            }
+
+            const leftLegRig = buildArticulatedLeg(true);
+            const rightLegRig = buildArticulatedLeg(false);
 
             root.scale.setScalar(scale);
 
             return {
                 root,
+                torso: torsoGroup,
                 head,
-                leftArm,
-                rightArm,
-                leftLeg,
-                rightLeg,
+                jaw,
+                coreMesh,
+                coreRing,
+                leftArm: leftArmRig.shoulderGroup,
+                rightArm: rightArmRig.shoulderGroup,
+                leftForearm: leftArmRig.forearmGroup,
+                rightForearm: rightArmRig.forearmGroup,
+                leftLeg: leftLegRig.hipGroup,
+                rightLeg: rightLegRig.hipGroup,
+                leftShin: leftLegRig.shinGroup,
+                rightShin: rightLegRig.shinGroup,
                 skinMat,
                 clothesMat,
                 armorMat,
@@ -5597,14 +6290,28 @@
                 if (z.dying) {
                     z.deathProgress += dt * 3.2;
                     z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
-                    z.mesh.rotation.z = 0;
+                    z.mesh.rotation.z = Math.min(0.25, z.deathProgress * 0.25);
                     z.mesh.position.y = Math.min(0.22, z.deathProgress * 0.22) * z.parts.scale;
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = Math.min(0.85, z.deathProgress * 0.9);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = Math.min(0.65, z.deathProgress * 0.7);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.35;
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.25;
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = 0.28;
                     if (z.deathProgress >= 1.4) {
                         disposeZombie(z);
                         zombies.splice(i, 1);
                         updateHUD();
                     }
                     continue;
+                }
+
+                // Animate glowing chest bio-core / Brute exposed reactor core weakpoint
+                if (z.parts.coreMesh) {
+                    const corePulse = 1.0 + Math.sin(now * (z.isEnraged ? 0.014 : 0.007) + z.weaveOffset) * 0.10;
+                    z.parts.coreMesh.scale.setScalar(corePulse);
+                }
+                if (z.parts.coreRing) {
+                    z.parts.coreRing.rotation.z += dt * (z.isEnraged ? 7.5 : 3.2);
                 }
 
                 _toPlayer.set(
@@ -5626,12 +6333,17 @@
                         z.staggerPush = Math.max(0, z.staggerPush - dt * 3.5);
                         resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
                     }
-                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, -0.4, dt * 10);
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, -0.5, dt * 8);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, -0.5, dt * 8);
+                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, -0.42, dt * 12);
+                    if (z.parts.torso) z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, -0.18, dt * 10);
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = THREE.MathUtils.lerp(z.parts.jaw.rotation.x, 0.34, dt * 12);
+                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, -0.55, dt * 10);
+                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, -0.55, dt * 10);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.65, dt * 10);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.65, dt * 10);
                     continue;
                 } else {
-                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, 0, dt * 6);
+                    const baseHeadPitch = z.type === 'runner' ? -0.12 : 0;
+                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, baseHeadPitch, dt * 6);
                 }
 
                 // Awareness: Spot or Smell player
@@ -5654,8 +6366,11 @@
                     z.alertTimer -= dt;
                     z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
                     z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = THREE.MathUtils.lerp(z.parts.jaw.rotation.x, 0.38, dt * 12);
                     z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, -1.2, dt * 10);
                     z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, -1.2, dt * 10);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.55, dt * 10);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.55, dt * 10);
                     if (z.alertTimer <= 0) {
                         z.state = 'CHASE';
                     }
@@ -5793,39 +6508,97 @@
                     }
                 }
 
-                // Limb Animation
+                // Multi-Joint Skeletal Limb, Torso & Jaw Animation
                 const animPace = z.state === 'WANDER' ? 1.4 : (z.type === 'runner' ? 3.8 : (z.type === 'brute' ? 1.8 : 2.4));
                 z.walkCycle += dt * curSpeed * animPace;
 
                 if (z.isAttacking) {
-                    z.parts.leftArm.rotation.x = 0.95;
-                    z.parts.rightArm.rotation.x = -1.15;
+                    z.parts.leftArm.rotation.x = 0.85;
+                    z.parts.rightArm.rotation.x = -1.05;
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.15;
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.22;
+                    if (z.parts.torso) {
+                        z.parts.torso.rotation.x = 0.28;
+                        z.parts.torso.rotation.y = 0.16;
+                    }
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = 0.12;
                     z.mesh.rotation.z = 0;
                 } else if (z.attackWindup > 0) {
                     z.parts.leftArm.rotation.x = -1.35;
                     z.parts.rightArm.rotation.x = -1.35;
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.68;
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.68;
+                    if (z.parts.torso) {
+                        z.parts.torso.rotation.x = -0.14;
+                        z.parts.torso.rotation.y = 0;
+                    }
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = 0.42;
                     z.mesh.rotation.z = 0;
                 } else if (curSpeed === 0) {
                     z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0, dt * 8);
                     z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0, dt * 8);
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0, dt * 6);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, 0, dt * 6);
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, 0.08, dt * 8);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, 0.08, dt * 8);
+                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0.25, dt * 6);
+                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, 0.25, dt * 6);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.45, dt * 6);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.45, dt * 6);
+                    if (z.parts.torso) {
+                        const baseLean = z.type === 'runner' ? 0.28 : 0.06;
+                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, baseLean, dt * 6);
+                        z.parts.torso.rotation.y = THREE.MathUtils.lerp(z.parts.torso.rotation.y, 0, dt * 6);
+                    }
+                    if (z.parts.jaw) {
+                        z.parts.jaw.rotation.x = 0.08 + Math.abs(Math.sin(now * 0.003 + z.weaveOffset)) * 0.14;
+                    }
                     z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, 0, dt * 8);
                 } else {
-                    z.parts.leftLeg.rotation.x = Math.sin(z.walkCycle) * (z.type === 'runner' ? 0.82 : 0.65);
-                    z.parts.rightLeg.rotation.x = -Math.sin(z.walkCycle) * (z.type === 'runner' ? 0.82 : 0.65);
+                    const strideAmp = z.type === 'runner' ? 0.86 : (z.type === 'brute' ? 0.58 : 0.68);
+                    const sinWalk = Math.sin(z.walkCycle);
+                    const cosWalk = Math.cos(z.walkCycle);
+
+                    z.parts.leftLeg.rotation.x = sinWalk * strideAmp;
+                    z.parts.rightLeg.rotation.x = -sinWalk * strideAmp;
+
+                    // Realistic knee articulation during leg lift & push-off
+                    const kneeAmp = z.type === 'runner' ? 0.88 : 0.68;
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = Math.max(0.06, -cosWalk * kneeAmp + 0.22);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = Math.max(0.06, cosWalk * kneeAmp + 0.22);
 
                     if (z.type === 'runner') {
-                        z.parts.leftArm.rotation.x = 0.35 + Math.sin(z.walkCycle * 0.8) * 0.35;
-                        z.parts.rightArm.rotation.x = 0.35 - Math.sin(z.walkCycle * 0.8) * 0.35;
+                        const isLunging = z.lungeTimer > 0;
+                        z.parts.leftArm.rotation.x = (isLunging ? -0.55 : 0.28) + Math.sin(z.walkCycle * 0.8) * 0.38;
+                        z.parts.rightArm.rotation.x = (isLunging ? -0.55 : 0.28) - Math.sin(z.walkCycle * 0.8) * 0.38;
+                        if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = isLunging ? -0.35 : (-0.75 + cosWalk * 0.22);
+                        if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = isLunging ? -0.35 : (-0.75 - cosWalk * 0.22);
+                        if (z.parts.torso) {
+                            z.parts.torso.rotation.x = isLunging ? 0.42 : 0.30;
+                            z.parts.torso.rotation.y = -sinWalk * 0.16;
+                        }
+                        if (z.parts.jaw) z.parts.jaw.rotation.x = isLunging ? 0.42 : (0.14 + Math.abs(sinWalk) * 0.18);
                         z.parts.head.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.18;
                     } else if (z.type === 'brute') {
-                        z.parts.leftArm.rotation.x = Math.sin(z.walkCycle * 0.6) * 0.35;
-                        z.parts.rightArm.rotation.x = -Math.sin(z.walkCycle * 0.6) * 0.35;
-                        z.mesh.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.08;
+                        z.parts.leftArm.rotation.x = 0.18 - sinWalk * 0.38;
+                        z.parts.rightArm.rotation.x = 0.18 + sinWalk * 0.38;
+                        if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.62 - Math.max(0, sinWalk) * 0.25;
+                        if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.62 - Math.max(0, -sinWalk) * 0.25;
+                        if (z.parts.torso) {
+                            z.parts.torso.rotation.x = z.isEnraged ? 0.18 : 0.08;
+                            z.parts.torso.rotation.y = -sinWalk * 0.12;
+                        }
+                        if (z.parts.jaw) z.parts.jaw.rotation.x = z.isEnraged ? 0.32 : (0.06 + Math.abs(sinWalk) * 0.10);
+                        z.mesh.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.07;
                     } else {
-                        z.parts.leftArm.rotation.x = Math.sin(z.walkCycle * 0.8) * 0.25;
-                        z.parts.rightArm.rotation.x = -Math.sin(z.walkCycle * 0.8) * 0.25;
+                        // Shambler asymmetric grasping gait
+                        z.parts.leftArm.rotation.x = -0.18 + Math.sin(z.walkCycle * 0.8) * 0.28;
+                        z.parts.rightArm.rotation.x = 0.05 - Math.sin(z.walkCycle * 0.8) * 0.28;
+                        if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.48 + cosWalk * 0.18;
+                        if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.58 - cosWalk * 0.18;
+                        if (z.parts.torso) {
+                            z.parts.torso.rotation.x = 0.12 + Math.sin(z.walkCycle) * 0.05;
+                            z.parts.torso.rotation.y = -sinWalk * 0.14;
+                        }
+                        if (z.parts.jaw) z.parts.jaw.rotation.x = 0.12 + Math.abs(Math.sin(z.walkCycle * 0.5)) * 0.16;
                         z.parts.head.rotation.z = 0.12 + Math.sin(z.walkCycle * 0.5) * 0.08;
                     }
                 }
