@@ -3392,7 +3392,58 @@
             return tex;
         }
 
+        function createShamblerCyberMetalTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 256, 256);
+            grad.addColorStop(0.0, '#7c8794');
+            grad.addColorStop(0.5, '#525b66');
+            grad.addColorStop(1.0, '#6c7682');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Brushed steel panel seams & surgical bolt plates
+            ctx.strokeStyle = '#252a30';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(10, 10, 236, 236);
+            ctx.strokeRect(32, 32, 192, 192);
+            ctx.beginPath();
+            ctx.moveTo(0, 128);
+            ctx.lineTo(256, 128);
+            ctx.moveTo(128, 0);
+            ctx.lineTo(128, 256);
+            ctx.stroke();
+
+            // Industrial rivets & specular wear scratches
+            ctx.fillStyle = '#9aa6b5';
+            const rivets = [[22, 22], [234, 22], [22, 234], [234, 234], [46, 46], [210, 46], [46, 210], [210, 210]];
+            for (let i = 0; i < rivets.length; i++) {
+                ctx.beginPath();
+                ctx.arc(rivets[i][0], rivets[i][1], 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.strokeStyle = 'rgba(215, 228, 242, 0.35)';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 28; i++) {
+                const sx = Math.random() * 256;
+                const sy = Math.random() * 256;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + (Math.random() - 0.5) * 36, sy + (Math.random() - 0.5) * 36);
+                ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
         const shamblerFleshTex = createShamblerCyborgFleshTexture();
+        const shamblerArmorTex = createShamblerCyberMetalTexture();
         const runnerFleshTex = createHostileFleshTexture('#8f0d20', '#42030c', '#ff1a40', '#c9223b');
         const bruteFleshTex = createHostileFleshTexture('#251f2b', '#120e17', '#ff5500', '#3d3347');
         const hostileSuitTex = createHostileSuitTexture();
@@ -3400,9 +3451,18 @@
 
         // Invisible material for generous raycast hitboxes (Zero fillrate cost, 100% reliable Three.js Raycaster hit detection)
         const invisibleHitboxMat = new THREE.MeshBasicMaterial({ visible: false });
-        // Shared static accent materials for Shambler cyborg inner reactor & dark cavities (Zero per-spawn allocation/disposal)
+        // Shared static accent materials for Shambler cyborg inner reactor, dark cavities & skeletal bone/fangs (Zero per-spawn allocation/disposal)
         const shamblerCoreHotMat = new THREE.MeshBasicMaterial({ color: 0xdfffee });
-        const shamblerCavityDarkMat = new THREE.MeshBasicMaterial({ color: 0x080306 });
+        const shamblerCavityDarkMat = new THREE.MeshBasicMaterial({ color: 0x070204 });
+        const shamblerBoneMat = new THREE.MeshStandardMaterial({
+            color: 0xd8cbb8,
+            map: shamblerFleshTex,
+            bumpMap: shamblerFleshTex,
+            bumpScale: 0.018,
+            roughness: 0.38,
+            metalness: 0.12,
+            emissive: 0x1c1410
+        });
 
         // ---- 1. SCULPTED HEAD, SKULL, JAW & HELMET GEOMETRIES ----
         const shamblerCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.245, 18, 15), (x, y, z) => {
@@ -3414,16 +3474,21 @@
                 nz *= (1.0 - cheekHollow * 0.14);
             } else {
                 // Craggy elongated monster cranium
-                ny *= 1.08;
-                nz *= 1.06;
+                ny *= 1.06;
+                nz *= 1.02;
             }
-            // Heavy menacing supraorbital brow ridge & deep recessed orbital sockets
-            if (z > 0.08 && y > -0.04 && y < 0.12) {
-                const browFactor = Math.exp(-Math.pow((y - 0.068) / 0.035, 2));
-                nz += browFactor * 0.052;
-                const eyeSocketX = Math.abs(x) - 0.092;
-                const socketFactor = Math.exp(-(eyeSocketX * eyeSocketX) / 0.0028) * Math.exp(-Math.pow((y - 0.01) / 0.04, 2));
-                nz -= socketFactor * 0.058;
+            // Heavy menacing supraorbital brow ridge & deep recessed orbital sockets (guaranteed Z clearance for optics)
+            if (z > 0.08 && y > -0.04 && y < 0.13) {
+                const browFactor = Math.exp(-Math.pow((y - 0.082) / 0.024, 2));
+                nz += browFactor * 0.045;
+                const eyeSocketX = Math.abs(x) - 0.088;
+                const socketFactor = Math.exp(-(eyeSocketX * eyeSocketX) / 0.0048) * Math.exp(-Math.pow((y - 0.020) / 0.046, 2));
+                nz -= socketFactor * 0.072;
+            }
+            // Recessed anatomical mouth cavity below upper lip so fangs & throat glow never clip
+            if (z > 0.08 && y < -0.025 && Math.abs(x) < 0.105) {
+                const mouthFactor = Math.exp(-Math.pow(x / 0.085, 2)) * Math.min(1, (-y - 0.025) / 0.04);
+                nz -= mouthFactor * 0.058;
             }
             // Sharp projecting zygomatic cheekbones
             if (z > 0.02 && y > -0.09 && y < 0.01 && Math.abs(x) > 0.11) {
@@ -3433,21 +3498,24 @@
             return [nx, ny, nz];
         });
 
-        // Shambler Half-Cyborg Cranial Lobotomy Plate, Targeter Optic & Fanged Maw Geometries
-        const shamblerSkullPlateGeo = sculptGeometry(new THREE.SphereGeometry(0.254, 12, 10, 0, Math.PI * 0.68, 0.08, Math.PI * 0.58), (x, y, z) => {
-            return [x * 1.02, y * 1.06, z * 1.04];
+        // Shambler Half-Cyborg Cranial Temple Graft, Recessed Bionic Optics, Scowling Brow & Fanged Maw Geometries
+        const shamblerTempleGraftGeo = sculptGeometry(new THREE.BoxGeometry(0.11, 0.14, 0.22), (x, y, z) => {
+            return [x, y + (x > 0 ? -0.02 : 0.02), z * 0.92];
         });
-        const shamblerNeuralStripGeo = new THREE.BoxGeometry(0.024, 0.22, 0.28);
-        const shamblerOpticBarrelGeo = new THREE.CylinderGeometry(0.062, 0.072, 0.12, 10);
-        shamblerOpticBarrelGeo.rotateX(Math.PI / 2);
-        const shamblerOpticRingGeo = new THREE.TorusGeometry(0.058, 0.012, 6, 12);
-        const shamblerOpticLensGeo = new THREE.CircleGeometry(0.048, 10);
-        const shamblerOpticSlitGeo = new THREE.BoxGeometry(0.11, 0.016, 0.02);
-        const shamblerSocketVoidGeo = new THREE.CircleGeometry(0.052, 10);
-        const shamblerPinpointEyeGeo = new THREE.SphereGeometry(0.022, 8, 6);
-        const shamblerJawPistonGeo = new THREE.CylinderGeometry(0.022, 0.018, 0.17, 6);
-        const shamblerFangGeo = new THREE.ConeGeometry(0.016, 0.058, 5);
-        const shamblerThroatGlowGeo = new THREE.SphereGeometry(0.068, 8, 6);
+        const shamblerBrowRidgeGeo = sculptGeometry(new THREE.BoxGeometry(0.105, 0.032, 0.055), (x, y, z) => {
+            return [x, y, z + (0.052 - Math.abs(x)) * 0.25];
+        });
+        const shamblerSocketVoidGeo = new THREE.SphereGeometry(0.042, 10, 8);
+        shamblerSocketVoidGeo.scale(1.12, 0.88, 0.45);
+        const shamblerBionicBezelGeo = new THREE.TorusGeometry(0.034, 0.0085, 8, 14);
+        const shamblerIrisRingGeo = new THREE.TorusGeometry(0.021, 0.0055, 8, 14);
+        const shamblerPupilCoreGeo = new THREE.SphereGeometry(0.010, 8, 6);
+        const shamblerMicroDiodeGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const shamblerMawVoidGeo = new THREE.SphereGeometry(0.088, 10, 8);
+        shamblerMawVoidGeo.scale(1.18, 0.72, 0.55);
+        const shamblerJawPistonGeo = new THREE.CylinderGeometry(0.024, 0.020, 0.16, 8);
+        const shamblerFangGeo = new THREE.ConeGeometry(0.015, 0.054, 5);
+        const shamblerThroatGlowGeo = new THREE.SphereGeometry(0.042, 8, 6);
 
         const runnerCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.235, 18, 15), (x, y, z) => {
             let nx = x * 0.88, ny = y * 0.95, nz = z < 0 ? z * 1.45 : z * 0.92;
@@ -3543,14 +3611,18 @@
         const shamblerAbdomenGeo = sculptGeometry(new THREE.CylinderGeometry(0.25, 0.23, 0.26, 12, 3), (x, y, z) => {
             return [x * 0.96, y, z * 0.54];
         });
-        const shamblerChestCavityGeo = new THREE.CircleGeometry(0.18, 12);
-        const shamblerInnerHeartGeo = new THREE.OctahedronGeometry(0.095, 0);
-        const shamblerHeartCageGeo = new THREE.TorusGeometry(0.165, 0.016, 6, 12);
-        const shamblerRibClampGeo = new THREE.BoxGeometry(0.055, 0.32, 0.055);
-        const shamblerChestVeinGeo = new THREE.CylinderGeometry(0.014, 0.010, 0.32, 6);
+        const shamblerChestCavityGeo = new THREE.SphereGeometry(0.155, 12, 10);
+        shamblerChestCavityGeo.scale(1.05, 1.22, 0.35);
+        const shamblerInnerHeartGeo = new THREE.OctahedronGeometry(0.072, 0);
+        const shamblerHeartCageGeo = new THREE.TorusGeometry(0.118, 0.012, 6, 12);
+        const shamblerRibClampGeo = new THREE.BoxGeometry(0.052, 0.34, 0.055);
+        const shamblerBrokenRibGeo = sculptGeometry(new THREE.ConeGeometry(0.024, 0.145, 7), (x, y, z) => {
+            const t = (y + 0.0725) / 0.145;
+            return [x, y, z + t * t * 0.045];
+        });
+        const shamblerCollarClampGeo = new THREE.BoxGeometry(0.12, 0.08, 0.18);
         const shamblerVertebraGeo = new THREE.BoxGeometry(0.09, 0.075, 0.11);
-        const shamblerSpineNodeGeo = new THREE.SphereGeometry(0.028, 8, 6);
-        const shamblerCoolantTubeGeo = new THREE.TorusGeometry(0.14, 0.018, 6, 12, Math.PI * 0.85);
+        const shamblerSpineNodeGeo = new THREE.SphereGeometry(0.024, 8, 6);
 
         const runnerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.32, 0.19, 0.76, 16, 8), (x, y, z) => {
             const normY = (y + 0.38) / 0.76;
@@ -3584,9 +3656,9 @@
             const t = (y + 0.11) / 0.22;
             return [x, y, z - t * t * 0.06];
         });
-        const bioCoreCrystalGeo = new THREE.OctahedronGeometry(0.145, 1);
-        bioCoreCrystalGeo.scale(0.95, 1.25, 0.65);
-        const bioCoreBezelGeo = new THREE.TorusGeometry(0.155, 0.028, 8, 12);
+        const bioCoreCrystalGeo = new THREE.OctahedronGeometry(0.115, 1);
+        bioCoreCrystalGeo.scale(0.92, 1.18, 0.62);
+        const bioCoreBezelGeo = new THREE.TorusGeometry(0.135, 0.024, 8, 12);
 
         // Brute Heavy Split Chestplate & Exposed Reactor Core Weakpoint Assembly
         const bruteSideBreastplateGeo = sculptGeometry(new THREE.BoxGeometry(0.28, 0.64, 0.16), (x, y, z) => {
@@ -3660,7 +3732,7 @@
 
         const shamblerRestraintCuffGeo = new THREE.CylinderGeometry(0.122, 0.122, 0.055, 10);
         shamblerRestraintCuffGeo.rotateX(Math.PI / 2);
-        const shamblerForearmVeinGeo = new THREE.BoxGeometry(0.024, 0.024, 0.34);
+        const shamblerForearmVeinGeo = new THREE.BoxGeometry(0.016, 0.016, 0.30);
         const shamblerMonsterTalonGeo = sculptGeometry(new THREE.ConeGeometry(0.028, 0.23, 6), (x, y, z) => {
             const t = (y + 0.115) / 0.23;
             return [x, y - t * t * 0.055, z];
@@ -3671,18 +3743,18 @@
         // Right Arm: Surgical Cyber-Amputee Industrial Ripper Prosthetic
         const shamblerCyberShoulderGeo = new THREE.CylinderGeometry(0.165, 0.145, 0.18, 10);
         shamblerCyberShoulderGeo.rotateZ(Math.PI * 0.35);
-        const shamblerShoulderCoilGeo = new THREE.TorusGeometry(0.155, 0.020, 6, 12);
+        const shamblerShoulderCoilGeo = new THREE.TorusGeometry(0.155, 0.014, 6, 12);
         const shamblerCyberUpperArmGeo = new THREE.BoxGeometry(0.13, 0.13, 0.42);
         shamblerCyberUpperArmGeo.translate(0, 0, 0.21);
-        const shamblerPistonGlowGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.38, 8);
+        const shamblerPistonGlowGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.34, 8);
         shamblerPistonGlowGeo.rotateX(Math.PI / 2);
-        shamblerPistonGlowGeo.translate(0, 0.065, 0.21);
+        shamblerPistonGlowGeo.translate(0, 0.068, 0.21);
         const shamblerCyberForearmGeo = new THREE.CylinderGeometry(0.105, 0.092, 0.38, 8);
         shamblerCyberForearmGeo.rotateX(Math.PI / 2);
         shamblerCyberForearmGeo.translate(0, 0, 0.19);
         const shamblerRipperMountGeo = new THREE.BoxGeometry(0.15, 0.14, 0.14);
-        const shamblerRipperBladeGeo = sculptGeometry(new THREE.BoxGeometry(0.022, 0.13, 0.48), (x, y, z) => {
-            const t = (z + 0.24) / 0.48; // 0 at wrist mount, 1 at blade tip
+        const shamblerRipperBladeGeo = sculptGeometry(new THREE.BoxGeometry(0.024, 0.13, 0.46), (x, y, z) => {
+            const t = (z + 0.23) / 0.46; // 0 at wrist mount, 1 at blade tip
             let ny = y;
             if (t > 0.35) {
                 ny *= (1.0 - (t - 0.35) * 1.35);
@@ -3690,16 +3762,16 @@
             }
             return [x, ny, z];
         });
-        shamblerRipperBladeGeo.translate(0, 0, 0.54);
-        const shamblerRipperEdgeGeo = sculptGeometry(new THREE.BoxGeometry(0.028, 0.024, 0.47), (x, y, z) => {
-            const t = (z + 0.235) / 0.47;
+        shamblerRipperBladeGeo.translate(0, 0, 0.53);
+        const shamblerRipperEdgeGeo = sculptGeometry(new THREE.BoxGeometry(0.014, 0.016, 0.45), (x, y, z) => {
+            const t = (z + 0.225) / 0.45;
             let ny = y;
             if (t > 0.35) {
                 ny -= (t - 0.35) * (t - 0.35) * 0.14;
             }
             return [x, ny, z];
         });
-        shamblerRipperEdgeGeo.translate(0, -0.058, 0.54);
+        shamblerRipperEdgeGeo.translate(0, -0.056, 0.53);
 
         // Shambler Hydraulic Leg Exo-Brace Geometries
         const shamblerLegBraceGeo = new THREE.BoxGeometry(0.042, 0.36, 0.065);
@@ -3762,8 +3834,8 @@
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
 
-            let skinColor = 0x8f8287;
-            let coatColor = 0x1a1418;
+            let skinColor = 0x9e8e94;
+            let coatColor = 0x5c4750;
             let eyeColor = 0xff0033;
             let coreColor = 0x00ff66;
             let scale = 1.04;
@@ -3772,11 +3844,13 @@
 
             if (type === 'shambler') {
                 armorMat = new THREE.MeshStandardMaterial({
-                    color: 0x242830,
-                    map: bruteArmorTex,
-                    metalness: 0.86,
-                    roughness: 0.24,
-                    emissive: 0x000000
+                    color: 0x8a96a6,
+                    map: shamblerArmorTex,
+                    bumpMap: shamblerArmorTex,
+                    bumpScale: 0.024,
+                    metalness: 0.34,
+                    roughness: 0.32,
+                    emissive: 0x0a0d12
                 });
             } else if (type === 'runner') {
                 skinColor = 0xc4162e;
@@ -3805,19 +3879,19 @@
                 color: skinColor,
                 map: fleshTex,
                 bumpMap: fleshTex,
-                bumpScale: type === 'runner' ? 0.035 : (type === 'shambler' ? 0.032 : 0.022),
-                roughness: type === 'runner' ? 0.42 : (type === 'shambler' ? 0.56 : 0.68),
-                metalness: type === 'runner' ? 0.18 : (type === 'shambler' ? 0.16 : 0.08),
-                emissive: 0x000000
+                bumpScale: type === 'runner' ? 0.035 : (type === 'shambler' ? 0.035 : 0.022),
+                roughness: type === 'runner' ? 0.42 : (type === 'shambler' ? 0.52 : 0.68),
+                metalness: type === 'runner' ? 0.18 : (type === 'shambler' ? 0.12 : 0.08),
+                emissive: type === 'shambler' ? 0x0d0407 : 0x000000
             });
             const clothesMat = new THREE.MeshStandardMaterial({
                 color: coatColor,
                 map: hostileSuitTex,
                 bumpMap: hostileSuitTex,
-                bumpScale: 0.018,
-                roughness: 0.78,
-                metalness: 0.22,
-                emissive: 0x000000
+                bumpScale: 0.020,
+                roughness: 0.68,
+                metalness: 0.18,
+                emissive: type === 'shambler' ? 0x080406 : 0x000000
             });
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
             const coreMat = new THREE.MeshBasicMaterial({ color: coreColor });
@@ -3841,7 +3915,8 @@
             }
 
             const thoraxGeo = type === 'brute' ? bruteTorsoGeo : (type === 'runner' ? runnerTorsoGeo : shamblerTorsoGeo);
-            const thoraxMat = type === 'runner' ? skinMat : clothesMat;
+            // Shambler & Runner use bump-mapped necrotic flesh/muscle on upper torso so 3D muscle definition is visible in dark arenas
+            const thoraxMat = type === 'brute' ? clothesMat : skinMat;
             const torso = new THREE.Mesh(thoraxGeo, thoraxMat);
             torsoGroup.add(torso);
 
@@ -3909,49 +3984,51 @@
                 coreHitbox.userData.isCore = true;
                 torsoGroup.add(coreHitbox);
             } else if (type === 'shambler') {
-                // SHAMBLER MONSTER CYBORG ZOMBIE: Wrenched-open thoracic cavity, pulsing Neon Cyber-Reactor Heart, 3 rib pairs & Dorsal Cyber-Spine
+                // SHAMBLER MONSTER CYBORG ZOMBIE: Wrenched-open thoracic cavity, pulsing Neon Cyber-Reactor Heart, 3 skeletal rib pairs & Dorsal Cyber-Spine
                 const chestVoid = new THREE.Mesh(shamblerChestCavityGeo, shamblerCavityDarkMat);
-                chestVoid.position.set(0, 0.05, 0.19);
+                chestVoid.position.set(0, 0.05, 0.195);
                 torsoGroup.add(chestVoid);
 
                 const coreBezel = new THREE.Mesh(bioCoreBezelGeo, armorMat);
-                coreBezel.position.set(0, 0.05, 0.21);
+                coreBezel.position.set(0, 0.05, 0.215);
                 torsoGroup.add(coreBezel);
 
                 coreMesh = new THREE.Mesh(bioCoreCrystalGeo, coreMat);
-                coreMesh.position.set(0, 0.05, 0.235);
+                coreMesh.position.set(0, 0.05, 0.232);
                 torsoGroup.add(coreMesh);
 
                 const innerHeart = new THREE.Mesh(shamblerInnerHeartGeo, shamblerCoreHotMat);
-                innerHeart.position.set(0, 0.05, 0.25);
+                innerHeart.position.set(0, 0.05, 0.246);
                 torsoGroup.add(innerHeart);
 
                 coreRing = new THREE.Mesh(shamblerHeartCageGeo, eyeMat);
-                coreRing.position.set(0, 0.05, 0.24);
+                coreRing.position.set(0, 0.05, 0.238);
                 torsoGroup.add(coreRing);
 
-                // 3 pairs of wrenched rib arches + surgical metal rib-spreader clamps
-                for (let r = -1; r <= 1; r++) {
-                    const rib = new THREE.Mesh(ribBoneArcGeo, skinMat);
-                    rib.position.set(0, 0.05 + r * 0.095, 0.145);
-                    torsoGroup.add(rib);
-                }
+                // 3 pairs of wrenched-open skeletal broken ribs flanking the glowing cyber-heart (no bar crossing the center!)
                 for (let side = -1; side <= 1; side += 2) {
+                    for (let r = -1; r <= 1; r++) {
+                        const rib = new THREE.Mesh(shamblerBrokenRibGeo, shamblerBoneMat);
+                        rib.position.set(side * 0.145, 0.05 + r * 0.088, 0.215);
+                        rib.rotation.z = side * (Math.PI * 0.44);
+                        rib.rotation.y = -side * 0.35;
+                        torsoGroup.add(rib);
+                    }
+
                     const clamp = new THREE.Mesh(shamblerRibClampGeo, armorMat);
-                    clamp.position.set(side * 0.175, 0.05, 0.19);
-                    clamp.rotation.z = side * 0.14;
+                    clamp.position.set(side * 0.175, 0.05, 0.195);
+                    clamp.rotation.z = side * 0.12;
                     torsoGroup.add(clamp);
 
-                    // Glowing neon bio-plasma conduits snaking from cyber-heart to shoulders & collar
-                    const upperConduit = new THREE.Mesh(shamblerChestVeinGeo, coreMat);
-                    upperConduit.position.set(side * 0.12, 0.20, 0.19);
-                    upperConduit.rotation.z = -side * 0.52;
-                    torsoGroup.add(upperConduit);
+                    // Heavy brushed-titanium cyber-collar harness clamps on upper trapezius
+                    const collarClamp = new THREE.Mesh(shamblerCollarClampGeo, armorMat);
+                    collarClamp.position.set(side * 0.18, 0.37, 0.04);
+                    collarClamp.rotation.z = -side * 0.22;
+                    torsoGroup.add(collarClamp);
 
-                    const lowerConduit = new THREE.Mesh(shamblerChestVeinGeo, eyeMat);
-                    lowerConduit.position.set(side * 0.11, -0.12, 0.18);
-                    lowerConduit.rotation.z = side * 0.44;
-                    torsoGroup.add(lowerConduit);
+                    const collarDiode = new THREE.Mesh(shamblerSpineNodeGeo, side < 0 ? coreMat : eyeMat);
+                    collarDiode.position.set(side * 0.18, 0.40, 0.11);
+                    torsoGroup.add(collarDiode);
                 }
 
                 // Articulated Dorsal Cyber-Spine Exoskeleton & Glowing Neural Nodes
@@ -3967,15 +4044,6 @@
                     spineNode.position.set(0, vy, vz - 0.055);
                     torsoGroup.add(spineNode);
                 }
-
-                // Twin Glowing Neon Coolant Tubes arching over trapezius from dorsal spine
-                for (let side = -1; side <= 1; side += 2) {
-                    const tube = new THREE.Mesh(shamblerCoolantTubeGeo, coreMat);
-                    tube.position.set(side * 0.16, 0.34, -0.06);
-                    tube.rotation.y = Math.PI * 0.5 + side * 0.25;
-                    tube.rotation.x = 0.35;
-                    torsoGroup.add(tube);
-                }
             } else {
                 // Runner Bioluminescent / Arterial Chest Core framed by exposed ribs
                 const coreBezel = new THREE.Mesh(bioCoreBezelGeo, clothesMat);
@@ -3988,7 +4056,7 @@
 
                 // Exposed anatomical rib arcs curving over chest lesion
                 for (let r = -1; r <= 1; r += 2) {
-                    const rib = new THREE.Mesh(ribBoneArcGeo, skinMat);
+                    const rib = new THREE.Mesh(ribBoneArcGeo, shamblerBoneMat);
                     rib.position.set(0, 0.04 + r * 0.085, 0.14);
                     torsoGroup.add(rib);
                 }
@@ -4010,7 +4078,7 @@
                 head.rotation.x = -0.12;
             } else if (type === 'shambler') {
                 head.position.set(0, 2.02, 0.16);
-                head.rotation.z = 0.14;
+                head.rotation.z = 0.10;
             } else {
                 head.position.set(0, 2.08, 0.03);
             }
@@ -4023,89 +4091,112 @@
 
             // Articulated Lower Mandible / Jaw
             const jaw = new THREE.Mesh(hostileJawGeo, type === 'brute' ? armorMat : skinMat);
-            jaw.position.set(0, -0.08, 0.02);
+            jaw.position.set(0, type === 'shambler' ? -0.105 : -0.08, 0.02);
             jaw.userData.isHead = true;
             head.add(jaw);
 
             if (type === 'shambler') {
                 // SHAMBLER MONSTER CYBORG SKULL:
-                // 1) Bolted Gunmetal Lobotomy Armor Graft over right hemisphere + glowing neon neural seam
-                const skullPlate = new THREE.Mesh(shamblerSkullPlateGeo, armorMat);
-                skullPlate.rotation.y = -Math.PI * 0.15;
-                skullPlate.userData.isHead = true;
-                head.add(skullPlate);
+                // 1) Upper-Right Cranial Temple Armor Graft (positioned strictly above/behind the right temple so neither eye is ever occluded)
+                const templeGraft = new THREE.Mesh(shamblerTempleGraftGeo, armorMat);
+                templeGraft.position.set(0.145, 0.105, 0.01);
+                templeGraft.rotation.set(0.12, 0.25, -0.28);
+                templeGraft.userData.isHead = true;
+                head.add(templeGraft);
 
-                const neuralStrip = new THREE.Mesh(shamblerNeuralStripGeo, coreMat);
-                neuralStrip.position.set(0.03, 0.08, 0.10);
-                neuralStrip.rotation.x = -0.35;
-                neuralStrip.userData.isHead = true;
-                head.add(neuralStrip);
+                // Furrowed Scowling Supraorbital Monster Brow Ridges over both eye sockets
+                for (let side = -1; side <= 1; side += 2) {
+                    const brow = new THREE.Mesh(shamblerBrowRidgeGeo, side > 0 ? armorMat : skinMat);
+                    brow.position.set(side * 0.086, 0.064, 0.215);
+                    brow.rotation.y = side * 0.18;
+                    brow.rotation.z = side * 0.26; // Fierce inward V-scowl
+                    brow.userData.isHead = true;
+                    head.add(brow);
 
-                // 2) Right Eye: Protruding Cybernetic Targeter Barrel + Searing Neon Crimson Laser Lens & Crosshair Slit
-                const opticBarrel = new THREE.Mesh(shamblerOpticBarrelGeo, armorMat);
-                opticBarrel.position.set(0.092, 0.025, 0.205);
-                opticBarrel.rotation.y = 0.10;
-                opticBarrel.userData.isHead = true;
-                head.add(opticBarrel);
+                    // Deep recessed dark orbital cavity in both left & right eye sockets
+                    const socketVoid = new THREE.Mesh(shamblerSocketVoidGeo, shamblerCavityDarkMat);
+                    socketVoid.position.set(side * 0.088, 0.018, 0.205);
+                    socketVoid.rotation.y = side * 0.16;
+                    socketVoid.userData.isHead = true;
+                    head.add(socketVoid);
+                }
 
-                const opticRing = new THREE.Mesh(shamblerOpticRingGeo, eyeMat);
-                opticRing.position.set(0.095, 0.025, 0.268);
-                opticRing.rotation.y = 0.10;
-                opticRing.userData.isHead = true;
-                head.add(opticRing);
+                // 2) Right Eye (+X): Recessed Brushed-Steel Bionic Socket Bezel + Searing Neon-Crimson Iris Ring & Pinpoint Laser Core
+                const bionicBezel = new THREE.Mesh(shamblerBionicBezelGeo, armorMat);
+                bionicBezel.position.set(0.088, 0.018, 0.218);
+                bionicBezel.rotation.y = 0.16;
+                bionicBezel.userData.isHead = true;
+                head.add(bionicBezel);
 
-                const opticLens = new THREE.Mesh(shamblerOpticLensGeo, eyeMat);
-                opticLens.position.set(0.095, 0.025, 0.266);
-                opticLens.rotation.y = 0.10;
-                opticLens.userData.isHead = true;
-                head.add(opticLens);
+                const rightIrisRing = new THREE.Mesh(shamblerIrisRingGeo, eyeMat);
+                rightIrisRing.position.set(0.088, 0.018, 0.224);
+                rightIrisRing.rotation.y = 0.16;
+                rightIrisRing.userData.isHead = true;
+                head.add(rightIrisRing);
 
-                const opticSlit = new THREE.Mesh(shamblerOpticSlitGeo, shamblerCoreHotMat);
-                opticSlit.position.set(0.095, 0.025, 0.272);
-                opticSlit.rotation.y = 0.10;
-                opticSlit.userData.isHead = true;
-                head.add(opticSlit);
+                const rightPupil = new THREE.Mesh(shamblerPupilCoreGeo, shamblerCoreHotMat);
+                rightPupil.position.set(0.088, 0.018, 0.227);
+                rightPupil.userData.isHead = true;
+                head.add(rightPupil);
 
-                // 3) Left Eye: Deep Hollow Necrotic Socket + Pinpoint Radioactive Bio-Neon Pupil
-                const leftSocketVoid = new THREE.Mesh(shamblerSocketVoidGeo, shamblerCavityDarkMat);
-                leftSocketVoid.position.set(-0.092, 0.025, 0.205);
-                leftSocketVoid.rotation.y = -0.16;
-                leftSocketVoid.userData.isHead = true;
-                head.add(leftSocketVoid);
+                // Auxiliary cyber-temple micro-sensor diodes flanking the right bionic socket
+                const upperDiode = new THREE.Mesh(shamblerMicroDiodeGeo, coreMat);
+                upperDiode.position.set(0.136, 0.044, 0.202);
+                upperDiode.userData.isHead = true;
+                head.add(upperDiode);
 
-                const leftPinpoint = new THREE.Mesh(shamblerPinpointEyeGeo, coreMat);
-                leftPinpoint.position.set(-0.092, 0.025, 0.218);
-                leftPinpoint.userData.isHead = true;
-                head.add(leftPinpoint);
+                const lowerDiode = new THREE.Mesh(shamblerMicroDiodeGeo, eyeMat);
+                lowerDiode.position.set(0.142, 0.012, 0.196);
+                lowerDiode.userData.isHead = true;
+                head.add(lowerDiode);
 
-                // 4) Unhinged Fanged Monster Maw + Glowing Bio-Plasma Throat + Hydraulic Jaw Pistons
+                // 3) Left Eye (-X): Sunken Infected Bio-Neon Iris Ring + Crimson Pinpoint Pupil
+                const leftIrisRing = new THREE.Mesh(shamblerIrisRingGeo, coreMat);
+                leftIrisRing.position.set(-0.088, 0.018, 0.222);
+                leftIrisRing.rotation.y = -0.16;
+                leftIrisRing.userData.isHead = true;
+                head.add(leftIrisRing);
+
+                const leftPupil = new THREE.Mesh(shamblerPupilCoreGeo, eyeMat);
+                leftPupil.position.set(-0.088, 0.018, 0.226);
+                leftPupil.userData.isHead = true;
+                head.add(leftPupil);
+
+                // 4) Gaping Fanged Monster Maw (Positioned on the front maxillary/mandibular rim z = 0.205..0.242 so teeth & throat are 100% visible)
+                const mawVoid = new THREE.Mesh(shamblerMawVoidGeo, shamblerCavityDarkMat);
+                mawVoid.position.set(0, -0.068, 0.195);
+                mawVoid.userData.isHead = true;
+                head.add(mawVoid);
+
                 const throatGlow = new THREE.Mesh(shamblerThroatGlowGeo, coreMat);
-                throatGlow.position.set(0, -0.055, 0.08);
+                throatGlow.position.set(0, -0.068, 0.202);
                 throatGlow.userData.isHead = true;
                 head.add(throatGlow);
 
-                for (let f = -2; f <= 2; f++) {
-                    const fangX = f * 0.036;
-                    const fangZ = 0.145 - Math.abs(f) * 0.018;
-                    // Upper maxillary fangs pointing down
-                    const upperFang = new THREE.Mesh(shamblerFangGeo, armorMat);
-                    upperFang.position.set(fangX, -0.052, fangZ);
-                    upperFang.rotation.x = Math.PI;
+                for (let f = -2.5; f <= 2.5; f += 1.0) {
+                    const fangX = f * 0.030;
+                    const archZ = Math.cos(f * 0.28) * 0.045;
+                    // Upper maxillary bone fangs pointing downward over open mouth
+                    const upperFang = new THREE.Mesh(shamblerFangGeo, shamblerBoneMat);
+                    upperFang.position.set(fangX, -0.052, 0.198 + archZ);
+                    upperFang.rotation.x = Math.PI - 0.12;
                     upperFang.userData.isHead = true;
                     head.add(upperFang);
 
-                    // Lower mandibular fangs pointing up
-                    const lowerFang = new THREE.Mesh(shamblerFangGeo, armorMat);
-                    lowerFang.position.set(fangX, 0.022, fangZ - 0.015);
+                    // Lower mandibular bone fangs pointing upward from articulated jaw
+                    const lowerFang = new THREE.Mesh(shamblerFangGeo, shamblerBoneMat);
+                    lowerFang.position.set(fangX, 0.012, 0.162 + archZ);
+                    lowerFang.rotation.x = 0.12;
                     lowerFang.userData.isHead = true;
                     jaw.add(lowerFang);
                 }
 
+                // Brushed-titanium hydraulic jaw pistons clamping the cheeks to the mandible
                 for (let side = -1; side <= 1; side += 2) {
                     const jawPiston = new THREE.Mesh(shamblerJawPistonGeo, armorMat);
-                    jawPiston.position.set(side * 0.135, -0.055, 0.08);
-                    jawPiston.rotation.x = 0.35;
-                    jawPiston.rotation.z = -side * 0.18;
+                    jawPiston.position.set(side * 0.138, -0.058, 0.155);
+                    jawPiston.rotation.x = 0.28;
+                    jawPiston.rotation.z = -side * 0.16;
                     jawPiston.userData.isHead = true;
                     head.add(jawPiston);
                 }
@@ -4244,7 +4335,7 @@
                         forearmGroup.add(palm);
 
                         for (let c = -1.5; c <= 1.5; c += 1.0) {
-                            const talon = new THREE.Mesh(shamblerMonsterTalonGeo, armorMat);
+                            const talon = new THREE.Mesh(shamblerMonsterTalonGeo, shamblerBoneMat);
                             talon.position.set(c * 0.032, 0.01, 0.45);
                             talon.rotation.y = c * 0.14;
                             talon.rotation.x = 0.18;
@@ -6739,9 +6830,9 @@
                 if (z.hitFlashTimer > 0) {
                     z.hitFlashTimer -= dt;
                     if (z.hitFlashTimer <= 0) {
-                        z.parts.skinMat.emissive.setHex(0x000000);
-                        z.parts.clothesMat.emissive.setHex(0x000000);
-                        if (z.parts.armorMat) z.parts.armorMat.emissive.setHex(0x000000);
+                        z.parts.skinMat.emissive.setHex(z.type === 'shambler' ? 0x0d0407 : 0x000000);
+                        z.parts.clothesMat.emissive.setHex(z.type === 'shambler' ? 0x080406 : 0x000000);
+                        if (z.parts.armorMat) z.parts.armorMat.emissive.setHex(z.type === 'shambler' ? 0x0a0d12 : 0x000000);
                     }
                 }
 
