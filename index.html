@@ -1430,7 +1430,7 @@
                 osc.connect(gain);
                 gain.connect(this.sfxGain);
                 this.registerCleanup(osc, gain);
-                punchOscCleanup: osc.start(now);
+                osc.start(now);
                 osc.stop(now + 0.33);
             }
 
@@ -3368,7 +3368,7 @@
         });
 
         const runnerCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.235, 18, 15), (x, y, z) => {
-            let nx = x * 0.88, ny = y * 0.95, nz = z * 1.32;
+            let nx = x * 0.88, ny = y * 0.95, nz = z < 0 ? z * 1.45 : z * 0.92;
             // Swept-back predatory raptor/xenomorph sagittal crest
             if (z < 0) {
                 const backFactor = Math.min(1, -z / 0.235);
@@ -3376,21 +3376,24 @@
                 nz -= backFactor * 0.16;
                 nx *= (1.0 - backFactor * 0.38);
             }
-            // Forward snarling snout & sharp brow
+            // Forward snarling snout & recessed orbital sockets
             if (z > 0.05) {
                 const frontFactor = z / 0.235;
-                nx *= (1.0 - frontFactor * 0.22);
-                if (y > 0.02 && y < 0.10) nz += 0.045;
+                nx *= (1.0 - frontFactor * 0.18);
+                if (y > 0.04 && y < 0.10) nz += 0.022;
+                const eyeSocketX = Math.abs(x) - 0.095;
+                const socketFactor = Math.exp(-(eyeSocketX * eyeSocketX) / 0.003) * Math.exp(-Math.pow((y - 0.02) / 0.04, 2));
+                nz -= socketFactor * 0.028;
             }
             return [nx, ny, nz];
         });
 
-        const bruteCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.265, 16, 14), (x, y, z) => {
-            let nx = x * 1.08, ny = y * 1.02, nz = z * 1.06;
+        const bruteCraniumGeo = sculptGeometry(new THREE.SphereGeometry(0.235, 16, 14), (x, y, z) => {
+            let nx = x * 0.96, ny = y * 0.98, nz = z * 0.95;
             // Heavy square cybernetic jaw & brow
             if (y < 0) {
-                nx *= 1.06;
-                if (z > 0) nz += 0.03;
+                nx *= 1.02;
+                if (z > 0) nz += 0.015;
             }
             return [nx, ny, nz];
         });
@@ -3419,10 +3422,10 @@
         runnerHornGeo.translate(0, 0.10, 0);
 
         // Brute Tactical Helmet, Visor & Respirator
-        const bruteHelmDomeGeo = sculptGeometry(new THREE.CylinderGeometry(0.24, 0.29, 0.26, 8, 3), (x, y, z) => {
+        const bruteHelmDomeGeo = sculptGeometry(new THREE.CylinderGeometry(0.25, 0.30, 0.26, 8, 3), (x, y, z) => {
             let nx = x, ny = y, nz = z;
             if (y > 0.05) {
-                nx *= 0.85;
+                nx *= 0.86;
                 nz *= 0.90;
             }
             // Angled front brow guard
@@ -3440,26 +3443,26 @@
         const headHitboxGeo = new THREE.SphereGeometry(0.33, 10, 10);
 
         // ---- 2. SCULPTED ANATOMICAL TORSO, RIBCAGE, PELVIS & EXPOSED REACTOR CORE GEOMETRIES ----
-        const shamblerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.36, 0.25, 0.78, 16, 8), (x, y, z) => {
+        const shamblerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.35, 0.24, 0.78, 16, 8), (x, y, z) => {
             const normY = (y + 0.39) / 0.78; // 0 at waist, 1 at shoulders
             let nx = x * (0.92 + normY * 0.28); // V-tapered upper back & shoulders
-            let nz = z * (0.72 + Math.sin(normY * Math.PI) * 0.16);
+            let nz = z * (0.48 + Math.sin(normY * Math.PI) * 0.08);
             // Pectoral projection & spinal groove
-            if (z > 0.05 && normY > 0.42 && normY < 0.86) {
-                nz += 0.045 * Math.sin(((normY - 0.42) / 0.44) * Math.PI);
+            if (z > 0.04 && normY > 0.42 && normY < 0.86) {
+                nz += 0.022 * Math.sin(((normY - 0.42) / 0.44) * Math.PI);
             }
-            if (z < -0.08 && Math.abs(x) < 0.08) {
-                nz += 0.03; // Recessed spinal channel
+            if (z < -0.06 && Math.abs(x) < 0.08) {
+                nz += 0.022; // Recessed spinal channel
             }
             return [nx, y, nz];
         });
 
-        const runnerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.33, 0.20, 0.76, 16, 8), (x, y, z) => {
+        const runnerTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.32, 0.19, 0.76, 16, 8), (x, y, z) => {
             const normY = (y + 0.38) / 0.76;
-            let nx = x * (0.82 + normY * 0.35);
-            let nz = z * (0.68 + Math.sin(normY * Math.PI) * 0.18);
+            let nx = x * (0.84 + normY * 0.34);
+            let nz = z * (0.46 + Math.sin(normY * Math.PI) * 0.08);
             // Rippled ribcage ridges
-            const ribWave = Math.sin(normY * Math.PI * 7) * 0.016;
+            const ribWave = Math.sin(normY * Math.PI * 7) * 0.012;
             if (normY > 0.25 && normY < 0.85) {
                 nx += Math.sign(x) * ribWave;
                 nz += Math.sign(z) * ribWave;
@@ -3467,15 +3470,15 @@
             return [nx, y, nz];
         });
 
-        const bruteTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.45, 0.31, 0.84, 16, 8), (x, y, z) => {
+        const bruteTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.45, 0.30, 0.84, 16, 8), (x, y, z) => {
             const normY = (y + 0.42) / 0.84;
-            let nx = x * (0.95 + normY * 0.32);
-            let nz = z * (0.78 + Math.sin(normY * Math.PI) * 0.20);
+            let nx = x * (0.95 + normY * 0.30);
+            let nz = z * (0.48 + Math.sin(normY * Math.PI) * 0.08);
             return [nx, y, nz];
         });
 
-        const hostilePelvisGeo = sculptGeometry(new THREE.CylinderGeometry(0.25, 0.22, 0.28, 14, 3), (x, y, z) => {
-            return [x * 1.05, y, z * 0.76];
+        const hostilePelvisGeo = sculptGeometry(new THREE.CylinderGeometry(0.24, 0.21, 0.28, 14, 3), (x, y, z) => {
+            return [x * 1.05, y, z * 0.56];
         });
 
         const neckCollarGeo = new THREE.CylinderGeometry(0.13, 0.16, 0.16, 12);
@@ -3838,12 +3841,12 @@
                 if (type === 'runner') {
                     // Runner secondary predatory photoreceptor eyes & swept cranial horns
                     const leftUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
-                    leftUpperEye.position.set(-0.12, 0.075, 0.18);
+                    leftUpperEye.position.set(-0.12, 0.075, 0.195);
                     leftUpperEye.userData.isHead = true;
                     head.add(leftUpperEye);
 
                     const rightUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
-                    rightUpperEye.position.set(0.12, 0.075, 0.18);
+                    rightUpperEye.position.set(0.12, 0.075, 0.195);
                     rightUpperEye.userData.isHead = true;
                     head.add(rightUpperEye);
 
@@ -5363,8 +5366,25 @@
 
                 const hitZombie = hit.object.userData.zombie;
                 if (hitZombie && !hitZombie.dying) {
-                    const isHeadshot = Boolean(hit.object.userData.isHead);
-                    const isCoreHit = Boolean(hit.object.userData.isCore);
+                    let isHeadshot = Boolean(hit.object.userData.isHead);
+                    let isCoreHit = Boolean(hit.object.userData.isCore);
+
+                    // Same-entity limb penetration priority: prevent raised arms/pauldrons from blocking a ray lined up with the head or reactor core
+                    if (!isHeadshot && !isCoreHit) {
+                        const maxPenetration = 0.65 * hitZombie.parts.scale;
+                        for (let k = 1; k < intersects.length; k++) {
+                            const nextHit = intersects[k];
+                            if (nextHit.distance - hit.distance > maxPenetration) break;
+                            if (nextHit.object.userData.zombie !== hitZombie) break;
+                            if (nextHit.object.userData.isHead) {
+                                isHeadshot = true;
+                                break;
+                            }
+                            if (nextHit.object.userData.isCore) {
+                                isCoreHit = true;
+                            }
+                        }
+                    }
 
                     let damage = 40;
                     if (hitZombie.type === 'brute') {
