@@ -277,7 +277,7 @@
             text-shadow: none;
         }
 
-        /* Mobile Touch Controls & Virtual Joystick */
+        /* Mobile Touch Controls & Virtual Joystick (AAA Pro Mobile/iPad FPS Architecture) */
         .touch-none {
             touch-action: none;
         }
@@ -286,16 +286,42 @@
             user-select: none;
             -webkit-user-select: none;
             -webkit-touch-callout: none;
-            touch-action: manipulation;
+            touch-action: none;
             -webkit-tap-highlight-color: transparent;
         }
 
         #mobile-controls {
             touch-action: none;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
         }
 
         #mobile-controls * {
             -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Floating Dynamic Joystick Base States */
+        #joystick-base {
+            transition: opacity 0.18s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+            opacity: 0.78;
+        }
+
+        #joystick-base.is-active {
+            opacity: 1;
+            border-color: rgba(255, 51, 92, 0.85);
+            box-shadow: 0 0 24px rgba(255, 0, 51, 0.45), inset 0 0 12px rgba(255, 0, 51, 0.2);
+        }
+
+        #joystick-base.is-sprint-locked {
+            border-color: rgba(0, 255, 204, 0.9);
+            box-shadow: 0 0 26px rgba(0, 255, 204, 0.55), inset 0 0 14px rgba(0, 255, 204, 0.25);
+        }
+
+        #joystick-sprint-pill {
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
         /* Strict visibility rules for mobile & tablet HUD buttons and controls */
@@ -345,32 +371,36 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Mobile HUD Spacing: Prevent overlap with bottom controls while keeping HUD visible */
-        body.is-mobile-device .mobile-hud-spacing {
-            margin-bottom: 9.5rem !important;
+        /* Mobile & iPad HUD Spacing: Keep bottom telemetry bar centered & clear of left/right thumb zones */
+        body.is-mobile-device #hud-bottom-bar {
+            max-width: calc(100% - 21rem);
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px)) !important;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 900px) {
             body.is-mobile-device #hud-bottom-bar {
+                max-width: 100%;
                 flex-direction: row !important;
                 align-items: stretch !important;
-                margin-bottom: 9.5rem !important;
+                margin-bottom: 10.25rem !important;
                 gap: 0.5rem !important;
             }
 
             body.is-mobile-device #hud-bottom-bar>div:first-child {
                 width: 58% !important;
-                padding: 0.5rem 0.65rem !important;
+                padding: 0.45rem 0.65rem !important;
             }
 
             body.is-mobile-device #hud-bottom-bar>div:last-child {
                 width: 40% !important;
-                padding: 0.5rem 0.65rem !important;
+                padding: 0.45rem 0.65rem !important;
             }
 
             body.is-mobile-device #hud-ammo {
-                font-size: 1.5rem !important;
-                line-height: 1.75rem !important;
+                font-size: 1.45rem !important;
+                line-height: 1.7rem !important;
             }
         }
     </style>
@@ -493,27 +523,34 @@
             <div id="wave-banner-container" class="absolute top-1/4 pointer-events-none text-center"></div>
         </div>
 
-        <!-- Mobile & Tablet Virtual Joystick & Touch Controls Layer (Bug 3 & 4 Fixes) -->
+        <!-- Mobile & iPad Pro FPS Dual-Thumb Touch Controls Layer -->
         <div id="mobile-controls" class="hidden absolute inset-0 pointer-events-none select-none z-30 touch-none">
-            <!-- Fullscreen Touch Strafe & Look Zone (covers screen outside joystick & action buttons) -->
+            <!-- Right / Fullscreen 2D Free-Look Aiming Pad (Yaw + Pitch with Velocity Acceleration) -->
             <div id="touch-look-zone" class="absolute inset-0 pointer-events-auto touch-none"></div>
 
-            <!-- Virtual Analog Joystick (Bottom Left) -->
+            <!-- Left Quadrant Dynamic Floating 2D Movement & Strafe Virtual Joystick Zone -->
             <div id="joystick-zone"
-                class="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center pointer-events-auto touch-none">
+                class="absolute bottom-0 left-0 w-[46%] h-[68%] pointer-events-auto touch-none">
                 <div id="joystick-base"
-                    class="relative w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 border-red-500/50 bg-black/60 backdrop-blur-md shadow-[0_0_18px_rgba(255,0,51,0.3)] flex items-center justify-center pointer-events-none">
-                    <!-- Target concentric ring -->
+                    class="absolute bottom-5 left-5 sm:bottom-8 sm:left-8 w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 border-red-500/50 bg-black/60 backdrop-blur-md shadow-[0_0_18px_rgba(255,0,51,0.3)] flex items-center justify-center pointer-events-none">
+                    <!-- Forward Sprint-Lock Threshold Indicator Pill -->
+                    <div id="joystick-sprint-pill"
+                        class=" opacity-0 -translate-y-1 absolute -top-7 px-2 py-0.5 rounded-full bg-black/85 border border-emerald-400/80 text-[8px] font-neon font-bold tracking-widest text-emerald-300 shadow-[0_0_10px_rgba(0,255,204,0.45)] whitespace-nowrap pointer-events-none">
+                        ⚡ SPRINT LOCK
+                    </div>
+                    <!-- Outer sprint-lock arc hint at top of ring -->
+                    <div class="absolute -top-0.5 w-12 h-1.5 rounded-full bg-red-500/40"></div>
+                    <!-- Target concentric deadzone ring -->
                     <div class="absolute w-14 h-14 rounded-full border border-red-500/30"></div>
-                    <!-- Axis crosshairs -->
-                    <div class="absolute top-1.5 w-0.5 h-2 bg-red-400/70"></div>
-                    <div class="absolute bottom-1.5 w-0.5 h-2 bg-red-400/70"></div>
-                    <div class="absolute left-1.5 h-0.5 w-2 bg-red-400/70"></div>
-                    <div class="absolute right-1.5 h-0.5 w-2 bg-red-400/70"></div>
-                    <div class="absolute bottom-2 text-[9px] font-neon tracking-widest text-red-400 uppercase">MOVE / TURN
+                    <!-- 4-Way Omnidirectional Move/Strafe Chevrons -->
+                    <div class="absolute top-1.5 text-[9px] text-red-400/80 font-bold leading-none">▲</div>
+                    <div class="absolute bottom-1.5 text-[9px] text-red-400/80 font-bold leading-none">▼</div>
+                    <div class="absolute left-1.5 text-[9px] text-red-400/80 font-bold leading-none">◀</div>
+                    <div class="absolute right-1.5 text-[9px] text-red-400/80 font-bold leading-none">▶</div>
+                    <div class="absolute bottom-3 text-[8px] font-neon tracking-widest text-red-400/90 uppercase">MOVE / STRAFE
                     </div>
 
-                    <!-- Draggable Thumbstick Knob (Using w-14 h-14 standard size) -->
+                    <!-- Draggable Thumbstick Knob -->
                     <div id="joystick-knob"
                         class="absolute w-14 h-14 rounded-full bg-gradient-to-br from-red-500 via-red-700 to-red-950 border-2 border-red-300 shadow-[0_0_14px_#ff0033] flex items-center justify-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                         <div class="w-3.5 h-3.5 rounded-full bg-white/90 shadow-[0_0_8px_#fff]"></div>
@@ -521,10 +558,38 @@
                 </div>
             </div>
 
-            <!-- Mobile Action Buttons (Bottom Right Cluster) -->
+            <!-- Secondary Left-Hand / Claw Index Fire Trigger (Above Left Thumbstick) -->
+            <button id="touch-btn-fire-left" type="button" aria-label="Secondary Left Fire Trigger"
+                class="touch-control-btn pointer-events-auto absolute bottom-44 left-5 sm:bottom-52 sm:left-8 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-black/75 border-2 border-red-500/80 flex flex-col items-center justify-center text-red-300 font-neon shadow-[0_0_14px_rgba(255,0,51,0.35)] active:scale-90 active:bg-red-600 active:text-white transition-all backdrop-blur-sm">
+                <svg class="w-5 h-5 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.3">
+                    <circle cx="12" cy="12" r="6"></circle>
+                    <line x1="12" y1="2" x2="12" y2="6"></line>
+                    <line x1="12" y1="18" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="6" y2="12"></line>
+                    <line x1="18" y1="12" x2="22" y2="12"></line>
+                </svg>
+                <span class="text-[7px] font-bold tracking-wider pointer-events-none mt-0.5">L-FIRE</span>
+            </button>
+
+            <!-- Mobile Action Buttons (Bottom Right Ergonomic Arc Cluster) -->
             <div id="touch-actions"
-                class="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col items-end gap-3 pointer-events-auto">
-                <!-- Top auxiliary row: Sprint & Reload (Standard w-14 h-14 classes) -->
+                class="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col items-end gap-2.5 pointer-events-auto">
+                <!-- Tactical Utility Row: Auto-Fire Toggle & Quick 180° Turn -->
+                <div class="flex items-center gap-2">
+                    <button id="touch-btn-autofire" type="button" aria-label="Toggle Crosshair Auto-Fire"
+                        class="touch-control-btn px-2.5 py-1.5 rounded-full bg-black/80 border border-red-600/80 flex items-center gap-1.5 text-red-300 font-neon text-[9px] font-bold tracking-wider shadow-[0_0_10px_rgba(255,0,51,0.3)] active:scale-95 transition-all backdrop-blur-sm">
+                        <span id="touch-autofire-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#00ffcc] pointer-events-none"></span>
+                        <span id="touch-autofire-label" class="pointer-events-none">AUTO-FIRE: ON</span>
+                    </button>
+
+                    <button id="touch-btn-turn180" type="button" aria-label="Quick 180 Degree Turn"
+                        class="touch-control-btn px-2.5 py-1.5 rounded-full bg-black/80 border border-red-600/80 flex items-center gap-1 text-red-300 font-neon text-[9px] font-bold tracking-wider shadow-[0_0_10px_rgba(255,0,51,0.3)] active:scale-90 active:bg-red-600 active:text-white transition-all backdrop-blur-sm">
+                        <span class="pointer-events-none">↺ 180°</span>
+                    </button>
+                </div>
+
+                <!-- Auxiliary Combat Row: Reload & Sprint -->
                 <div class="flex items-center gap-3">
                     <!-- Touch Reload Button -->
                     <button id="touch-btn-reload" type="button" aria-label="Reload Weapon"
@@ -548,9 +613,9 @@
                     </button>
                 </div>
 
-                <!-- Touch Main Fire Button (Standard w-20 h-20 sm:w-24 sm:h-24) -->
-                <button id="touch-btn-fire" type="button" aria-label="Fire Carbine"
-                    class="touch-control-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-red-600 via-red-800 to-black border-2 border-red-400 flex flex-col items-center justify-center text-white font-neon shadow-[0_0_22px_#ff0033] active:scale-90 active:border-white active:from-red-500 active:to-red-700 transition-all">
+                <!-- Primary Aim-Draggable Fire Button (Hold & Drag Thumb to Aim While Firing) -->
+                <button id="touch-btn-fire" type="button" aria-label="Fire & Drag to Aim Carbine"
+                    class="touch-control-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-red-600 via-red-800 to-black border-2 border-red-400 flex flex-col items-center justify-center text-white font-neon shadow-[0_0_22px_#ff0033] active:scale-95 active:border-white transition-transform">
                     <svg class="w-7 h-7 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
                         <circle cx="12" cy="12" r="7"></circle>
@@ -560,15 +625,16 @@
                         <line x1="17" y1="12" x2="22" y2="12"></line>
                     </svg>
                     <span class="text-[10px] font-black tracking-widest pointer-events-none">FIRE</span>
+                    <span class="text-[7px] text-red-200/90 tracking-wider pointer-events-none -mt-0.5">DRAG AIM</span>
                 </button>
             </div>
         </div>
 
-        <!-- Bottom Bar: Health, Stamina & Ammo (Bug 5 Responsive Mobile Layout) -->
+        <!-- Bottom Bar: Health, Stamina & Ammo (Pass-through pointer-events so touches never get blocked) -->
         <div id="hud-bottom-bar"
             class="flex flex-col sm:flex-row justify-between items-end gap-3 sm:gap-4 pointer-events-none transition-all">
             <!-- Health & Stamina Bars -->
-            <div class="neon-box p-3 sm:p-4 rounded-xl w-full sm:w-80 pointer-events-auto">
+            <div class="neon-box p-3 sm:p-4 rounded-xl w-full sm:w-80 pointer-events-none">
                 <div class="flex justify-between items-baseline mb-1">
                     <span class="text-xs font-neon tracking-widest text-red-400 uppercase">Vital Integrity</span>
                     <span id="hud-health-text" class="font-neon text-xl font-bold text-white">100%</span>
@@ -593,7 +659,7 @@
 
             <!-- Weapon & Magazine Ammo Counter -->
             <div
-                class="neon-box px-3 py-2 sm:px-6 sm:py-4 rounded-xl flex items-center gap-3 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end pointer-events-auto">
+                class="neon-box px-3 py-2 sm:px-6 sm:py-4 rounded-xl flex items-center gap-3 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end pointer-events-none">
                 <div>
                     <div class="text-[11px] sm:text-xs font-neon tracking-widest text-red-400 uppercase">NX-9 Pulse Carbine</div>
                     <div id="ammo-status" class="text-[10px] sm:text-xs text-neutral-400 mt-0.5">Hold LMB to Fire | [R] Reload</div>
@@ -936,14 +1002,32 @@
                     </label>
                 </div>
 
-                <!-- Touch Sensitivity -->
+                <!-- Touch Look Sensitivity -->
                 <div class="pt-1 border-t border-red-950/60">
                     <div class="flex justify-between text-neutral-300 mb-1">
-                        <span>TOUCH STRAFE / LOOK SPEED</span>
+                        <span>TOUCH 2D LOOK SENSITIVITY</span>
                         <span id="val-touch-sens" class="text-red-400 font-bold">1.0x</span>
                     </div>
                     <input id="setting-touch-sens" type="range" min="0.5" max="2.5" step="0.1" value="1.0"
                         class="w-full accent-red-500 cursor-pointer">
+                </div>
+
+                <!-- Touch Aim Assist & Target Magnetism -->
+                <div class="flex items-center justify-between py-1 border-t border-red-950/60">
+                    <span class="text-neutral-300">TOUCH AIM ASSIST (MAGNETISM)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="setting-touch-aim-assist" type="checkbox" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-neutral-900 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
+
+                <!-- Touch Auto-Fire on Target -->
+                <div class="flex items-center justify-between py-1 border-t border-red-950/60">
+                    <span class="text-neutral-300">TOUCH AUTO-FIRE ON TARGET</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="setting-touch-autofire" type="checkbox" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-neutral-900 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
                 </div>
 
                 <!-- Master Volume -->
@@ -4914,11 +4998,13 @@
          ********************************************************************/
         const MAX_AMMO = 15;
 
-        // Tactical Settings (Improvement 4)
+        // Tactical Settings (Improvement 4 + Pro Mobile FPS Settings)
         const userSettings = {
             mouseSens: safeStorage.getFloat('mr_mouse_sens', 1.0, 0.4, 2.6),
             invertY: safeStorage.getItem('mr_invert_y', 'false') === 'true',
             touchSens: safeStorage.getFloat('mr_touch_sens', 1.0, 0.5, 2.5),
+            touchAimAssist: safeStorage.getItem('mr_touch_aim_assist', 'true') !== 'false',
+            touchAutoFire: safeStorage.getItem('mr_touch_autofire', 'true') !== 'false',
             masterVol: safeStorage.getFloat('mr_master_vol', 1.0, 0, 1)
         };
 
@@ -4963,6 +5049,8 @@
             isLeftMouseDown: false, // Improvement 1: Desktop hold-to-fire
             isTouchMode: false,
             touchInteracted: false,
+            isTouchFiring: false,
+            turn180Remaining: 0,
             joystickX: 0,
             joystickY: 0,
             joystickSprint: false,
@@ -5024,8 +5112,14 @@
         const joystickZone = document.getElementById('joystick-zone');
         const joystickBase = document.getElementById('joystick-base');
         const joystickKnob = document.getElementById('joystick-knob');
+        const joystickSprintPill = document.getElementById('joystick-sprint-pill');
         const touchLookZone = document.getElementById('touch-look-zone');
         const touchBtnFire = document.getElementById('touch-btn-fire');
+        const touchBtnFireLeft = document.getElementById('touch-btn-fire-left');
+        const touchBtnAutoFire = document.getElementById('touch-btn-autofire');
+        const touchAutoFireDot = document.getElementById('touch-autofire-dot');
+        const touchAutoFireLabel = document.getElementById('touch-autofire-label');
+        const touchBtnTurn180 = document.getElementById('touch-btn-turn180');
         const touchBtnSprint = document.getElementById('touch-btn-sprint');
         const touchBtnReload = document.getElementById('touch-btn-reload');
         const touchBtnPause = document.getElementById('touch-btn-pause');
@@ -5042,6 +5136,8 @@
         const settingMouseSens = document.getElementById('setting-mouse-sens');
         const settingInvertY = document.getElementById('setting-invert-y');
         const settingTouchSens = document.getElementById('setting-touch-sens');
+        const settingTouchAimAssist = document.getElementById('setting-touch-aim-assist');
+        const settingTouchAutoFire = document.getElementById('setting-touch-autofire');
         const settingMasterVol = document.getElementById('setting-master-vol');
         const valMouseSens = document.getElementById('val-mouse-sens');
         const valTouchSens = document.getElementById('val-touch-sens');
@@ -5063,6 +5159,15 @@
         let fireInterval = null;
         let _lastStaminaRounded = -1;
         let _lastStaminaTextVal = '';
+        let joystickTouchId = null;
+        const joystickCenter = { x: 0, y: 0 };
+        let aimTouchId = null;
+        let lastAimX = 0;
+        let lastAimY = 0;
+        let fireTouchId = null;
+        let lastFireAimX = 0;
+        let lastFireAimY = 0;
+        let leftFireTouchId = null;
 
         function resetKeys() {
             for (const k in keys) {
@@ -5070,13 +5175,29 @@
             }
             state.isRightMouseDown = false;
             state.isLeftMouseDown = false;
+            state.isTouchFiring = false;
+            state.turn180Remaining = 0;
             state.joystickX = 0;
             state.joystickY = 0;
             state.joystickSprint = false;
             state.touchSprint = false;
             state.touchStrafeX = 0;
+            joystickTouchId = null;
+            aimTouchId = null;
+            fireTouchId = null;
+            leftFireTouchId = null;
             if (touchBtnSprint) {
                 touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
+            }
+            if (joystickBase) {
+                joystickBase.classList.remove('is-active', 'is-sprint-locked');
+                joystickBase.style.left = '';
+                joystickBase.style.top = '';
+                joystickBase.style.bottom = '';
+            }
+            if (joystickSprintPill) {
+                joystickSprintPill.classList.add('opacity-0', '-translate-y-1');
+                joystickSprintPill.classList.remove('opacity-100', 'translate-y-0');
             }
             if (joystickKnob) {
                 joystickKnob.style.transform = 'translate(-50%, -50%)';
@@ -6221,13 +6342,7 @@
         // Initialize Map 01 on load
         setActiveMap(0, false);
 
-        // 8b. TOUCH CONTROLS & VIRTUAL JOYSTICK SETUP
-        let joystickTouchId = null;
-        const joystickCenter = { x: 0, y: 0 };
-        let aimTouchId = null;
-        let lastAimX = 0;
-        let lastAimY = 0;
-
+        // 8b. PRO MOBILE & IPAD DUAL-THUMB FPS TOUCH CONTROLS
         function isMobileDevice() {
             const ua = navigator.userAgent || navigator.vendor || window.opera || '';
             const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
@@ -6235,6 +6350,21 @@
             const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
             const hasPrimaryCoarse = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             return isMobileUA || isIPad || (hasTouchPoints && hasPrimaryCoarse) || ('ontouchstart' in window && hasPrimaryCoarse);
+        }
+
+        function updateAutoFireHudPill() {
+            if (!touchBtnAutoFire || !touchAutoFireDot || !touchAutoFireLabel) return;
+            if (userSettings.touchAutoFire) {
+                touchAutoFireLabel.textContent = 'AUTO-FIRE: ON';
+                touchAutoFireDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#00ffcc] pointer-events-none';
+                touchBtnAutoFire.classList.add('border-emerald-500/70', 'text-emerald-300');
+                touchBtnAutoFire.classList.remove('border-red-900/60', 'text-neutral-400');
+            } else {
+                touchAutoFireLabel.textContent = 'AUTO-FIRE: OFF';
+                touchAutoFireDot.className = 'w-2 h-2 rounded-full bg-neutral-600 pointer-events-none';
+                touchBtnAutoFire.classList.remove('border-emerald-500/70', 'text-emerald-300');
+                touchBtnAutoFire.classList.add('border-red-900/60', 'text-neutral-400');
+            }
         }
 
         function updateMobileControlsVisibility() {
@@ -6248,6 +6378,24 @@
                 document.body.classList.remove('is-mobile-device');
                 document.getElementById('hud-bottom-bar')?.classList.remove('mobile-hud-spacing');
             }
+            updateAutoFireHudPill();
+        }
+
+        // Velocity-Accelerated 2D Touch Look (Yaw + Pitch) with Target Friction
+        function applyTouchLookDelta(dx, dy) {
+            const swipeSpeed = Math.hypot(dx, dy);
+            // Smooth non-linear velocity acceleration: 1.0x for fine micro-aim, up to 2.35x for fast 180° flicks
+            const accel = 1.0 + Math.min(1.35, Math.pow(swipeSpeed * 0.042, 1.25));
+            // Subtle target friction slowdown when crosshair sweeps over an active hostile
+            const friction = (userSettings.touchAimAssist && state.touchTargetHovered) ? 0.62 : 1.0;
+
+            const yawSens = 0.0044 * userSettings.touchSens * accel * friction;
+            const pitchSens = 0.0038 * userSettings.touchSens * accel * friction;
+            const invertFactor = userSettings.invertY ? -1 : 1;
+
+            camera.rotation.y -= dx * yawSens;
+            camera.rotation.x -= dy * pitchSens * invertFactor;
+            camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
         }
 
         function setupTouchControls() {
@@ -6268,7 +6416,7 @@
                 }
             }, { passive: true });
 
-            // Virtual Analog Joystick (Bug 3 Fix: Centering math preserved via calc)
+            // 1. Dynamic Floating Left 2D Omnidirectional Movement & Strafe Virtual Joystick
             if (joystickZone && joystickBase && joystickKnob) {
                 joystickZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
@@ -6276,9 +6424,24 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
                         joystickTouchId = t.identifier;
-                        const rect = joystickBase.getBoundingClientRect();
-                        joystickCenter.x = rect.left + rect.width / 2;
-                        joystickCenter.y = rect.top + rect.height / 2;
+
+                        // Dynamically anchor joystick base at the player's left thumb touch point (clamped inside left zone)
+                        const zoneRect = joystickZone.getBoundingClientRect();
+                        const baseRect = joystickBase.getBoundingClientRect();
+                        const halfW = baseRect.width / 2;
+                        const halfH = baseRect.height / 2;
+                        const pad = 12;
+
+                        const clampedX = Math.max(zoneRect.left + halfW + pad, Math.min(zoneRect.right - halfW - pad, t.clientX));
+                        const clampedY = Math.max(zoneRect.top + halfH + pad, Math.min(zoneRect.bottom - halfH - pad, t.clientY));
+
+                        joystickBase.style.bottom = 'auto';
+                        joystickBase.style.left = `${clampedX - zoneRect.left - halfW}px`;
+                        joystickBase.style.top = `${clampedY - zoneRect.top - halfH}px`;
+                        joystickBase.classList.add('is-active');
+
+                        joystickCenter.x = clampedX;
+                        joystickCenter.y = clampedY;
                         updateJoystickKnob(t.clientX, t.clientY);
                         e.preventDefault();
                         break;
@@ -6306,6 +6469,14 @@
                             state.joystickY = 0;
                             state.joystickSprint = false;
                             joystickKnob.style.transform = 'translate(-50%, -50%)';
+                            joystickBase.classList.remove('is-active', 'is-sprint-locked');
+                            joystickBase.style.left = '';
+                            joystickBase.style.top = '';
+                            joystickBase.style.bottom = '';
+                            if (joystickSprintPill) {
+                                joystickSprintPill.classList.add('opacity-0', '-translate-y-1');
+                                joystickSprintPill.classList.remove('opacity-100', 'translate-y-0');
+                            }
                             break;
                         }
                     }
@@ -6319,7 +6490,7 @@
                 const dx = clientX - joystickCenter.x;
                 const dy = clientY - joystickCenter.y;
                 const dist = Math.hypot(dx, dy);
-                const maxRadius = 45;
+                const maxRadius = 48;
                 const clampedDist = Math.min(dist, maxRadius);
                 const angle = Math.atan2(dy, dx);
                 const kx = Math.cos(angle) * clampedDist;
@@ -6328,67 +6499,84 @@
                 // Center-relative transform ensures knob never jumps offset
                 joystickKnob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
 
-                const rawX = kx / maxRadius;
-                const rawY = ky / maxRadius;
-                const deadzoneX = 0.16;
-                const deadzoneY = 0.18;
+                // Radial deadzone + smooth progressive response curve for 360° strafe & move
+                const normDist = clampedDist / maxRadius;
+                const radialDeadzone = 0.10;
 
-                state.joystickX = Math.abs(rawX) > deadzoneX
-                    ? Math.sign(rawX) * ((Math.abs(rawX) - deadzoneX) / (1 - deadzoneX))
-                    : 0;
-                state.joystickY = Math.abs(rawY) > deadzoneY
-                    ? Math.sign(rawY) * ((Math.abs(rawY) - deadzoneY) / (1 - deadzoneY))
-                    : 0;
-                state.joystickSprint = (rawY < -0.55 && (clampedDist / maxRadius) > 0.85);
+                if (normDist <= radialDeadzone) {
+                    state.joystickX = 0;
+                    state.joystickY = 0;
+                } else {
+                    const rescaled = (normDist - radialDeadzone) / (1 - radialDeadzone);
+                    const curvedMag = Math.pow(rescaled, 1.15);
+                    state.joystickX = Math.cos(angle) * curvedMag;
+                    state.joystickY = Math.sin(angle) * curvedMag;
+                }
+
+                // Push-Forward Outer Threshold Sprint-Lock (CoD Mobile / Apex Mobile style)
+                const rawY = dy / maxRadius;
+                const wasSprintLocked = state.joystickSprint;
+                if (rawY < -0.60 && (dist / maxRadius) > 0.90) {
+                    state.joystickSprint = true;
+                } else if (wasSprintLocked && rawY < -0.50) {
+                    state.joystickSprint = true;
+                } else {
+                    state.joystickSprint = false;
+                }
+
+                if (state.joystickSprint !== wasSprintLocked) {
+                    if (state.joystickSprint) {
+                        joystickBase?.classList.add('is-sprint-locked');
+                        if (joystickSprintPill) {
+                            joystickSprintPill.classList.remove('opacity-0', '-translate-y-1');
+                            joystickSprintPill.classList.add('opacity-100', 'translate-y-0');
+                        }
+                        if (navigator.vibrate) navigator.vibrate(12);
+                    } else {
+                        joystickBase?.classList.remove('is-sprint-locked');
+                        if (joystickSprintPill) {
+                            joystickSprintPill.classList.add('opacity-0', '-translate-y-1');
+                            joystickSprintPill.classList.remove('opacity-100', 'translate-y-0');
+                        }
+                    }
+                }
             }
 
-            // Touch Screen Strafe Left/Right & Look Pitch
-            let strafeTouchAnchorX = 0;
+            // 2. Right-Half Free 2D Look Zone (Full Horizontal Yaw + Vertical Pitch Aiming)
             if (touchLookZone) {
                 touchLookZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
                     if (aimTouchId !== null) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
-                        if (t.identifier === joystickTouchId) continue;
+                        if (t.identifier === joystickTouchId || t.identifier === fireTouchId || t.identifier === leftFireTouchId) continue;
                         aimTouchId = t.identifier;
                         lastAimX = t.clientX;
                         lastAimY = t.clientY;
-                        strafeTouchAnchorX = t.clientX;
-                        state.touchStrafeX = 0;
                         e.preventDefault();
                         break;
                     }
                 }, { passive: false });
 
                 window.addEventListener('touchmove', (e) => {
-                    if (aimTouchId === null) return;
+                    if (aimTouchId === null && fireTouchId === null) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
                         if (t.identifier === aimTouchId) {
+                            const dx = t.clientX - lastAimX;
                             const dy = t.clientY - lastAimY;
+                            lastAimX = t.clientX;
                             lastAimY = t.clientY;
-                            const pitchSensitivity = 0.0042 * userSettings.touchSens;
-                            const invertFactor = userSettings.invertY ? -1 : 1;
-                            camera.rotation.x -= dy * pitchSensitivity * invertFactor;
-                            camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
-
-                            const maxDist = 48;
-                            const deadzone = 6;
-                            const rawDist = t.clientX - strafeTouchAnchorX;
-                            if (Math.abs(rawDist) > maxDist) {
-                                strafeTouchAnchorX = t.clientX - Math.sign(rawDist) * maxDist;
-                            }
-                            const deltaX = t.clientX - strafeTouchAnchorX;
-                            if (Math.abs(deltaX) > deadzone) {
-                                const effective = deltaX - Math.sign(deltaX) * deadzone;
-                                state.touchStrafeX = Math.max(-1, Math.min(1, effective / (maxDist - deadzone)));
-                            } else {
-                                state.touchStrafeX = 0;
-                            }
-
+                            applyTouchLookDelta(dx, dy);
                             e.preventDefault();
-                            break;
+                        } else if (t.identifier === fireTouchId) {
+                            // Drag-While-Firing: Right thumb on Fire button can simultaneously aim!
+                            const dx = t.clientX - lastFireAimX;
+                            const dy = t.clientY - lastFireAimY;
+                            lastFireAimX = t.clientX;
+                            lastFireAimY = t.clientY;
+                            applyTouchLookDelta(dx, dy);
+                            e.preventDefault();
                         }
                     }
                 }, { passive: false });
@@ -6398,7 +6586,6 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         if (e.changedTouches[i].identifier === aimTouchId) {
                             aimTouchId = null;
-                            state.touchStrafeX = 0;
                             break;
                         }
                     }
@@ -6408,35 +6595,99 @@
                 window.addEventListener('touchcancel', endAim, { passive: false });
             }
 
-            // Touch Fire Button (Hold for automatic fire)
+            // 3. Primary Right Fire Button (Hold to Fire + Drag Thumb to Aim simultaneously!)
             if (touchBtnFire) {
                 touchBtnFire.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
 
+                    if (fireTouchId === null && e.changedTouches.length > 0) {
+                        const t = e.changedTouches[0];
+                        fireTouchId = t.identifier;
+                        lastFireAimX = t.clientX;
+                        lastFireAimY = t.clientY;
+                    }
+
+                    state.isTouchFiring = true;
                     shootWeapon();
                     if (navigator.vibrate) navigator.vibrate(15);
-
-                    clearInterval(fireInterval);
-                    fireInterval = setInterval(() => {
-                        if (state.mode === 'PLAYING' && !state.isPaused) {
-                            shootWeapon();
-                        }
-                    }, 140);
                 }, { passive: false });
 
-                const stopFire = (e) => {
-                    e?.preventDefault();
-                    clearInterval(fireInterval);
-                    fireInterval = null;
+                const stopMainFire = (e) => {
+                    if (fireTouchId === null) return;
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === fireTouchId) {
+                            fireTouchId = null;
+                            if (leftFireTouchId === null) {
+                                state.isTouchFiring = false;
+                            }
+                            break;
+                        }
+                    }
                 };
 
-                touchBtnFire.addEventListener('touchend', stopFire, { passive: false });
-                touchBtnFire.addEventListener('touchcancel', stopFire, { passive: false });
+                window.addEventListener('touchend', stopMainFire, { passive: false });
+                window.addEventListener('touchcancel', stopMainFire, { passive: false });
             }
 
-            // Touch Sprint Button
+            // 4. Secondary Left-Hand / Claw Fire Button
+            if (touchBtnFireLeft) {
+                touchBtnFireLeft.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (state.mode !== 'PLAYING' || state.isPaused) return;
+
+                    if (leftFireTouchId === null && e.changedTouches.length > 0) {
+                        leftFireTouchId = e.changedTouches[0].identifier;
+                    }
+                    state.isTouchFiring = true;
+                    shootWeapon();
+                    if (navigator.vibrate) navigator.vibrate(15);
+                }, { passive: false });
+
+                const stopLeftFire = (e) => {
+                    if (leftFireTouchId === null) return;
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === leftFireTouchId) {
+                            leftFireTouchId = null;
+                            if (fireTouchId === null) {
+                                state.isTouchFiring = false;
+                            }
+                            break;
+                        }
+                    }
+                };
+
+                window.addEventListener('touchend', stopLeftFire, { passive: false });
+                window.addEventListener('touchcancel', stopLeftFire, { passive: false });
+            }
+
+            // 5. Crosshair Auto-Fire HUD Toggle Button
+            if (touchBtnAutoFire) {
+                touchBtnAutoFire.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    userSettings.touchAutoFire = !userSettings.touchAutoFire;
+                    safeStorage.setItem('mr_touch_autofire', userSettings.touchAutoFire);
+                    if (settingTouchAutoFire) settingTouchAutoFire.checked = userSettings.touchAutoFire;
+                    updateAutoFireHudPill();
+                    if (navigator.vibrate) navigator.vibrate(15);
+                }, { passive: false });
+            }
+
+            // 6. Quick 180° Tactical Turn Button
+            if (touchBtnTurn180) {
+                touchBtnTurn180.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (state.mode !== 'PLAYING' || state.isPaused) return;
+                    state.turn180Remaining = Math.PI;
+                    if (navigator.vibrate) navigator.vibrate(18);
+                }, { passive: false });
+            }
+
+            // 7. Touch Sprint Button
             if (touchBtnSprint) {
                 touchBtnSprint.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -6454,7 +6705,7 @@
                 }, { passive: false });
             }
 
-            // Touch Reload Button
+            // 8. Touch Reload Button
             if (touchBtnReload) {
                 touchBtnReload.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -6464,7 +6715,7 @@
                 }, { passive: false });
             }
 
-            // Touch Pause Button
+            // 9. Touch Pause Button
             if (touchBtnPause) {
                 const handlePause = (e) => {
                     e.preventDefault();
@@ -6475,7 +6726,7 @@
                 touchBtnPause.addEventListener('touchstart', handlePause, { passive: false });
             }
 
-            // Touch Mute Button
+            // 10. Touch Mute Button
             if (touchBtnMute) {
                 const handleMute = (e) => {
                     e.preventDefault();
@@ -6496,6 +6747,8 @@
             settingInvertY.checked = userSettings.invertY;
             settingTouchSens.value = userSettings.touchSens;
             valTouchSens.textContent = `${userSettings.touchSens.toFixed(1)}x`;
+            if (settingTouchAimAssist) settingTouchAimAssist.checked = userSettings.touchAimAssist;
+            if (settingTouchAutoFire) settingTouchAutoFire.checked = userSettings.touchAutoFire;
             settingMasterVol.value = userSettings.masterVol;
             valMasterVol.textContent = `${Math.round(userSettings.masterVol * 100)}%`;
             settingsModal.classList.remove('hidden');
@@ -6513,13 +6766,18 @@
             userSettings.mouseSens = Number.isFinite(rawMouse) ? Math.min(2.6, Math.max(0.4, rawMouse)) : 1.0;
             userSettings.invertY = Boolean(settingInvertY.checked);
             userSettings.touchSens = Number.isFinite(rawTouch) ? Math.min(2.5, Math.max(0.5, rawTouch)) : 1.0;
+            if (settingTouchAimAssist) userSettings.touchAimAssist = Boolean(settingTouchAimAssist.checked);
+            if (settingTouchAutoFire) userSettings.touchAutoFire = Boolean(settingTouchAutoFire.checked);
             userSettings.masterVol = Number.isFinite(rawVol) ? Math.min(1, Math.max(0, rawVol)) : 1.0;
 
             safeStorage.setItem('mr_mouse_sens', userSettings.mouseSens);
             safeStorage.setItem('mr_invert_y', userSettings.invertY);
             safeStorage.setItem('mr_touch_sens', userSettings.touchSens);
+            safeStorage.setItem('mr_touch_aim_assist', userSettings.touchAimAssist);
+            safeStorage.setItem('mr_touch_autofire', userSettings.touchAutoFire);
             safeStorage.setItem('mr_master_vol', userSettings.masterVol);
 
+            updateAutoFireHudPill();
             sound.setMasterVolume(userSettings.masterVol);
             closeSettingsModal();
         }
@@ -6649,12 +6907,93 @@
                 shootWeapon();
             }
 
-            // 1. Player Movement & Virtual Joystick Turning
-            if (state.joystickX !== 0) {
-                const joystickTurnSpeed = 2.4 * userSettings.touchSens;
-                camera.rotation.y -= state.joystickX * joystickTurnSpeed * dt;
+            // Quick 180° Tactical Spin Interpolation (Mobile/iPad)
+            if (state.turn180Remaining > 0) {
+                const turnStep = Math.min(state.turn180Remaining, 22.0 * dt);
+                camera.rotation.y += turnStep;
+                state.turn180Remaining -= turnStep;
             }
 
+            // Mobile/iPad Touch Aim Assist (Target Magnetism) & Crosshair Auto-Fire
+            state.touchTargetHovered = false;
+            if (state.isTouchMode && zombies.length > 0) {
+                let bestZombie = null;
+                let bestAngSq = 0.013; // ~6.5 deg cone threshold
+                let bestDeltaYaw = 0;
+                let bestDeltaPitch = 0;
+
+                for (let i = 0; i < zombies.length; i++) {
+                    const z = zombies[i];
+                    if (z.dying) continue;
+                    const dx = z.mesh.position.x - camera.position.x;
+                    const dz = z.mesh.position.z - camera.position.z;
+                    const horizDist = Math.hypot(dx, dz);
+                    if (horizDist < 0.5 || horizDist > 38) continue;
+
+                    const targetYaw = Math.atan2(-dx, -dz);
+                    let dYaw = targetYaw - camera.rotation.y;
+                    dYaw = Math.atan2(Math.sin(dYaw), Math.cos(dYaw));
+                    if (Math.abs(dYaw) > 0.115) continue;
+
+                    const targetY = z.mesh.position.y + 1.48 * (z.parts?.scale || 1);
+                    const dPitch = Math.atan2(targetY - camera.position.y, horizDist) - camera.rotation.x;
+                    if (Math.abs(dPitch) > 0.17) continue;
+
+                    const angSq = dYaw * dYaw + dPitch * dPitch * 0.65;
+                    if (angSq < bestAngSq) {
+                        bestAngSq = angSq;
+                        bestZombie = z;
+                        bestDeltaYaw = dYaw;
+                        bestDeltaPitch = dPitch;
+                    }
+                }
+
+                if (bestZombie) {
+                    state.touchTargetHovered = true;
+                    const isActivelyControlling = (
+                        state.joystickX !== 0 ||
+                        state.joystickY !== 0 ||
+                        aimTouchId !== null ||
+                        fireTouchId !== null ||
+                        state.isTouchFiring
+                    );
+                    if (userSettings.touchAimAssist && isActivelyControlling) {
+                        camera.rotation.y += bestDeltaYaw * Math.min(1, dt * 3.6);
+                        camera.rotation.x = Math.max(
+                            -Math.PI / 2.2,
+                            Math.min(Math.PI / 2.2, camera.rotation.x + bestDeltaPitch * Math.min(1, dt * 2.4))
+                        );
+                    }
+                }
+
+                // Touch Hold-to-Fire & Target Acquisition Auto-Fire
+                if (!state.isReloading && state.ammo > 0) {
+                    if (state.isTouchFiring) {
+                        shootWeapon();
+                    } else if (userSettings.touchAutoFire && state.touchTargetHovered && (now - state.lastShootTime >= 135)) {
+                        camera.updateMatrixWorld(true);
+                        raycaster.setFromCamera(screenCenter, camera);
+                        _raycastTargets.length = 0;
+                        for (let i = 0; i < shootableWalls.length; i++) {
+                            _raycastTargets.push(shootableWalls[i]);
+                        }
+                        for (let i = 0; i < zombies.length; i++) {
+                            if (!zombies[i].dying) {
+                                _raycastTargets.push(zombies[i].mesh);
+                            }
+                        }
+                        const hits = raycaster.intersectObjects(_raycastTargets, true);
+                        if (hits.length > 0 && hits[0].distance <= 38) {
+                            const hitZ = hits[0].object.userData.zombie;
+                            if (hitZ && !hitZ.dying) {
+                                shootWeapon();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 1. Player Movement & Omnidirectional 2D Virtual Joystick Strafe/Move
             const yaw = camera.rotation.y;
             _forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
             _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -6669,8 +7008,8 @@
                 _moveDir.addScaledVector(_forward, -state.joystickY);
             }
 
-            if (state.touchStrafeX !== 0) {
-                _moveDir.addScaledVector(_right, state.touchStrafeX);
+            if (state.joystickX !== 0) {
+                _moveDir.addScaledVector(_right, state.joystickX);
             }
 
             const moveLenSq = _moveDir.lengthSq();
