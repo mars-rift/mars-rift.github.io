@@ -815,7 +815,7 @@
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
                         <button type="button" data-map-mode="cycle"
                             class="map-mode-btn active py-1.5 px-2 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">
-                            WAVE CYCLE (1→2→3)
+                            WAVE CYCLE (1→5)
                         </button>
                         <button type="button" data-map-mode="random"
                             class="map-mode-btn py-1.5 px-2 text-[10px] sm:text-[11px] font-neon rounded border transition-all text-center">
@@ -825,21 +825,29 @@
                 </div>
                 <div>
                     <div class="flex items-center justify-between text-[9px] sm:text-[10px] text-neutral-400 mb-1">
-                        <span>3 COMBAT ARENAS (CLICK TO PREVIEW):</span>
+                        <span>5 COMBAT ARENAS (CLICK TO PREVIEW):</span>
                         <span id="title-preview-label" class="font-neon text-red-400 font-bold">MAP 01: CONTAINMENT GRID</span>
                     </div>
-                    <div id="title-map-previews" class="grid grid-cols-3 gap-1.5">
+                    <div id="title-map-previews" class="grid grid-cols-5 gap-1">
                         <button type="button" data-map-preview="0"
-                            class="map-preview-btn active py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            class="map-preview-btn active py-1 px-0.5 text-[8px] sm:text-[9px] font-neon rounded border transition-all text-center truncate">
                             01 GRID
                         </button>
                         <button type="button" data-map-preview="1"
-                            class="map-preview-btn py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            class="map-preview-btn py-1 px-0.5 text-[8px] sm:text-[9px] font-neon rounded border transition-all text-center truncate">
                             02 REACTOR
                         </button>
                         <button type="button" data-map-preview="2"
-                            class="map-preview-btn py-1 px-1 text-[9px] sm:text-[10px] font-neon rounded border transition-all text-center truncate">
+                            class="map-preview-btn py-1 px-0.5 text-[8px] sm:text-[9px] font-neon rounded border transition-all text-center truncate">
                             03 SANCTUM
+                        </button>
+                        <button type="button" data-map-preview="3"
+                            class="map-preview-btn py-1 px-0.5 text-[8px] sm:text-[9px] font-neon rounded border transition-all text-center truncate">
+                            04 NEXUS
+                        </button>
+                        <button type="button" data-map-preview="4"
+                            class="map-preview-btn py-1 px-0.5 text-[8px] sm:text-[9px] font-neon rounded border transition-all text-center truncate">
+                            05 OSSUARY
                         </button>
                     </div>
                 </div>
@@ -925,7 +933,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-1.5">
                     <button type="button" data-map-mode="cycle"
-                        class="map-mode-btn active py-1 text-xs font-neon rounded border transition-all text-center">WAVE CYCLE (1→2→3)</button>
+                        class="map-mode-btn active py-1 text-xs font-neon rounded border transition-all text-center">WAVE CYCLE (1→5)</button>
                     <button type="button" data-map-mode="random"
                         class="map-mode-btn py-1 text-xs font-neon rounded border transition-all text-center">RANDOM MAP</button>
                 </div>
@@ -1049,7 +1057,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" data-map-mode="cycle"
                             class="map-mode-btn active py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
-                            WAVE CYCLE (1→2→3)
+                            WAVE CYCLE (1→5)
                         </button>
                         <button type="button" data-map-mode="random"
                             class="map-mode-btn py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
@@ -1849,6 +1857,315 @@
             return new THREE.CanvasTexture(canvas);
         }
 
+        function createCyberNexusFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Deep carbon-black cyberpunk alloy deck
+            ctx.fillStyle = '#050208';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Micro-circuit noise
+            for (let i = 0; i < 1800; i++) {
+                const v = Math.floor(Math.random() * 18);
+                ctx.fillStyle = `rgb(${v + 10}, ${v}, ${v + 16})`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+            }
+
+            // Primary modular cyber-deck grid
+            const step = 128;
+            ctx.strokeStyle = '#1f0618';
+            ctx.lineWidth = 4;
+            for (let i = 0; i <= 512; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 512);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(512, i);
+                ctx.stroke();
+            }
+
+            // Printed circuit board (PCB) crimson & magenta data-bus traces + cyan solder nodes
+            for (let x = 0; x < 512; x += step) {
+                for (let y = 0; y < 512; y += step) {
+                    const cx = x + step / 2;
+                    const cy = y + step / 2;
+
+                    // Outer chamfered octagon trace
+                    ctx.strokeStyle = '#ff0044';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 28, y + 10);
+                    ctx.lineTo(x + step - 28, y + 10);
+                    ctx.lineTo(x + step - 10, y + 28);
+                    ctx.lineTo(x + step - 10, y + step - 28);
+                    ctx.lineTo(x + step - 28, y + step - 10);
+                    ctx.lineTo(x + 28, y + step - 10);
+                    ctx.lineTo(x + 10, y + step - 28);
+                    ctx.lineTo(x + 10, y + 28);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    // Inner microchip processor socket
+                    ctx.strokeStyle = '#990033';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(cx - 22, cy - 22, 44, 44);
+
+                    // Diagonal circuit traces to chip pins
+                    ctx.strokeStyle = '#ff1155';
+                    ctx.beginPath();
+                    ctx.moveTo(x + 10, y + 28);
+                    ctx.lineTo(cx - 22, cy - 12);
+                    ctx.moveTo(x + step - 10, y + 28);
+                    ctx.lineTo(cx + 22, cy - 12);
+                    ctx.moveTo(x + 10, y + step - 28);
+                    ctx.lineTo(cx - 22, cy + 12);
+                    ctx.moveTo(x + step - 10, y + step - 28);
+                    ctx.lineTo(cx + 22, cy + 12);
+                    ctx.stroke();
+
+                    // Glowing cyan & crimson logic nodes
+                    ctx.fillStyle = '#00f5d4';
+                    ctx.fillRect(cx - 4, cy - 4, 8, 8);
+                    ctx.fillStyle = '#ff0044';
+                    ctx.fillRect(x + 24, y + 24, 5, 5);
+                    ctx.fillRect(x + step - 29, y + 24, 5, 5);
+                    ctx.fillRect(x + 24, y + step - 29, 5, 5);
+                    ctx.fillRect(x + step - 29, y + step - 29, 5, 5);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(36, 36);
+            return texture;
+        }
+
+        function createCyberServerTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#07030c';
+            ctx.fillRect(0, 0, 256, 512);
+
+            // Vertical mainframe rack rails
+            ctx.strokeStyle = '#2d0822';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(8, 6, 240, 500);
+
+            // Server blade bays & blinking LED telemetry strips
+            for (let y = 24; y < 480; y += 28) {
+                ctx.fillStyle = '#120517';
+                ctx.fillRect(20, y, 216, 20);
+                ctx.strokeStyle = '#4a0b2d';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(20, y, 216, 20);
+
+                // Status LEDs along each server blade
+                for (let x = 30; x < 220; x += 18) {
+                    const isCyan = ((x + y) % 54 === 0);
+                    ctx.fillStyle = isCyan ? '#00f5d4' : ((x + y) % 36 === 0 ? '#ff0044' : '#66001f');
+                    ctx.fillRect(x, y + 7, 8, 6);
+                }
+            }
+
+            // High-voltage vertical neon fiber bus lines
+            ctx.fillStyle = '#ff0044';
+            ctx.fillRect(12, 0, 5, 512);
+            ctx.fillRect(239, 0, 5, 512);
+            ctx.fillStyle = '#00f5d4';
+            ctx.fillRect(126, 0, 4, 512);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createCyberBillboardTexture(mainTitle, subTitle, accentColor = '#00f5d4') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 160;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = 'rgba(10, 2, 14, 0.86)';
+            ctx.fillRect(0, 0, 512, 160);
+
+            // Scanlines
+            ctx.fillStyle = 'rgba(255, 0, 68, 0.12)';
+            for (let y = 0; y < 160; y += 6) {
+                ctx.fillRect(0, y, 512, 2);
+            }
+
+            // Outer neon frame & cyber corner brackets
+            ctx.strokeStyle = '#ff0044';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(6, 6, 500, 148);
+
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 4;
+            const b = 26;
+            // Top-left & bottom-right brackets
+            ctx.beginPath();
+            ctx.moveTo(14, 14 + b); ctx.lineTo(14, 14); ctx.lineTo(14 + b, 14);
+            ctx.moveTo(498 - b, 14); ctx.lineTo(498, 14); ctx.lineTo(498, 14 + b);
+            ctx.moveTo(14, 146 - b); ctx.lineTo(14, 146); ctx.lineTo(14 + b, 146);
+            ctx.moveTo(498 - b, 146); ctx.lineTo(498, 146); ctx.lineTo(498, 146 - b);
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ff0044';
+            ctx.shadowBlur = 14;
+            ctx.font = '900 36px Orbitron, monospace, sans-serif';
+            ctx.fillText(mainTitle, 256, 74);
+
+            ctx.shadowColor = accentColor;
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = accentColor;
+            ctx.font = '700 18px Orbitron, monospace, sans-serif';
+            ctx.fillText(subTitle, 256, 118);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createNecroFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Charnel catacomb abyssal stone base
+            ctx.fillStyle = '#060102';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Gritty bone-ash & coagulated blood speckles
+            for (let i = 0; i < 2800; i++) {
+                const r = Math.floor(Math.random() * 28) + 8;
+                const g = Math.floor(Math.random() * 8);
+                const b = Math.floor(Math.random() * 8);
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 2.5, 2.5);
+            }
+
+            // Cracked ossuary stone slabs & rusted blood-drain grates
+            const step = 128;
+            ctx.strokeStyle = '#240408';
+            ctx.lineWidth = 4;
+            for (let i = 0; i <= 512; i += step) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 512);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(512, i);
+                ctx.stroke();
+            }
+
+            // Creeping crimson necrotic bio-veins & rusted iron grate bars
+            for (let x = 0; x < 512; x += step) {
+                for (let y = 0; y < 512; y += step) {
+                    const cx = x + step / 2;
+                    const cy = y + step / 2;
+
+                    // Recessed rusted iron blood grate in tile center
+                    ctx.fillStyle = '#030001';
+                    ctx.fillRect(cx - 28, cy - 28, 56, 56);
+                    ctx.strokeStyle = '#3b070e';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(cx - 28, cy - 28, 56, 56);
+                    for (let g = -20; g <= 20; g += 10) {
+                        ctx.beginPath();
+                        ctx.moveTo(cx + g, cy - 28);
+                        ctx.lineTo(cx + g, cy + 28);
+                        ctx.stroke();
+                    }
+
+                    // Organic branching crimson bio-vein tendrils across slabs
+                    ctx.strokeStyle = '#990018';
+                    ctx.lineWidth = 2.2;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 8, y + 12);
+                    ctx.quadraticCurveTo(cx - 18, cy + 8, cx, cy);
+                    ctx.quadraticCurveTo(cx + 22, cy - 14, x + step - 8, y + step - 12);
+                    ctx.stroke();
+
+                    // Glowing arterial bio-node
+                    ctx.fillStyle = '#ff002b';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(34, 34);
+            return texture;
+        }
+
+        function createNecroPillarTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Corroded slaughterhouse iron & dark ossuary masonry base
+            ctx.fillStyle = '#090103';
+            ctx.fillRect(0, 0, 256, 512);
+
+            // Outer heavy square steel structural frame
+            ctx.strokeStyle = '#3d0610';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(6, 6, 244, 500);
+
+            // Grid of recessed square morgue crypt lockers & charnel niches
+            for (let y = 26; y < 470; y += 72) {
+                for (let x of [22, 136]) {
+                    // Recessed square locker door
+                    ctx.fillStyle = '#140306';
+                    ctx.fillRect(x, y, 98, 56);
+                    ctx.strokeStyle = '#5c0918';
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeRect(x, y, 98, 56);
+
+                    // Inner square vent / skull-slit visor
+                    ctx.fillStyle = '#050001';
+                    ctx.fillRect(x + 14, y + 14, 70, 28);
+
+                    // Glowing neon crimson quarantine seal & status slit
+                    ctx.fillStyle = '#ff002b';
+                    ctx.fillRect(x + 22, y + 25, 54, 6);
+
+                    // Corner iron rivets
+                    ctx.fillStyle = '#881128';
+                    ctx.fillRect(x + 4, y + 4, 4, 4);
+                    ctx.fillRect(x + 90, y + 4, 4, 4);
+                    ctx.fillRect(x + 4, y + 48, 4, 4);
+                    ctx.fillRect(x + 90, y + 48, 4, 4);
+                }
+            }
+
+            // Sharp vertical & horizontal neon crimson containment bus lines
+            ctx.fillStyle = '#ff002b';
+            ctx.fillRect(8, 0, 5, 512);
+            ctx.fillRect(243, 0, 5, 512);
+            ctx.fillRect(126, 0, 4, 512);
+            ctx.fillRect(0, 12, 256, 8);
+            ctx.fillRect(0, 252, 256, 8);
+            ctx.fillRect(0, 492, 256, 8);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
         /********************************************************************
          * 3. THREE.JS SCENE, CAMERA, LIGHTING & WEAPON VIEWMODEL
          ********************************************************************/
@@ -1897,6 +2214,8 @@
         const gridFloorTex = createGridFloorTexture();
         const reactorFloorTex = createReactorFloorTexture();
         const sanctumFloorTex = createSanctumFloorTexture();
+        const cyberNexusFloorTex = createCyberNexusFloorTexture();
+        const necroOssuaryFloorTex = createNecroFloorTexture();
 
         const floorGeo = new THREE.PlaneGeometry(140, 140);
         const floorMat = new THREE.MeshStandardMaterial({
@@ -2520,10 +2839,798 @@
             };
         }
 
+        // ====================================================================
+        // MAP 04: SECTOR 09 — NEON NEXUS (Next-Gen Cyberpunk Megacity Data-Core)
+        // ====================================================================
+        function buildMap4CyberNexus() {
+            const group = new THREE.Group();
+            const mapObstacles = [];
+            const mapShootables = [];
+
+            const cyberServerMat = new THREE.MeshStandardMaterial({
+                map: createCyberServerTexture(),
+                roughness: 0.30,
+                metalness: 0.78
+            });
+            const cyberArmorMat = new THREE.MeshStandardMaterial({
+                color: 0x0a0412,
+                roughness: 0.25,
+                metalness: 0.85
+            });
+            const cyberMagentaMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+            const cyberCyanMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+            const holoGridMat = new THREE.MeshBasicMaterial({
+                color: 0xff0055,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.65
+            });
+            const holoBeamMat = new THREE.MeshBasicMaterial({
+                color: 0x00f5d4,
+                transparent: true,
+                opacity: 0.26,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            // 1. Walkable Central Cyberpunk Hex-Router Floor Sigil at (0, 0)
+            const hexOuter = new THREE.Mesh(new THREE.RingGeometry(5.8, 6.15, 6), cyberMagentaMat);
+            hexOuter.rotation.x = -Math.PI / 2;
+            hexOuter.position.y = 0.03;
+            group.add(hexOuter);
+
+            const hexMid = new THREE.Mesh(new THREE.RingGeometry(3.7, 3.95, 6), cyberCyanMat);
+            hexMid.rotation.x = -Math.PI / 2;
+            hexMid.rotation.z = Math.PI / 6;
+            hexMid.position.y = 0.03;
+            group.add(hexMid);
+
+            const hexInner = new THREE.Mesh(new THREE.RingGeometry(1.75, 2.0, 6), neonBrightMat);
+            hexInner.rotation.x = -Math.PI / 2;
+            hexInner.position.y = 0.03;
+            group.add(hexInner);
+
+            // 2. Overhead Holographic Geodesic Neural Core & Orbiting HUD Screens at (0, 11.4, 0)
+            const neuralCoreGroup = new THREE.Group();
+            neuralCoreGroup.position.set(0, 11.4, 0);
+
+            const neuralCrystal = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(1.65, 0),
+                cyberMagentaMat
+            );
+            neuralCoreGroup.add(neuralCrystal);
+
+            const geodesicCage = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(2.55, 1),
+                holoGridMat
+            );
+            neuralCoreGroup.add(geodesicCage);
+
+            const dataRingGeo1 = new THREE.TorusGeometry(3.55, 0.09, 8, 6);
+            const dataRing1 = new THREE.Mesh(dataRingGeo1, cyberCyanMat);
+            dataRing1.rotation.x = Math.PI / 3;
+            neuralCoreGroup.add(dataRing1);
+
+            const dataRingGeo2 = new THREE.TorusGeometry(4.15, 0.08, 8, 36);
+            const dataRing2 = new THREE.Mesh(dataRingGeo2, cyberMagentaMat);
+            dataRing2.rotation.y = Math.PI / 4;
+            neuralCoreGroup.add(dataRing2);
+
+            // Orbiting holographic HUD telemetry panels around the neural core
+            const holoOrbitGroup = new THREE.Group();
+            const holoScreenMat = new THREE.MeshBasicMaterial({
+                map: createCyberBillboardTexture('NEURAL NET // 09', 'SYNAPTIC OVERLOAD ACTIVE', '#00f5d4'),
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const holoScreenGeo = new THREE.PlaneGeometry(3.2, 1.0);
+            for (let i = 0; i < 4; i++) {
+                const ang = (i * Math.PI) / 2;
+                const scr = new THREE.Mesh(holoScreenGeo, holoScreenMat);
+                scr.position.set(Math.cos(ang) * 4.8, 0, Math.sin(ang) * 4.8);
+                scr.lookAt(0, 0, 0);
+                holoOrbitGroup.add(scr);
+            }
+            neuralCoreGroup.add(holoOrbitGroup);
+
+            const nexusSkyBeam = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.62, 0.62, 46, 16, 1, true),
+                holoBeamMat
+            );
+            nexusSkyBeam.position.y = 19;
+            neuralCoreGroup.add(nexusSkyBeam);
+
+            group.add(neuralCoreGroup);
+
+            // 3. 4 Inner Brutalist Angled Cyber-Mainframe Towers at [±13, ±13]
+            const mainframeCoords = [[-13, -13], [13, -13], [-13, 13], [13, 13]];
+            const towerCoreGeo = new THREE.CylinderGeometry(1.75, 1.95, 13.5, 8);
+            const bladeFinGeo = new THREE.BoxGeometry(0.28, 12.6, 4.1);
+            const finEdgeGeo = new THREE.BoxGeometry(0.32, 12.7, 0.14);
+            const hexCollarGeo = new THREE.TorusGeometry(2.05, 0.09, 6, 8);
+            const laserLinkGeo = new THREE.BoxGeometry(0.22, 0.22, 18.2);
+
+            mainframeCoords.forEach(([mx, mz], idx) => {
+                const tower = new THREE.Mesh(towerCoreGeo, cyberServerMat);
+                tower.position.set(mx, 6.75, mz);
+                tower.rotation.y = Math.PI / 8;
+                group.add(tower);
+                mapShootables.push(tower);
+                mapObstacles.push({ x: mx, z: mz, radius: 2.15 });
+
+                // Crossed brutalist cyberpunk server-blade fins
+                const fin1 = new THREE.Mesh(bladeFinGeo, cyberArmorMat);
+                fin1.position.set(mx, 6.4, mz);
+                fin1.rotation.y = Math.PI / 4;
+                group.add(fin1);
+
+                const fin2 = new THREE.Mesh(bladeFinGeo, cyberArmorMat);
+                fin2.position.set(mx, 6.4, mz);
+                fin2.rotation.y = -Math.PI / 4;
+                group.add(fin2);
+
+                // Neon edge strips along outer blade tips
+                for (let f = 0; f < 4; f++) {
+                    const fAng = (f * Math.PI) / 2 + Math.PI / 4;
+                    const edge = new THREE.Mesh(finEdgeGeo, f % 2 === 0 ? cyberMagentaMat : cyberCyanMat);
+                    edge.position.set(mx + Math.cos(fAng) * 2.02, 6.4, mz + Math.sin(fAng) * 2.02);
+                    edge.rotation.y = -fAng;
+                    group.add(edge);
+                }
+
+                [2.2, 6.8, 11.4].forEach((ry, rIdx) => {
+                    const collar = new THREE.Mesh(hexCollarGeo, rIdx === 1 ? cyberCyanMat : cyberMagentaMat);
+                    collar.rotation.x = Math.PI / 2;
+                    collar.position.set(mx, ry, mz);
+                    group.add(collar);
+                });
+
+                // Overhead fiber-optic laser data-bridge linking tower to central neural core
+                const link = new THREE.Mesh(laserLinkGeo, idx % 2 === 0 ? cyberCyanMat : cyberMagentaMat);
+                link.position.set(mx * 0.5, 11.4, mz * 0.5);
+                link.lookAt(0, 11.4, 0);
+                group.add(link);
+            });
+
+            // 4. 4 Cardinal Cyberpunk Neon Torii / Overpass Portals with Holographic Sky-Billboards
+            const portalPillarGeo = new THREE.CylinderGeometry(1.42, 1.62, 11.8, 6);
+            const portalRingGeo = new THREE.TorusGeometry(1.62, 0.08, 6, 6);
+            const billboardConfigs = [
+                {
+                    p1: [-6.5, -26], p2: [6.5, -26],
+                    center: [0, 9.8, -26], rotY: 0,
+                    title: 'SECTOR 09 // NEXUS', sub: 'CYBERNETIC QUARANTINE ZONE', accent: '#00f5d4'
+                },
+                {
+                    p1: [-6.5, 26], p2: [6.5, 26],
+                    center: [0, 9.8, 26], rotY: Math.PI,
+                    title: 'NEURAL PURGE', sub: 'UNAUTHORIZED BIO-SIGNALS DETECTED', accent: '#ff0055'
+                },
+                {
+                    p1: [-26, -6.5], p2: [-26, 6.5],
+                    center: [-26, 9.8, 0], rotY: Math.PI / 2,
+                    title: 'MAINFRAME LOCK', sub: 'HIGH-VOLTAGE DATA CONDUITS', accent: '#00f5d4'
+                },
+                {
+                    p1: [26, -6.5], p2: [26, 6.5],
+                    center: [26, 9.8, 0], rotY: -Math.PI / 2,
+                    title: 'SYS // OVERRIDE', sub: 'LETHAL DEFENSE PROTOCOL ENGAGED', accent: '#ff0055'
+                }
+            ];
+
+            billboardConfigs.forEach(cfg => {
+                [cfg.p1, cfg.p2].forEach(([px, pz]) => {
+                    const col = new THREE.Mesh(portalPillarGeo, cyberServerMat);
+                    col.position.set(px, 5.9, pz);
+                    group.add(col);
+                    mapShootables.push(col);
+                    mapObstacles.push({ x: px, z: pz, radius: 1.72 });
+
+                    [2.0, 5.4, 8.6].forEach((ry, i) => {
+                        const ring = new THREE.Mesh(portalRingGeo, i === 1 ? cyberCyanMat : cyberMagentaMat);
+                        ring.rotation.x = Math.PI / 2;
+                        ring.position.set(px, ry, pz);
+                        group.add(ring);
+                    });
+                });
+
+                // Cantilevered double cyberpunk crossbeams overhead (walkable underneath)
+                const portalGroup = new THREE.Group();
+                portalGroup.position.set(cfg.center[0], cfg.center[1], cfg.center[2]);
+                portalGroup.rotation.y = cfg.rotY;
+
+                const lowerLintel = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.85, 1.7), cyberArmorMat);
+                lowerLintel.position.y = -0.9;
+                portalGroup.add(lowerLintel);
+                mapShootables.push(lowerLintel);
+
+                const upperCrown = new THREE.Mesh(new THREE.BoxGeometry(18.6, 0.65, 2.1), cyberArmorMat);
+                upperCrown.position.y = 1.65;
+                portalGroup.add(upperCrown);
+                mapShootables.push(upperCrown);
+
+                const neonBarLow = new THREE.Mesh(new THREE.BoxGeometry(16.6, 0.16, 1.82), cyberMagentaMat);
+                neonBarLow.position.y = -1.35;
+                portalGroup.add(neonBarLow);
+
+                const neonBarTop = new THREE.Mesh(new THREE.BoxGeometry(18.8, 0.16, 2.22), cyberCyanMat);
+                neonBarTop.position.y = 2.02;
+                portalGroup.add(neonBarTop);
+
+                // Glowing translucent Holographic Billboard suspended between crossbeams
+                const bMat = new THREE.MeshBasicMaterial({
+                    map: createCyberBillboardTexture(cfg.title, cfg.sub, cfg.accent),
+                    transparent: true,
+                    opacity: 0.92,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const billboard = new THREE.Mesh(new THREE.PlaneGeometry(11.6, 2.25), bMat);
+                billboard.position.y = 0.38;
+                portalGroup.add(billboard);
+
+                group.add(portalGroup);
+            });
+
+            // 5. 12 Mid & Outer Quantum Server Spires with Floating Data Prisms
+            const quantumCoords = [
+                [-27, -27], [27, -27], [-27, 27], [27, 27],
+                [-40, -14], [40, -14], [-40, 14], [40, 14],
+                [-14, -40], [14, -40], [-14, 40], [14, 40]
+            ];
+            const quantumGeo = new THREE.CylinderGeometry(1.42, 1.72, 12.5, 6);
+            const quantumRingGeo = new THREE.TorusGeometry(1.68, 0.08, 6, 6);
+            const prismGeo = new THREE.OctahedronGeometry(0.75, 0);
+            const floatingPrisms = [];
+
+            quantumCoords.forEach(([qx, qz], qIdx) => {
+                const spire = new THREE.Mesh(quantumGeo, cyberServerMat);
+                spire.position.set(qx, 6.25, qz);
+                group.add(spire);
+                mapShootables.push(spire);
+                mapObstacles.push({ x: qx, z: qz, radius: 1.82 });
+
+                [1.9, 5.8, 9.8].forEach((ry, rIdx) => {
+                    const qRing = new THREE.Mesh(quantumRingGeo, (qIdx + rIdx) % 2 === 0 ? cyberMagentaMat : cyberCyanMat);
+                    qRing.rotation.x = Math.PI / 2;
+                    qRing.position.set(qx, ry, qz);
+                    group.add(qRing);
+                });
+
+                const prism = new THREE.Mesh(prismGeo, qIdx % 2 === 0 ? cyberCyanMat : cyberMagentaMat);
+                prism.position.set(qx, 13.6, qz);
+                group.add(prism);
+                floatingPrisms.push(prism);
+            });
+
+            // 6. Perimeter Cyber-Grid Containment Walls & Megacity Skyscraper Skyline Silhouettes
+            const cyberWallMat = new THREE.MeshStandardMaterial({ color: 0x06020a, roughness: 0.45, metalness: 0.65 });
+            wallConfigs.forEach(cfg => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(cfg.size[0], 9.2, cfg.size[2]), cyberWallMat);
+                wall.position.set(cfg.pos[0], 4.6, cfg.pos[2]);
+                group.add(wall);
+                mapShootables.push(wall);
+
+                const stripGeo = new THREE.BoxGeometry(
+                    cfg.size[0] === 2 ? 2.18 : cfg.size[0],
+                    0.18,
+                    cfg.size[2] === 2 ? 2.18 : cfg.size[2]
+                );
+                [1.8, 5.2, 9.0].forEach((sy, sIdx) => {
+                    const strip = new THREE.Mesh(stripGeo, sIdx === 1 ? cyberCyanMat : cyberMagentaMat);
+                    strip.position.set(cfg.pos[0], sy, cfg.pos[2]);
+                    group.add(strip);
+                });
+            });
+
+            // Towering Cyberpunk Megabuildings outside perimeter walls for Next-Gen Skyline Depth
+            const skylineConfigs = [
+                [-45, -72, 12, 38, 12], [-15, -74, 14, 46, 12], [18, -72, 12, 34, 12], [46, -74, 14, 42, 14],
+                [-45, 72, 12, 40, 12],  [-16, 74, 14, 35, 12],  [16, 74, 14, 48, 12],  [46, 72, 12, 36, 12],
+                [-72, -42, 12, 36, 12], [-74, -14, 12, 44, 14], [-72, 18, 12, 32, 12], [-74, 44, 12, 40, 12],
+                [72, -44, 12, 42, 12],  [74, -15, 12, 36, 12],  [74, 16, 12, 46, 14],  [72, 45, 12, 34, 12]
+            ];
+            skylineConfigs.forEach(([bx, bz, bw, bh, bd], bIdx) => {
+                const bldg = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), cyberArmorMat);
+                bldg.position.set(bx, bh / 2, bz);
+                group.add(bldg);
+
+                // Vertical & rooftop neon trim on distant megabuildings
+                const roofCrown = new THREE.Mesh(
+                    new THREE.BoxGeometry(bw + 0.4, 0.35, bd + 0.4),
+                    bIdx % 2 === 0 ? cyberMagentaMat : cyberCyanMat
+                );
+                roofCrown.position.set(bx, bh - 0.2, bz);
+                group.add(roofCrown);
+
+                const vertStrip = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.35, bh * 0.78, 0.35),
+                    bIdx % 3 === 0 ? cyberCyanMat : cyberMagentaMat
+                );
+                vertStrip.position.set(
+                    bx - Math.sign(bx) * (bw * 0.5 + 0.05),
+                    bh * 0.48,
+                    bz - Math.sign(bz) * (bd * 0.5 + 0.05)
+                );
+                group.add(vertStrip);
+            });
+
+            group.visible = false;
+            scene.add(group);
+
+            return {
+                id: 'map4',
+                code: '04 // NEON NEXUS',
+                shortLabel: '04 NEXUS',
+                name: 'NEON NEXUS',
+                fullName: 'MAP 04: NEON NEXUS',
+                subtitle: 'SECTOR 09 // CYBERPUNK DATA-CORE & HOLOGRAPHIC SKYLINE',
+                group,
+                obstacles: mapObstacles,
+                shootableMeshes: mapShootables,
+                safeNodes: [[36, 36], [-36, 36], [36, -36], [-36, -36], [0, 44], [0, -44], [44, 0], [-44, 0]],
+                floorTexture: cyberNexusFloorTex,
+                floorRoughness: 0.38,
+                floorMetalness: 0.68,
+                bgColor: 0x040108,
+                fogColor: 0x080110,
+                fogDensity: 0.024,
+                moonColor: 0xff0055,
+                beaconConfigs: [
+                    { pos: [-13, 5.2, -13], color: 0xff0055, intensity: 1.35, distance: 25 },
+                    { pos: [13, 5.2, -13], color: 0x00f5d4, intensity: 1.25, distance: 25 },
+                    { pos: [-13, 5.2, 13], color: 0x00f5d4, intensity: 1.25, distance: 25 },
+                    { pos: [13, 5.2, 13], color: 0xff0055, intensity: 1.35, distance: 25 }
+                ],
+                update(now) {
+                    const t = now * 0.001;
+                    neuralCrystal.rotation.y = t * 1.5;
+                    neuralCrystal.rotation.x = t * 0.9;
+                    geodesicCage.rotation.y = -t * 0.65;
+                    dataRing1.rotation.z = t * 1.25;
+                    dataRing2.rotation.x = -t * 1.05;
+                    holoOrbitGroup.rotation.y = t * 0.55;
+                    for (let i = 0; i < floatingPrisms.length; i++) {
+                        floatingPrisms[i].rotation.y = t * 1.9 + i;
+                        floatingPrisms[i].position.y = 13.6 + Math.sin(t * 2.4 + i) * 0.25;
+                    }
+                }
+            };
+        }
+
+        // ====================================================================
+        // MAP 05: SECTOR 09 — NECRO OSSUARY (Rectilinear Square Catacomb Labyrinth)
+        // ====================================================================
+        function buildMap5NecroOssuary() {
+            const group = new THREE.Group();
+            const mapObstacles = [];
+            const mapShootables = [];
+
+            const necroPillarMat = new THREE.MeshStandardMaterial({
+                map: createNecroPillarTexture(),
+                roughness: 0.46,
+                metalness: 0.58
+            });
+            const rustedIronMat = new THREE.MeshStandardMaterial({
+                color: 0x120306,
+                roughness: 0.52,
+                metalness: 0.72
+            });
+            const charredBoneMat = new THREE.MeshStandardMaterial({
+                color: 0x2c1418,
+                roughness: 0.58,
+                metalness: 0.28
+            });
+            const necroFleshMat = new THREE.MeshStandardMaterial({
+                color: 0xcc0022,
+                emissive: 0xaa001c,
+                emissiveIntensity: 0.95,
+                roughness: 0.22,
+                metalness: 0.15
+            });
+            const arterialGlowMat = new THREE.MeshBasicMaterial({ color: 0xff002b });
+
+            // Helper: Build a sharp 4-sided Square Neon Collar Frame (Zero rounded geometry)
+            function createSquareNeonFrame(size, thickness, height, mat) {
+                const frameGroup = new THREE.Group();
+                const barLong = new THREE.BoxGeometry(size + thickness, height, thickness);
+                const barShort = new THREE.BoxGeometry(thickness, height, size - thickness);
+                const half = size / 2;
+
+                const nBar = new THREE.Mesh(barLong, mat);
+                nBar.position.z = -half;
+                const sBar = new THREE.Mesh(barLong, mat);
+                sBar.position.z = half;
+                const wBar = new THREE.Mesh(barShort, mat);
+                wBar.position.x = -half;
+                const eBar = new THREE.Mesh(barShort, mat);
+                eBar.position.x = half;
+
+                frameGroup.add(nBar, sBar, wBar, eBar);
+                return frameGroup;
+            }
+
+            // 1. Walkable Central Square Sacrificial Blood-Pit Grate at (0, 0)
+            const outerAltarFrame = createSquareNeonFrame(10.8, 0.34, 0.06, arterialGlowMat);
+            outerAltarFrame.position.y = 0.03;
+            group.add(outerAltarFrame);
+
+            const midAltarFrame = createSquareNeonFrame(7.2, 0.24, 0.06, neonBrightMat);
+            midAltarFrame.position.y = 0.03;
+            group.add(midAltarFrame);
+
+            const innerAltarFrame = createSquareNeonFrame(3.6, 0.28, 0.06, arterialGlowMat);
+            innerAltarFrame.position.y = 0.03;
+            group.add(innerAltarFrame);
+
+            // Orthogonal cross-corridor blood trench lines extending from center altar toward the 4 Guillotine Gates
+            const nsTrench = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 56), arterialGlowMat);
+            nsTrench.rotation.x = -Math.PI / 2;
+            nsTrench.position.y = 0.025;
+            group.add(nsTrench);
+
+            const ewTrench = new THREE.Mesh(new THREE.PlaneGeometry(56, 0.32), arterialGlowMat);
+            ewTrench.rotation.x = -Math.PI / 2;
+            ewTrench.position.y = 0.025;
+            group.add(ewTrench);
+
+            // 2. Overhead Suspended Square Iron-Maiden Torture Cage & Pulsing Cubic Bio-Core at (0, 10.8, 0)
+            const charnelCageGroup = new THREE.Group();
+            charnelCageGroup.position.set(0, 10.8, 0);
+
+            // Pulsing multi-faceted square/cubic necrotic flesh core inside the cage
+            const bioHeartMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(2.35, 2.35, 2.35),
+                necroFleshMat
+            );
+            bioHeartMesh.rotation.set(Math.PI / 4, Math.PI / 4, 0);
+            charnelCageGroup.add(bioHeartMesh);
+
+            const arteryCageMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(2.85, 2.85, 2.85),
+                new THREE.MeshBasicMaterial({ color: 0xff002b, wireframe: true })
+            );
+            charnelCageGroup.add(arteryCageMesh);
+
+            // Outer Square Iron Cage Frame (5.2 x 3.8 x 5.2)
+            const topSquareRim = createSquareNeonFrame(5.2, 0.32, 0.32, rustedIronMat);
+            topSquareRim.position.y = 1.9;
+            charnelCageGroup.add(topSquareRim);
+
+            const midSquareNeonRim = createSquareNeonFrame(5.35, 0.16, 0.16, arterialGlowMat);
+            midSquareNeonRim.position.y = 0;
+            charnelCageGroup.add(midSquareNeonRim);
+
+            const botSquareRim = createSquareNeonFrame(5.2, 0.32, 0.32, arterialGlowMat);
+            botSquareRim.position.y = -1.9;
+            charnelCageGroup.add(botSquareRim);
+
+            // 12 Square Vertical Prison Bars & 8 Downward Square Pyramid Meat-Spikes around the Square Cage
+            const sqBarGeo = new THREE.BoxGeometry(0.22, 3.8, 0.22);
+            const sqSpikeGeo = new THREE.ConeGeometry(0.32, 1.55, 4);
+            const cageOffsets = [-2.6, 0, 2.6];
+            for (const cx of cageOffsets) {
+                for (const cz of cageOffsets) {
+                    if (cx === 0 && cz === 0) continue;
+                    const bar = new THREE.Mesh(sqBarGeo, rustedIronMat);
+                    bar.position.set(cx, 0, cz);
+                    charnelCageGroup.add(bar);
+
+                    const spike = new THREE.Mesh(sqSpikeGeo, charredBoneMat);
+                    spike.rotation.x = Math.PI;
+                    spike.rotation.y = Math.PI / 4;
+                    spike.position.set(cx, -2.75, cz);
+                    charnelCageGroup.add(spike);
+                }
+            }
+
+            group.add(charnelCageGroup);
+
+            // 3. 4 Inner Multi-Tiered Square Morgue Vault Towers at [±13, ±13] + Overhead Square Catacomb Bridges
+            const morgueTowerCoords = [[-13, -13], [13, -13], [-13, 13], [13, 13]];
+            const plinthGeo = new THREE.BoxGeometry(4.1, 1.4, 4.1);
+            const shaftGeo = new THREE.BoxGeometry(3.3, 13.0, 3.3);
+            const cornerButtressGeo = new THREE.BoxGeometry(0.56, 13.6, 0.56);
+            const crownCapGeo = new THREE.BoxGeometry(4.2, 0.9, 4.2);
+            const relicCubeGeo = new THREE.BoxGeometry(1.15, 1.15, 1.15);
+            const relicCubes = [];
+
+            morgueTowerCoords.forEach(([mx, mz]) => {
+                // Stepped square brutalist base plinth
+                const plinth = new THREE.Mesh(plinthGeo, rustedIronMat);
+                plinth.position.set(mx, 0.7, mz);
+                group.add(plinth);
+                mapShootables.push(plinth);
+
+                // Main square morgue locker tower shaft
+                const shaft = new THREE.Mesh(shaftGeo, necroPillarMat);
+                shaft.position.set(mx, 6.5, mz);
+                group.add(shaft);
+                mapShootables.push(shaft);
+                mapObstacles.push({ x: mx, z: mz, radius: 2.25 });
+
+                // 4 Square Corner Steel Buttresses with recessed glowing crimson vertical slits
+                for (const dx of [-1.62, 1.62]) {
+                    for (const dz of [-1.62, 1.62]) {
+                        const buttress = new THREE.Mesh(cornerButtressGeo, rustedIronMat);
+                        buttress.position.set(mx + dx, 6.8, mz + dz);
+                        group.add(buttress);
+                    }
+                }
+
+                // 3 Horizontal Square Neon Red Containment Collars
+                [2.2, 6.5, 10.8].forEach((ry, rIdx) => {
+                    const sqCollar = createSquareNeonFrame(3.75, 0.18, 0.22, rIdx === 1 ? neonBrightMat : arterialGlowMat);
+                    sqCollar.position.set(mx, ry, mz);
+                    group.add(sqCollar);
+                });
+
+                // Overhanging square brutalist battlement cap
+                const cap = new THREE.Mesh(crownCapGeo, rustedIronMat);
+                cap.position.set(mx, 13.3, mz);
+                group.add(cap);
+                mapShootables.push(cap);
+
+                // Levitating crimson Relic Cube above each square tower
+                const relic = new THREE.Mesh(relicCubeGeo, arterialGlowMat);
+                relic.position.set(mx, 15.0, mz);
+                relic.rotation.set(Math.PI / 4, Math.PI / 4, 0);
+                group.add(relic);
+                relicCubes.push(relic);
+            });
+
+            // Overhead Square Catacomb Gantry Bridges connecting the 4 Inner Square Morgue Towers (y = 11.8)
+            const gantryBridgeConfigs = [
+                { pos: [0, 11.8, -13], size: [22.6, 0.85, 1.4], stripSize: [22.6, 0.16, 1.56] },
+                { pos: [0, 11.8, 13],  size: [22.6, 0.85, 1.4], stripSize: [22.6, 0.16, 1.56] },
+                { pos: [-13, 11.8, 0], size: [1.4, 0.85, 22.6], stripSize: [1.56, 0.16, 22.6] },
+                { pos: [13, 11.8, 0],  size: [1.4, 0.85, 22.6], stripSize: [1.56, 0.16, 22.6] }
+            ];
+            gantryBridgeConfigs.forEach(gb => {
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(...gb.size), rustedIronMat);
+                beam.position.set(...gb.pos);
+                group.add(beam);
+                mapShootables.push(beam);
+
+                const underNeon = new THREE.Mesh(new THREE.BoxGeometry(...gb.stripSize), arterialGlowMat);
+                underNeon.position.set(gb.pos[0], gb.pos[1] - 0.46, gb.pos[2]);
+                group.add(underNeon);
+            });
+
+            // 4. 8 Mid-Field Square Charnel Specimen Cages & Corridor Monoliths (Forming Orthogonal Street Alleys)
+            const charnelVaultCoords = [
+                [-22, -8], [22, -8], [-22, 8], [22, 8],
+                [-8, -22], [8, -22], [-8, 22], [8, 22]
+            ];
+            const vaultBaseGeo = new THREE.BoxGeometry(3.6, 1.5, 3.6);
+            const vaultCapGeo = new THREE.BoxGeometry(3.7, 1.2, 3.7);
+            const vaultFleshCoreGeo = new THREE.BoxGeometry(2.35, 7.8, 2.35);
+            const vaultCornerPostGeo = new THREE.BoxGeometry(0.52, 8.4, 0.52);
+            const vaultIronBarGeo = new THREE.BoxGeometry(3.15, 0.22, 3.15);
+            const specimenCages = [];
+
+            charnelVaultCoords.forEach(([vx, vz], vIdx) => {
+                // Square iron base & top cap
+                const vBase = new THREE.Mesh(vaultBaseGeo, rustedIronMat);
+                vBase.position.set(vx, 0.75, vz);
+                group.add(vBase);
+                mapShootables.push(vBase);
+
+                const vCap = new THREE.Mesh(vaultCapGeo, rustedIronMat);
+                vCap.position.set(vx, 10.1, vz);
+                group.add(vCap);
+                mapShootables.push(vCap);
+
+                // Glowing rectangular crimson bio-flesh chamber inside the square iron cage
+                const fleshCore = new THREE.Mesh(vaultFleshCoreGeo, necroFleshMat);
+                fleshCore.position.set(vx, 5.4, vz);
+                group.add(fleshCore);
+                mapShootables.push(fleshCore);
+                mapObstacles.push({ x: vx, z: vz, radius: 2.12 });
+                specimenCages.push(fleshCore);
+
+                // 4 Heavy Square Corner Cage Posts
+                for (const cx of [-1.32, 1.32]) {
+                    for (const cz of [-1.32, 1.32]) {
+                        const post = new THREE.Mesh(vaultCornerPostGeo, rustedIronMat);
+                        post.position.set(vx + cx, 5.4, vz + cz);
+                        group.add(post);
+                    }
+                }
+
+                // Horizontal Square Iron & Neon-Red Prison Collars Caging the Flesh Core
+                [2.2, 4.3, 6.5, 8.6].forEach((ry, rIdx) => {
+                    const barCollar = new THREE.Mesh(
+                        vaultIronBarGeo,
+                        (vIdx + rIdx) % 2 === 0 ? arterialGlowMat : rustedIronMat
+                    );
+                    barCollar.position.set(vx, ry, vz);
+                    group.add(barCollar);
+                });
+            });
+
+            // 5. 4 Cardinal Slaughterhouse Guillotine / Bone-Gate Archways at ±31 (With Square Brutalist Gate Buttresses)
+            const gateButtressGeo = new THREE.BoxGeometry(3.1, 10.8, 3.1);
+            const gatePlinthGeo = new THREE.BoxGeometry(3.6, 1.2, 3.6);
+            const fangToothGeo = new THREE.ConeGeometry(0.28, 1.35, 4);
+            const necroGates = [
+                { p1: [-7, -31], p2: [7, -31], center: [0, 9.6, -31], rotY: 0 },
+                { p1: [-7, 31], p2: [7, 31], center: [0, 9.6, 31], rotY: 0 },
+                { p1: [-31, -7], p2: [-31, 7], center: [-31, 9.6, 0], rotY: Math.PI / 2 },
+                { p1: [31, -7], p2: [31, 7], center: [31, 9.6, 0], rotY: Math.PI / 2 }
+            ];
+
+            necroGates.forEach(gate => {
+                [gate.p1, gate.p2].forEach(([gx, gz]) => {
+                    const gPlinth = new THREE.Mesh(gatePlinthGeo, rustedIronMat);
+                    gPlinth.position.set(gx, 0.6, gz);
+                    group.add(gPlinth);
+                    mapShootables.push(gPlinth);
+
+                    const col = new THREE.Mesh(gateButtressGeo, necroPillarMat);
+                    col.position.set(gx, 5.4, gz);
+                    group.add(col);
+                    mapShootables.push(col);
+                    mapObstacles.push({ x: gx, z: gz, radius: 1.95 });
+
+                    [2.2, 5.6, 8.8].forEach((ry, rIdx) => {
+                        const sqCollar = createSquareNeonFrame(3.32, 0.16, 0.20, rIdx === 1 ? neonBrightMat : arterialGlowMat);
+                        sqCollar.position.set(gx, ry, gz);
+                        group.add(sqCollar);
+                    });
+                });
+
+                // Overhead Guillotine Lintel with Jagged Downward Bone-Fangs (walkable underneath)
+                const archGroup = new THREE.Group();
+                archGroup.position.set(gate.center[0], gate.center[1], gate.center[2]);
+                archGroup.rotation.y = gate.rotY;
+
+                const mainBeam = new THREE.Mesh(new THREE.BoxGeometry(17.4, 1.35, 2.2), rustedIronMat);
+                archGroup.add(mainBeam);
+                mapShootables.push(mainBeam);
+
+                const bloodStrip = new THREE.Mesh(new THREE.BoxGeometry(17.6, 0.22, 2.34), arterialGlowMat);
+                bloodStrip.position.y = 0.55;
+                archGroup.add(bloodStrip);
+
+                // Row of 7 jagged downward-pointing bone/iron fangs under the lintel (y = 8.35 world)
+                for (let f = -5.4; f <= 5.4; f += 1.8) {
+                    const fang = new THREE.Mesh(fangToothGeo, Math.abs(f) < 1.0 ? arterialGlowMat : charredBoneMat);
+                    fang.rotation.x = Math.PI;
+                    fang.rotation.y = Math.PI / 4;
+                    fang.position.set(f, -1.25, 0);
+                    archGroup.add(fang);
+                }
+
+                group.add(archGroup);
+            });
+
+            // 6. 12 Outer Square Stepped Crematorium / Ossuary Ziggurat Towers
+            const outerSquareCoords = [
+                [-36, -20], [36, -20], [-36, 20], [36, 20],
+                [-20, -36], [20, -36], [-20, 36], [20, 36],
+                [-40, -40], [40, -40], [-40, 40], [40, 40]
+            ];
+            const zigLowerGeo = new THREE.BoxGeometry(3.4, 8.2, 3.4);
+            const zigUpperGeo = new THREE.BoxGeometry(2.4, 6.2, 2.4);
+            const zigSpikeGeo = new THREE.ConeGeometry(0.28, 1.4, 4);
+
+            outerSquareCoords.forEach(([ox, oz]) => {
+                // Lower wide square tier
+                const lowTier = new THREE.Mesh(zigLowerGeo, necroPillarMat);
+                lowTier.position.set(ox, 4.1, oz);
+                group.add(lowTier);
+                mapShootables.push(lowTier);
+                mapObstacles.push({ x: ox, z: oz, radius: 2.15 });
+
+                // Upper stepped-in square crematorium chimney tier
+                const highTier = new THREE.Mesh(zigUpperGeo, rustedIronMat);
+                highTier.position.set(ox, 11.3, oz);
+                group.add(highTier);
+                mapShootables.push(highTier);
+
+                // Square neon red furnace bands on lower & upper tiers
+                [2.2, 5.8, 8.2].forEach((ry, idx) => {
+                    const band = createSquareNeonFrame(3.62, 0.16, 0.20, idx === 2 ? neonBrightMat : arterialGlowMat);
+                    band.position.set(ox, ry, oz);
+                    group.add(band);
+                });
+                const topBand = createSquareNeonFrame(2.62, 0.16, 0.20, arterialGlowMat);
+                topBand.position.set(ox, 12.6, oz);
+                group.add(topBand);
+
+                // 4 upward square pyramid spikes on the step ledge corners
+                for (const sx of [-1.45, 1.45]) {
+                    for (const sz of [-1.45, 1.45]) {
+                        const sp = new THREE.Mesh(zigSpikeGeo, charredBoneMat);
+                        sp.rotation.y = Math.PI / 4;
+                        sp.position.set(ox + sx, 8.9, oz + sz);
+                        group.add(sp);
+                    }
+                }
+            });
+
+            // 7. Perimeter Catacomb Fortress Walls with Square Buttress Pilasters & Neon Strips
+            const necroWallMat = new THREE.MeshStandardMaterial({ color: 0x080102, roughness: 0.65, metalness: 0.4 });
+            wallConfigs.forEach(cfg => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(cfg.size[0], 9.4, cfg.size[2]), necroWallMat);
+                wall.position.set(cfg.pos[0], 4.7, cfg.pos[2]);
+                group.add(wall);
+                mapShootables.push(wall);
+
+                const stripGeo = new THREE.BoxGeometry(
+                    cfg.size[0] === 2 ? 2.18 : cfg.size[0],
+                    0.20,
+                    cfg.size[2] === 2 ? 2.18 : cfg.size[2]
+                );
+                [2.0, 5.5, 9.2].forEach((sy, sIdx) => {
+                    const strip = new THREE.Mesh(stripGeo, sIdx === 1 ? neonBrightMat : arterialGlowMat);
+                    strip.position.set(cfg.pos[0], sy, cfg.pos[2]);
+                    group.add(strip);
+                });
+            });
+
+            group.visible = false;
+            scene.add(group);
+
+            return {
+                id: 'map5',
+                code: '05 // NECRO OSSUARY',
+                shortLabel: '05 OSSUARY',
+                name: 'NECRO OSSUARY',
+                fullName: 'MAP 05: NECRO OSSUARY',
+                subtitle: 'SECTOR 09 // SQUARE MORGUE VAULTS, GUILLOTINE GATES & CHARNEL LABYRINTH',
+                group,
+                obstacles: mapObstacles,
+                shootableMeshes: mapShootables,
+                safeNodes: [[28, 28], [-28, 28], [28, -28], [-28, -28], [0, 45], [0, -45], [45, 0], [-45, 0]],
+                floorTexture: necroOssuaryFloorTex,
+                floorRoughness: 0.58,
+                floorMetalness: 0.35,
+                bgColor: 0x040001,
+                fogColor: 0x090002,
+                fogDensity: 0.029,
+                moonColor: 0xff0022,
+                beaconConfigs: [
+                    { pos: [-13, 5.2, -13], color: 0xff0022, intensity: 1.4, distance: 25 },
+                    { pos: [13, 5.2, -13], color: 0xff0022, intensity: 1.4, distance: 25 },
+                    { pos: [-13, 5.2, 13], color: 0xff0022, intensity: 1.4, distance: 25 },
+                    { pos: [13, 5.2, 13], color: 0xff0022, intensity: 1.4, distance: 25 }
+                ],
+                update(now) {
+                    const t = now * 0.001;
+                    // Visceral systolic/diastolic heartbeat throb on the central Cubic Charnel Bio-Heart
+                    const heartBeat = 1.0 + Math.pow(Math.max(0, Math.sin(t * 3.4)), 4) * 0.24;
+                    bioHeartMesh.scale.setScalar(heartBeat);
+                    bioHeartMesh.rotation.y = t * 0.9;
+                    arteryCageMesh.scale.setScalar(0.96 + heartBeat * 0.06);
+                    arteryCageMesh.rotation.y = -t * 0.6;
+                    charnelCageGroup.rotation.y = t * 0.32;
+                    charnelCageGroup.rotation.z = Math.sin(t * 1.3) * 0.05;
+
+                    const fleshPulse = 0.72 + Math.sin(t * 3.8) * 0.26;
+                    necroFleshMat.emissiveIntensity = fleshPulse;
+
+                    for (let i = 0; i < relicCubes.length; i++) {
+                        relicCubes[i].rotation.y = -t * 1.5 + i;
+                        relicCubes[i].rotation.x = t * 1.1 + i;
+                        relicCubes[i].position.y = 15.0 + Math.sin(t * 2.6 + i) * 0.24;
+                    }
+                }
+            };
+        }
+
         const ARENA_MAPS = [
             buildMap1ContainmentGrid(),
             buildMap2CrimsonReactor(),
-            buildMap3ObsidianSanctum()
+            buildMap3ObsidianSanctum(),
+            buildMap4CyberNexus(),
+            buildMap5NecroOssuary()
         ];
 
         /********************************************************************

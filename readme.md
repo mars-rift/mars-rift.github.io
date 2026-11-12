@@ -15,7 +15,7 @@ Designed specifically for effortless static hosting, the entire game—including
 ## 🚀 Key Features
 
 * **Red Neon & Black Aesthetic:** Atmospheric exponential fog, CRT scanline overlays, glowing neon hazard structures, and a dynamic blood moon.
-* **Three Distinct Sector 09 Combat Arenas & Map Modes:** Battle across three procedural dark neon red maps—**Map 01: Containment Grid**, **Map 02: Crimson Reactor**, and **Map 03: Obsidian Sanctum**. Play in **Wave Cycle Mode** (`Wave 1 = Map 1`, `Wave 2 = Map 2`, `Wave 3 = Map 3`, repeating) or enable **Random Map Mode** for unpredictable arena rotations every wave.
+* **Five Distinct Sector 09 Combat Arenas & Map Modes:** Battle across five procedural next-gen levels—**Map 01: Containment Grid**, **Map 02: Crimson Reactor**, **Map 03: Obsidian Sanctum**, **Map 04: Neon Nexus** *(Cyberpunk Megacity Data-Core)*, and **Map 05: Necro Ossuary** *(Dark Bio-Horror Catacombs)*. Play in **Wave Cycle Mode** (`Wave 1 → 2 → 3 → 4 → 5`, repeating) or enable **Random Map Mode** for unpredictable arena rotations every wave.
 * **Tactile FPS Combat:** Features a 3D carbine viewmodel with procedural weapon sway, sprint tilting, recoil kickback, dynamic muzzle flash lighting, bullet tracers, auto-reload, hold-to-fire full-auto trigger, and two-stage reload animations.
 * **Locational Hit Detection:** Raycasted shooting mechanics distinguish between body shots (`40 DMG`), headshots (`110 DMG`–`120 DMG` + golden hitmarker), and exposed glowing reactor core weakpoints on Armored Brutes (`110 DMG`).
 * **Tactical Resupply Intermission:** A 3.5-second tactical breather occurs between waves, giving players a critical window to reload, grab health jewels, and reposition.
@@ -78,7 +78,7 @@ As you progress through waves, Sector 09 spawns three distinct mutations of the 
 ## 🗺️ Sector 09 Combat Arenas & Map Modes
 
 Players can choose between two arena rotation modes on the **Title Screen**, **Pause Menu**, or **Settings Modal**:
-* **Wave Cycle Mode (Default):** Automatically cycles through the three Sector 09 arenas in order (`Wave 1 = Map 01`, `Wave 2 = Map 02`, `Wave 3 = Map 03`, `Wave 4 = Map 01`, etc.).
+* **Wave Cycle Mode (Default):** Automatically cycles through all five Sector 09 arenas in order (`Wave 1 = Map 01`, `Wave 2 = Map 02`, `Wave 3 = Map 03`, `Wave 4 = Map 04`, `Wave 5 = Map 05`, `Wave 6 = Map 01`, etc.).
 * **Random Map Mode:** Selects a randomized combat arena for each wave, ensuring fresh tactical sightlines and cover layouts throughout your run.
 
 | **Arena** | **Architecture & Landmarks** | **Tactical Flow** |
@@ -86,6 +86,8 @@ Players can choose between two arena rotation modes on the **Title Screen**, **P
 | **Map 01: Containment Grid** | Symmetrical 20-pillar octagonal hazard matrix with crimson torus rings and grid floor plating. | Balanced sightlines and evenly spaced radial kiting lanes. |
 | **Map 02: Crimson Reactor** | Overloaded suspended plasma core with rotating gyroscopic rings, 4 hexagonal plasma reactor pylons, 4 heavy cryo-coolant silos, overhead gantry struts, and capacitor towers. | Heavy central reactor cover and wide outer coolant corridors. |
 | **Map 03: Obsidian Sanctum** | Levitating inverted obsidian spire, 4 glowing crimson bio-stasis vats, 4 tapered obsidian monoliths with hovering crystals, 4 cardinal neon quarantine gate archways, and sentinel spires. | High-contrast archway chokepoints and diagonal monolith sightline breaks. |
+| **Map 04: Neon Nexus** | Cyberpunk megacity data-core with geodesic holographic neural crystal, orbiting HUD telemetry screens, 4 brutalist mainframe blade towers, 4 neon Torii overpass portals with holographic billboards, quantum server spires, and megabuilding skyline silhouettes. | Fast-paced cyber-alleyway portals and angled mainframe cover fins. |
+| **Map 05: Necro Ossuary** | Dark bio-horror square catacomb labyrinth featuring a walkable square sacrificial blood-pit grate, overhead suspended square iron-maiden cage with cubic bio-heart, 4 square morgue vault towers linked by overhead gantry bridges, 8 orthogonal square charnel specimen cages, 4 cardinal slaughterhouse guillotine/bone-gate archways, and 12 stepped square crematorium ziggurats. | Oppressive dark-horror fog, rectilinear cross-corridor alleys, and fanged guillotine gate chokepoints. |
 
 ---
 
