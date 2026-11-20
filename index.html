@@ -1198,6 +1198,8 @@
                 this.ambientInitialized = false;
                 this.noiseBuffers = [];
                 this.lastGroanTime = 0;
+                this.lastStalkerSoundTime = 0;
+                this.lastDroidScanTime = 0;
             }
 
             init() {
@@ -1502,6 +1504,154 @@
                 this.registerCleanup(osc, filter, gain);
                 osc.start(now);
                 osc.stop(now + 0.8);
+            }
+
+            playStalkerShriek() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+                if (now - this.lastStalkerSoundTime < 0.16) return;
+                this.lastStalkerSoundTime = now;
+
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                const gain = this.ctx.createGain();
+
+                const pitch = 0.92 + Math.random() * 0.18;
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(520 * pitch, now);
+                osc1.frequency.exponentialRampToValueAtTime(1180 * pitch, now + 0.09);
+                osc1.frequency.exponentialRampToValueAtTime(310 * pitch, now + 0.36);
+
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(545 * pitch, now);
+                osc2.frequency.exponentialRampToValueAtTime(1235 * pitch, now + 0.09);
+                osc2.frequency.exponentialRampToValueAtTime(295 * pitch, now + 0.36);
+
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(980, now);
+                filter.frequency.exponentialRampToValueAtTime(1950, now + 0.10);
+                filter.frequency.exponentialRampToValueAtTime(560, now + 0.36);
+                filter.Q.setValueAtTime(5.2, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+                gain.gain.linearRampToValueAtTime(0, now + 0.38);
+
+                osc1.connect(filter);
+                osc2.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.sfxGain);
+
+                this.registerCleanup(osc1, osc2, filter, gain);
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.38);
+                osc2.stop(now + 0.38);
+            }
+
+            playDroidScan() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+                if (now - this.lastDroidScanTime < 0.18) return;
+                this.lastDroidScanTime = now;
+
+                const freqs = [920, 1380, 1840];
+                freqs.forEach((f, idx) => {
+                    const startT = now + idx * 0.048;
+                    const stopT = startT + 0.065;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = idx === 2 ? 'square' : 'sine';
+                    osc.frequency.setValueAtTime(f, startT);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.setValueAtTime(0.0001, startT);
+                    gain.gain.linearRampToValueAtTime(idx === 2 ? 0.13 : 0.16, startT + 0.005);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, stopT - 0.006);
+                    gain.gain.linearRampToValueAtTime(0, stopT);
+
+                    osc.connect(gain);
+                    gain.connect(this.sfxGain);
+                    this.registerCleanup(osc, gain);
+                    osc.start(startT);
+                    osc.stop(stopT);
+                });
+            }
+
+            playDroidPlasmaShot() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+
+                const osc = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(1520, now);
+                osc.frequency.exponentialRampToValueAtTime(210, now + 0.15);
+
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1600, now);
+                filter.frequency.exponentialRampToValueAtTime(420, now + 0.15);
+                filter.Q.setValueAtTime(2.4, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.26, now + 0.004);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.155);
+                gain.gain.linearRampToValueAtTime(0, now + 0.17);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.sfxGain);
+
+                this.registerCleanup(osc, filter, gain);
+                osc.start(now);
+                osc.stop(now + 0.17);
+            }
+
+            playDroidDestroy() {
+                if (!this.ctx || this.muted) return;
+                const now = this.ctx.currentTime;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(620, now);
+                osc.frequency.exponentialRampToValueAtTime(58, now + 0.42);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.28, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+                gain.gain.linearRampToValueAtTime(0, now + 0.44);
+
+                osc.connect(gain);
+                gain.connect(this.sfxGain);
+                this.registerCleanup(osc, gain);
+                osc.start(now);
+                osc.stop(now + 0.44);
+
+                if (this.noiseBuffers && this.noiseBuffers.length > 0) {
+                    const sparkBuf = this.noiseBuffers[Math.floor(Math.random() * this.noiseBuffers.length)];
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = sparkBuf;
+                    const hp = this.ctx.createBiquadFilter();
+                    hp.type = 'highpass';
+                    hp.frequency.setValueAtTime(1800, now);
+                    const nGain = this.ctx.createGain();
+                    nGain.gain.setValueAtTime(0.0001, now);
+                    nGain.gain.linearRampToValueAtTime(0.24, now + 0.006);
+                    nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.21);
+                    nGain.gain.linearRampToValueAtTime(0, now + 0.22);
+
+                    src.connect(hp);
+                    hp.connect(nGain);
+                    nGain.connect(this.sfxGain);
+                    this.registerCleanup(src, hp, nGain);
+                    src.start(now);
+                    src.stop(now + 0.22);
+                }
             }
 
             playPlayerDamage() {
@@ -4633,16 +4783,73 @@
             return tex;
         }
 
+        function createDroidChassisTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Midnight cyber-obsidian carbon-alloy chassis matching Map 04: Neon Nexus
+            ctx.fillStyle = '#0c0516';
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Brushed cyber-carbon micro-grain
+            for (let y = 0; y < 256; y += 2) {
+                ctx.fillStyle = y % 4 === 0 ? 'rgba(0, 245, 212, 0.035)' : 'rgba(255, 0, 85, 0.03)';
+                ctx.fillRect(0, y, 256, 1);
+            }
+
+            // Angular stealth armor panel seam lines
+            ctx.strokeStyle = '#2d1240';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(8, 8, 240, 240);
+            ctx.beginPath();
+            ctx.moveTo(8, 92); ctx.lineTo(78, 92); ctx.lineTo(104, 118); ctx.lineTo(152, 118); ctx.lineTo(178, 92); ctx.lineTo(248, 92);
+            ctx.moveTo(8, 174); ctx.lineTo(94, 174); ctx.lineTo(116, 152); ctx.lineTo(140, 152); ctx.lineTo(162, 174); ctx.lineTo(248, 174);
+            ctx.stroke();
+
+            //Glowing cyber-cyan & hyper-magenta circuit bus conduits (echoing Map 04 server blades)
+            ctx.strokeStyle = '#00f5d4';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(28, 16); ctx.lineTo(28, 76); ctx.lineTo(66, 76);
+            ctx.moveTo(228, 16); ctx.lineTo(228, 76); ctx.lineTo(190, 76);
+            ctx.moveTo(128, 16); ctx.lineTo(128, 112);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(42, 240); ctx.lineTo(42, 190); ctx.lineTo(88, 190);
+            ctx.moveTo(214, 240); ctx.lineTo(214, 190); ctx.lineTo(168, 190);
+            ctx.stroke();
+
+            // Micro-telemetry LED status array
+            for (let x = 32; x <= 216; x += 24) {
+                ctx.fillStyle = (x % 48 === 32) ? '#00f5d4' : '#ff0055';
+                ctx.fillRect(x, 128, 10, 5);
+                ctx.fillStyle = '#1b0a2b';
+                ctx.fillRect(x, 138, 10, 4);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
         const shamblerFleshTex = createShamblerCyborgFleshTexture();
         const shamblerArmorTex = createShamblerCyberMetalTexture();
         const runnerFleshTex = createHostileFleshTexture('#8f0d20', '#42030c', '#ff1a40', '#c9223b');
+        const stalkerFleshTex = createHostileFleshTexture('#291538', '#0d0617', '#c026ff', '#622787');
         const bruteFleshTex = createHostileFleshTexture('#251f2b', '#120e17', '#ff5500', '#3d3347');
         const hostileSuitTex = createHostileSuitTexture();
         const bruteArmorTex = createBruteArmorPlateTexture();
+        const droidChassisTex = createDroidChassisTexture();
 
         // Invisible material for generous raycast hitboxes (Zero fillrate cost, 100% reliable Three.js Raycaster hit detection)
         const invisibleHitboxMat = new THREE.MeshBasicMaterial({ visible: false });
-        // Shared static accent materials for Shambler cyborg inner reactor, dark cavities & skeletal bone/fangs (Zero per-spawn allocation/disposal)
+        // Shared static accent materials for Shambler, Stalker & Hunter Droid (Zero per-spawn allocation/disposal)
         const shamblerCoreHotMat = new THREE.MeshBasicMaterial({ color: 0xdfffee });
         const shamblerCavityDarkMat = new THREE.MeshBasicMaterial({ color: 0x070204 });
         const shamblerBoneMat = new THREE.MeshStandardMaterial({
@@ -4653,6 +4860,29 @@
             roughness: 0.38,
             metalness: 0.12,
             emissive: 0x1c1410
+        });
+        const stalkerChitinMat = new THREE.MeshStandardMaterial({
+            color: 0x1b0b29,
+            roughness: 0.34,
+            metalness: 0.45,
+            emissive: 0x0e0318
+        });
+        const stalkerVioletGlowMat = new THREE.MeshBasicMaterial({ color: 0xd946ff });
+        const droidDarkTrimMat = new THREE.MeshStandardMaterial({
+            color: 0x090410,
+            roughness: 0.24,
+            metalness: 0.88,
+            emissive: 0x04020a
+        });
+        const droidCyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+        const droidMagentaGlowMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+        const droidRepulsorDiscMat = new THREE.MeshBasicMaterial({
+            color: 0x00f5d4,
+            transparent: true,
+            opacity: 0.55,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
         });
 
         // ---- 1. SCULPTED HEAD, SKULL, JAW & HELMET GEOMETRIES ----
@@ -5021,9 +5251,394 @@
         const bruteGreavePlateGeo = new THREE.CylinderGeometry(0.14, 0.125, 0.36, 6, 1, false, -Math.PI * 0.38, Math.PI * 0.76);
         bruteGreavePlateGeo.translate(0, -0.18, 0.02);
 
+        // ---- 5. PHANTOM STALKER (RUNNER MUTANT) UNIQUE PHYSICAL GEOMETRIES ----
+        const stalkerCrownHornGeo = sculptGeometry(new THREE.ConeGeometry(0.036, 0.38, 7), (x, y, z) => {
+            const t = (y + 0.19) / 0.38;
+            return [x * (1.0 - t * 0.18), y, z - t * t * 0.15];
+        });
+        stalkerCrownHornGeo.translate(0, 0.16, 0);
+        const stalkerThirdEyeGeo = new THREE.OctahedronGeometry(0.028, 0);
+        stalkerThirdEyeGeo.scale(0.55, 1.48, 0.75);
+        const stalkerQuillGlowGeo = new THREE.OctahedronGeometry(0.036, 0);
+        stalkerQuillGlowGeo.scale(0.65, 1.35, 0.65);
+        const stalkerCoreRingGeo = new THREE.TorusGeometry(0.158, 0.015, 6, 6);
+        const stalkerShoulderFrillGeo = sculptGeometry(new THREE.ConeGeometry(0.062, 0.36, 6), (x, y, z) => {
+            const t = (y + 0.18) / 0.36;
+            return [x * 0.45, y, z - t * t * 0.08];
+        });
+        stalkerShoulderFrillGeo.translate(0, 0.14, 0);
+        const stalkerMantisBladeGeo = sculptGeometry(new THREE.ConeGeometry(0.062, 0.68, 6), (x, y, z) => {
+            const t = (y + 0.34) / 0.68;
+            return [x * 0.28, y, z - Math.sin(t * Math.PI) * 0.095];
+        });
+        stalkerMantisBladeGeo.rotateX(Math.PI * 0.48);
+        stalkerMantisBladeGeo.translate(0, -0.025, 0.44);
+        const stalkerMantisEdgeGeo = sculptGeometry(new THREE.BoxGeometry(0.012, 0.020, 0.56), (x, y, z) => {
+            const t = (z + 0.28) / 0.56;
+            return [x, y - Math.sin(t * Math.PI) * 0.042, z];
+        });
+        stalkerMantisEdgeGeo.translate(0, -0.046, 0.46);
+        const stalkerHeelSpurGeo = new THREE.ConeGeometry(0.032, 0.22, 5);
+        stalkerHeelSpurGeo.rotateX(-Math.PI * 0.58);
+
+        // ---- 6. NEXUS HUNTER DROID (MAP 04: NEON NEXUS NATIVE) CYBERNETIC GEOMETRIES ----
+        const droidTorsoGeo = sculptGeometry(new THREE.CylinderGeometry(0.38, 0.20, 0.72, 6, 4), (x, y, z) => {
+            const normY = (y + 0.36) / 0.72;
+            let nx = x * (0.94 + normY * 0.22);
+            let nz = z * (0.64 + (normY > 0.5 ? 0.10 : -0.04));
+            if (z > 0.10) nz += (1.0 - Math.abs(normY - 0.58) * 1.4) * 0.05;
+            return [nx, y, nz];
+        });
+        const droidChestPlateGeo = new THREE.BoxGeometry(0.20, 0.48, 0.12);
+        const droidBackFinGeo = sculptGeometry(new THREE.BoxGeometry(0.055, 0.74, 0.34), (x, y, z) => {
+            const t = (y + 0.37) / 0.74;
+            return [x, y, z - t * 0.18];
+        });
+        const droidBackFinEdgeGeo = sculptGeometry(new THREE.BoxGeometry(0.062, 0.74, 0.038), (x, y, z) => {
+            const t = (y + 0.37) / 0.74;
+            return [x, y, z - t * 0.18];
+        });
+        const droidCoreHousingGeo = new THREE.TorusGeometry(0.168, 0.028, 6, 6);
+        const droidCoreCrystalGeo = new THREE.OctahedronGeometry(0.118, 0);
+        droidCoreCrystalGeo.scale(0.95, 1.15, 0.72);
+        const droidCoreGyroGeo = new THREE.TorusGeometry(0.145, 0.015, 6, 6);
+        const droidCoreHitboxGeo = new THREE.BoxGeometry(0.40, 0.40, 0.24);
+
+        const droidHeadGeo = sculptGeometry(new THREE.CylinderGeometry(0.175, 0.235, 0.26, 6, 2), (x, y, z) => {
+            let nx = x * 0.92;
+            let nz = z * 1.24;
+            if (z > 0.08 && y < 0.04) nz += 0.045;
+            if (z < -0.06 && y > 0) nz -= 0.055;
+            return [nx, y, nz];
+        });
+        const droidVisorBandGeo = new THREE.CylinderGeometry(0.242, 0.242, 0.066, 6, 1, false, -Math.PI * 0.36, Math.PI * 0.72);
+        const droidScannerEyeGeo = new THREE.SphereGeometry(0.034, 8, 6);
+        droidScannerEyeGeo.scale(1.35, 0.72, 0.85);
+        const droidAntennaGeo = new THREE.BoxGeometry(0.022, 0.34, 0.042);
+        droidAntennaGeo.translate(0, 0.16, 0);
+        const droidAntennaTipGeo = new THREE.OctahedronGeometry(0.026, 0);
+
+        const droidPauldronGeo = new THREE.BoxGeometry(0.24, 0.18, 0.28);
+        const droidPauldronTrimGeo = new THREE.BoxGeometry(0.255, 0.032, 0.295);
+        const droidArmStrutGeo = new THREE.BoxGeometry(0.092, 0.092, 0.40);
+        droidArmStrutGeo.translate(0, 0, 0.20);
+        const droidArmConduitGeo = new THREE.BoxGeometry(0.024, 0.024, 0.34);
+        droidArmConduitGeo.translate(0, 0.052, 0.20);
+        const droidServoJointGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.11, 6);
+        droidServoJointGeo.rotateZ(Math.PI / 2);
+
+        const droidBlasterBodyGeo = new THREE.BoxGeometry(0.125, 0.135, 0.56);
+        droidBlasterBodyGeo.translate(0, 0, 0.26);
+        const droidBlasterRailGeo = new THREE.BoxGeometry(0.022, 0.022, 0.54);
+        droidBlasterRailGeo.translate(0, 0, 0.28);
+        const droidMuzzleCoreGeo = new THREE.OctahedronGeometry(0.052, 0);
+        const droidArcBladeGeo = new THREE.BoxGeometry(0.024, 0.095, 0.58);
+        droidArcBladeGeo.translate(0, 0, 0.38);
+        const droidArcBladeEdgeGeo = new THREE.BoxGeometry(0.016, 0.022, 0.57);
+        droidArcBladeEdgeGeo.translate(0, -0.048, 0.38);
+
+        const droidPelvisGeo = new THREE.CylinderGeometry(0.22, 0.15, 0.22, 6);
+        const droidHoverRingGeo = new THREE.TorusGeometry(0.36, 0.024, 6, 6);
+        droidHoverRingGeo.rotateX(Math.PI / 2);
+        const droidRepulsorDiscGeo = new THREE.RingGeometry(0.10, 0.31, 6);
+        droidRepulsorDiscGeo.rotateX(-Math.PI / 2);
+
+        const droidThighGeo = new THREE.BoxGeometry(0.125, 0.38, 0.145);
+        droidThighGeo.translate(0, -0.19, 0);
+        const droidShinGeo = new THREE.BoxGeometry(0.095, 0.38, 0.115);
+        droidShinGeo.translate(0, -0.19, -0.02);
+        const droidHoverFootGeo = new THREE.ConeGeometry(0.088, 0.18, 6);
+        droidHoverFootGeo.rotateX(Math.PI);
+        droidHoverFootGeo.translate(0, -0.37, 0.02);
+        const droidLaserBeamGeo = new THREE.BoxGeometry(0.022, 0.022, 1.0);
+        droidLaserBeamGeo.translate(0, 0, 0.5);
+
         function createZombieMesh(type) {
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
+
+            // ---- DEDICATED NEXUS HUNTER DROID BUILDER (Native to Map 04: Neon Nexus) ----
+            if (type === 'droid') {
+                const skinMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a2638,
+                    map: droidChassisTex,
+                    bumpMap: droidChassisTex,
+                    bumpScale: 0.022,
+                    roughness: 0.24,
+                    metalness: 0.86,
+                    emissive: 0x05161c
+                });
+                const clothesMat = new THREE.MeshStandardMaterial({
+                    color: 0x10081c,
+                    map: droidChassisTex,
+                    roughness: 0.28,
+                    metalness: 0.84,
+                    emissive: 0x080412
+                });
+                const armorMat = new THREE.MeshStandardMaterial({
+                    color: 0x180e28,
+                    map: droidChassisTex,
+                    bumpMap: droidChassisTex,
+                    bumpScale: 0.018,
+                    roughness: 0.22,
+                    metalness: 0.90,
+                    emissive: 0x061018
+                });
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+                const coreMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+                const laserMat = new THREE.MeshBasicMaterial({
+                    color: 0xff0055,
+                    transparent: true,
+                    opacity: 0.72,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const scale = 1.06;
+
+                // 1. Hexagonal Waist-Pelvis & Anti-Grav Hover Repulsor Assembly
+                const pelvis = new THREE.Mesh(droidPelvisGeo, clothesMat);
+                pelvis.position.set(0, 0.88, 0);
+                root.add(pelvis);
+
+                const hoverRing = new THREE.Mesh(droidHoverRingGeo, eyeMat);
+                hoverRing.position.set(0, 0.74, 0);
+                root.add(hoverRing);
+
+                const repulsorDisc = new THREE.Mesh(droidRepulsorDiscGeo, droidRepulsorDiscMat);
+                repulsorDisc.position.set(0, 0.72, 0);
+                repulsorDisc.raycast = () => {};
+                root.add(repulsorDisc);
+
+                // 2. Angular Stealth Torso, Server-Blade Dorsal Fins & Exposed Geodesic Hex-Neural Core
+                const torsoGroup = new THREE.Group();
+                torsoGroup.position.set(0, 1.34, 0);
+                torsoGroup.rotation.x = 0.08;
+                root.add(torsoGroup);
+
+                const torso = new THREE.Mesh(droidTorsoGeo, armorMat);
+                torsoGroup.add(torso);
+
+                for (let side = -1; side <= 1; side += 2) {
+                    const plate = new THREE.Mesh(droidChestPlateGeo, skinMat);
+                    plate.position.set(side * 0.21, 0.04, 0.19);
+                    plate.rotation.y = side * -0.26;
+                    torsoGroup.add(plate);
+
+                    // Swept-back cyberpunk server-blade dorsal wings echoing Map 04 Mainframe Towers
+                    const fin = new THREE.Mesh(droidBackFinGeo, droidDarkTrimMat);
+                    fin.position.set(side * 0.24, 0.20, -0.26);
+                    fin.rotation.z = -side * 0.24;
+                    fin.rotation.y = side * 0.16;
+                    torsoGroup.add(fin);
+
+                    const finEdge = new THREE.Mesh(droidBackFinEdgeGeo, side < 0 ? droidCyanGlowMat : droidMagentaGlowMat);
+                    finEdge.position.set(side * 0.24, 0.20, -0.43);
+                    finEdge.rotation.z = -side * 0.24;
+                    finEdge.rotation.y = side * 0.16;
+                    torsoGroup.add(finEdge);
+                }
+
+                // Exposed Geodesic Neural Core Weakpoint (userData.isCore = true)
+                const coreHousing = new THREE.Mesh(droidCoreHousingGeo, droidDarkTrimMat);
+                coreHousing.position.set(0, 0.02, 0.245);
+                coreHousing.userData.isCore = true;
+                torsoGroup.add(coreHousing);
+
+                const coreMesh = new THREE.Mesh(droidCoreCrystalGeo, coreMat);
+                coreMesh.position.set(0, 0.02, 0.27);
+                coreMesh.userData.isCore = true;
+                torsoGroup.add(coreMesh);
+
+                const coreRing = new THREE.Mesh(droidCoreGyroGeo, eyeMat);
+                coreRing.position.set(0, 0.02, 0.275);
+                coreRing.userData.isCore = true;
+                torsoGroup.add(coreRing);
+
+                const coreHitbox = new THREE.Mesh(droidCoreHitboxGeo, invisibleHitboxMat);
+                coreHitbox.position.set(0, 0.02, 0.26);
+                coreHitbox.userData.isCore = true;
+                torsoGroup.add(coreHitbox);
+
+                const neck = new THREE.Mesh(neckCollarGeo, droidDarkTrimMat);
+                neck.position.set(0, 0.42, 0);
+                torsoGroup.add(neck);
+
+                // 3. Faceted Hexagonal Sensor Head, Cyber-Cyan Optic Visor & Sweeping Targeting Scanner
+                const head = new THREE.Group();
+                head.position.set(0, 1.98, 0.04);
+                head.userData.isHead = true;
+                root.add(head);
+
+                const craniumMesh = new THREE.Mesh(droidHeadGeo, armorMat);
+                craniumMesh.userData.isHead = true;
+                head.add(craniumMesh);
+
+                const visor = new THREE.Mesh(droidVisorBandGeo, eyeMat);
+                visor.position.set(0, 0.015, 0.04);
+                visor.userData.isHead = true;
+                head.add(visor);
+
+                const scannerEye = new THREE.Mesh(droidScannerEyeGeo, coreMat);
+                scannerEye.position.set(0, 0.015, 0.285);
+                scannerEye.userData.isHead = true;
+                head.add(scannerEye);
+
+                for (let side = -1; side <= 1; side += 2) {
+                    const antenna = new THREE.Mesh(droidAntennaGeo, droidDarkTrimMat);
+                    antenna.position.set(side * 0.14, 0.10, -0.06);
+                    antenna.rotation.set(-0.48, 0, -side * 0.24);
+                    antenna.userData.isHead = true;
+                    head.add(antenna);
+
+                    const tip = new THREE.Mesh(droidAntennaTipGeo, side < 0 ? droidCyanGlowMat : droidMagentaGlowMat);
+                    tip.position.set(0, 0.34, 0);
+                    tip.userData.isHead = true;
+                    antenna.add(tip);
+                }
+
+                const headHitbox = new THREE.Mesh(headHitboxGeo, invisibleHitboxMat);
+                headHitbox.position.set(0, 0.02, 0.02);
+                headHitbox.userData.isHead = true;
+                head.add(headHitbox);
+
+                // 4. Articulated Weapon Arms (Left = Cyber-Energy Arc Blade | Right = Twin-Rail Plasma Pulse Cannon)
+                let muzzleCrystal = null;
+                let laserBeam = null;
+
+                function buildDroidArm(isLeft) {
+                    const side = isLeft ? -1 : 1;
+                    const shoulderGroup = new THREE.Group();
+                    shoulderGroup.position.set(side * 0.49, 1.56, 0.02);
+
+                    const pauldron = new THREE.Mesh(droidPauldronGeo, armorMat);
+                    pauldron.position.set(side * 0.03, 0.05, 0);
+                    pauldron.rotation.z = -side * 0.22;
+                    shoulderGroup.add(pauldron);
+
+                    const pauldronTrim = new THREE.Mesh(droidPauldronTrimGeo, isLeft ? droidMagentaGlowMat : droidCyanGlowMat);
+                    pauldronTrim.position.set(side * 0.03, 0.08, 0);
+                    pauldronTrim.rotation.z = -side * 0.22;
+                    shoulderGroup.add(pauldronTrim);
+
+                    const upperStrut = new THREE.Mesh(droidArmStrutGeo, skinMat);
+                    shoulderGroup.add(upperStrut);
+
+                    const upperConduit = new THREE.Mesh(droidArmConduitGeo, eyeMat);
+                    shoulderGroup.add(upperConduit);
+
+                    const forearmGroup = new THREE.Group();
+                    forearmGroup.position.set(0, 0, 0.40);
+                    shoulderGroup.add(forearmGroup);
+
+                    const elbowServo = new THREE.Mesh(droidServoJointGeo, droidDarkTrimMat);
+                    forearmGroup.add(elbowServo);
+
+                    if (isLeft) {
+                        // Left Arm: Close-Quarters Cyber-Energy Arc Blade
+                        const armCasing = new THREE.Mesh(droidArmStrutGeo, armorMat);
+                        forearmGroup.add(armCasing);
+
+                        for (let b = -1; b <= 1; b += 2) {
+                            const blade = new THREE.Mesh(droidArcBladeGeo, droidDarkTrimMat);
+                            blade.position.x = b * 0.034;
+                            forearmGroup.add(blade);
+
+                            const edge = new THREE.Mesh(droidArcBladeEdgeGeo, coreMat);
+                            edge.position.x = b * 0.034;
+                            forearmGroup.add(edge);
+                        }
+                    } else {
+                        // Right Arm: Twin-Rail Plasma Pulse Cannon + Lock-On Holographic Laser Beam
+                        const blaster = new THREE.Mesh(droidBlasterBodyGeo, armorMat);
+                        forearmGroup.add(blaster);
+
+                        for (let r = -1; r <= 1; r += 2) {
+                            const rail = new THREE.Mesh(droidBlasterRailGeo, eyeMat);
+                            rail.position.set(r * 0.068, 0.035, 0);
+                            forearmGroup.add(rail);
+                        }
+
+                        muzzleCrystal = new THREE.Mesh(droidMuzzleCoreGeo, coreMat);
+                        muzzleCrystal.position.set(0, 0, 0.56);
+                        forearmGroup.add(muzzleCrystal);
+
+                        laserBeam = new THREE.Mesh(droidLaserBeamGeo, laserMat);
+                        laserBeam.position.set(0, 0, 0.58);
+                        laserBeam.visible = false;
+                        laserBeam.raycast = () => {};
+                        forearmGroup.add(laserBeam);
+                    }
+
+                    root.add(shoulderGroup);
+                    return { shoulderGroup, forearmGroup };
+                }
+
+                const leftArmRig = buildDroidArm(true);
+                const rightArmRig = buildDroidArm(false);
+
+                // 5. Sleek Reverse-Jointed Cyber-Interceptor Stabilizer Legs
+                function buildDroidLeg(isLeft) {
+                    const side = isLeft ? -1 : 1;
+                    const hipGroup = new THREE.Group();
+                    hipGroup.position.set(side * 0.21, 0.78, 0);
+
+                    const thigh = new THREE.Mesh(droidThighGeo, armorMat);
+                    hipGroup.add(thigh);
+
+                    const shinGroup = new THREE.Group();
+                    shinGroup.position.set(0, -0.38, 0);
+                    hipGroup.add(shinGroup);
+
+                    const kneeServo = new THREE.Mesh(droidServoJointGeo, eyeMat);
+                    shinGroup.add(kneeServo);
+
+                    const shin = new THREE.Mesh(droidShinGeo, skinMat);
+                    shinGroup.add(shin);
+
+                    const foot = new THREE.Mesh(droidHoverFootGeo, droidDarkTrimMat);
+                    shinGroup.add(foot);
+
+                    const thrusterGlow = new THREE.Mesh(droidAntennaTipGeo, droidCyanGlowMat);
+                    thrusterGlow.position.set(0, -0.46, 0.02);
+                    shinGroup.add(thrusterGlow);
+
+                    root.add(hipGroup);
+                    return { hipGroup, shinGroup };
+                }
+
+                const leftLegRig = buildDroidLeg(true);
+                const rightLegRig = buildDroidLeg(false);
+
+                root.scale.setScalar(scale);
+
+                return {
+                    root,
+                    torso: torsoGroup,
+                    head,
+                    jaw: null,
+                    coreMesh,
+                    coreRing,
+                    scannerEye,
+                    hoverRing,
+                    muzzleCrystal,
+                    laserBeam,
+                    laserMat,
+                    leftArm: leftArmRig.shoulderGroup,
+                    rightArm: rightArmRig.shoulderGroup,
+                    leftForearm: leftArmRig.forearmGroup,
+                    rightForearm: rightArmRig.forearmGroup,
+                    leftLeg: leftLegRig.hipGroup,
+                    rightLeg: rightLegRig.hipGroup,
+                    leftShin: leftLegRig.shinGroup,
+                    rightShin: rightLegRig.shinGroup,
+                    skinMat,
+                    clothesMat,
+                    armorMat,
+                    eyeMat,
+                    coreMat,
+                    scale
+                };
+            }
 
             let skinColor = 0x9e8e94;
             let coatColor = 0x5c4750;
@@ -5050,6 +5665,13 @@
                 coreColor = 0xff1144;
                 scale = 0.88;
                 fleshTex = runnerFleshTex;
+            } else if (type === 'stalker') {
+                skinColor = 0x5b287c;
+                coatColor = 0x12071d;
+                eyeColor = 0xe879ff;
+                coreColor = 0xb400ff;
+                scale = 0.94;
+                fleshTex = stalkerFleshTex;
             } else if (type === 'brute') {
                 skinColor = 0x453b4f;
                 coatColor = 0x240910;
@@ -5066,23 +5688,28 @@
                 });
             }
 
+            const isRunnerFamily = (type === 'runner' || type === 'stalker');
             const skinMat = new THREE.MeshStandardMaterial({
                 color: skinColor,
                 map: fleshTex,
                 bumpMap: fleshTex,
-                bumpScale: type === 'runner' ? 0.035 : (type === 'shambler' ? 0.035 : 0.022),
-                roughness: type === 'runner' ? 0.42 : (type === 'shambler' ? 0.52 : 0.68),
-                metalness: type === 'runner' ? 0.18 : (type === 'shambler' ? 0.12 : 0.08),
-                emissive: type === 'shambler' ? 0x0d0407 : 0x000000
+                bumpScale: isRunnerFamily ? 0.036 : (type === 'shambler' ? 0.035 : 0.022),
+                roughness: type === 'stalker' ? 0.34 : (type === 'runner' ? 0.42 : (type === 'shambler' ? 0.52 : 0.68)),
+                metalness: type === 'stalker' ? 0.26 : (type === 'runner' ? 0.18 : (type === 'shambler' ? 0.12 : 0.08)),
+                emissive: type === 'stalker' ? 0x1a062b : (type === 'shambler' ? 0x0d0407 : 0x000000),
+                transparent: type === 'stalker',
+                opacity: 1.0
             });
             const clothesMat = new THREE.MeshStandardMaterial({
                 color: coatColor,
                 map: hostileSuitTex,
                 bumpMap: hostileSuitTex,
                 bumpScale: 0.020,
-                roughness: 0.68,
-                metalness: 0.18,
-                emissive: type === 'shambler' ? 0x080406 : 0x000000
+                roughness: type === 'stalker' ? 0.48 : 0.68,
+                metalness: type === 'stalker' ? 0.32 : 0.18,
+                emissive: type === 'stalker' ? 0x0c0318 : (type === 'shambler' ? 0x080406 : 0x000000),
+                transparent: type === 'stalker',
+                opacity: 1.0
             });
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
             const coreMat = new THREE.MeshBasicMaterial({ color: coreColor });
@@ -5094,7 +5721,7 @@
 
             const torsoGroup = new THREE.Group();
             torsoGroup.position.set(0, 1.32, 0);
-            if (type === 'runner') torsoGroup.rotation.x = 0.28;
+            if (isRunnerFamily) torsoGroup.rotation.x = type === 'stalker' ? 0.34 : 0.28;
             else if (type === 'shambler') torsoGroup.rotation.x = 0.20;
             root.add(torsoGroup);
 
@@ -5105,8 +5732,8 @@
                 torsoGroup.add(abdomen);
             }
 
-            const thoraxGeo = type === 'brute' ? bruteTorsoGeo : (type === 'runner' ? runnerTorsoGeo : shamblerTorsoGeo);
-            // Shambler & Runner use bump-mapped necrotic flesh/muscle on upper torso so 3D muscle definition is visible in dark arenas
+            const thoraxGeo = type === 'brute' ? bruteTorsoGeo : (isRunnerFamily ? runnerTorsoGeo : shamblerTorsoGeo);
+            // Shambler, Runner & Stalker use bump-mapped necrotic flesh/muscle on upper torso so 3D muscle definition is visible in dark arenas
             const thoraxMat = type === 'brute' ? clothesMat : skinMat;
             const torso = new THREE.Mesh(thoraxGeo, thoraxMat);
             torsoGroup.add(torso);
@@ -5236,7 +5863,7 @@
                     torsoGroup.add(spineNode);
                 }
             } else {
-                // Runner Bioluminescent / Arterial Chest Core framed by exposed ribs
+                // Runner & Phantom Stalker Bioluminescent / Arterial Chest Core framed by exposed ribs
                 const coreBezel = new THREE.Mesh(bioCoreBezelGeo, clothesMat);
                 coreBezel.position.set(0, 0.04, 0.21);
                 torsoGroup.add(coreBezel);
@@ -5245,18 +5872,32 @@
                 coreMesh.position.set(0, 0.04, 0.23);
                 torsoGroup.add(coreMesh);
 
+                if (type === 'stalker') {
+                    // Spinning hexagonal ultraviolet bio-plasma ring framing the Stalker's chest core
+                    coreRing = new THREE.Mesh(stalkerCoreRingGeo, eyeMat);
+                    coreRing.position.set(0, 0.04, 0.242);
+                    torsoGroup.add(coreRing);
+                }
+
                 // Exposed anatomical rib arcs curving over chest lesion
                 for (let r = -1; r <= 1; r += 2) {
-                    const rib = new THREE.Mesh(ribBoneArcGeo, shamblerBoneMat);
+                    const rib = new THREE.Mesh(ribBoneArcGeo, type === 'stalker' ? stalkerChitinMat : shamblerBoneMat);
                     rib.position.set(0, 0.04 + r * 0.085, 0.14);
                     torsoGroup.add(rib);
                 }
 
-                // Predatory dorsal bone spikes along hunched spine
-                for (let s = 0; s < 4; s++) {
-                    const spike = new THREE.Mesh(dorsalSpineSpikeGeo, clothesMat);
-                    spike.position.set(0, 0.26 - s * 0.15, -0.22);
+                // Predatory dorsal bone spikes along hunched spine (Stalker has taller plasma-tipped bio-quills!)
+                const spineCount = type === 'stalker' ? 5 : 4;
+                for (let s = 0; s < spineCount; s++) {
+                    const spike = new THREE.Mesh(dorsalSpineSpikeGeo, type === 'stalker' ? stalkerChitinMat : clothesMat);
+                    spike.position.set(0, 0.30 - s * 0.14, -0.22);
                     spike.rotation.x = -Math.PI * 0.42;
+                    if (type === 'stalker') {
+                        spike.scale.set(1.15, 1.45, 1.15);
+                        const quillGlow = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
+                        quillGlow.position.set(0, 0.11, -0.045);
+                        spike.add(quillGlow);
+                    }
                     torsoGroup.add(spike);
                 }
             }
@@ -5264,9 +5905,9 @@
             // 3. SCULPTED HEAD, ARTICULATED JAW, OPTICS & HEADSHOT HITBOX
             const head = new THREE.Group();
             head.userData.isHead = true;
-            if (type === 'runner') {
-                head.position.set(0, 1.94, 0.26);
-                head.rotation.x = -0.12;
+            if (isRunnerFamily) {
+                head.position.set(0, type === 'stalker' ? 1.92 : 1.94, type === 'stalker' ? 0.29 : 0.26);
+                head.rotation.x = type === 'stalker' ? -0.15 : -0.12;
             } else if (type === 'shambler') {
                 head.position.set(0, 2.02, 0.16);
                 head.rotation.z = 0.10;
@@ -5275,7 +5916,7 @@
             }
             root.add(head);
 
-            const craniumGeo = type === 'brute' ? bruteCraniumGeo : (type === 'runner' ? runnerCraniumGeo : shamblerCraniumGeo);
+            const craniumGeo = type === 'brute' ? bruteCraniumGeo : (isRunnerFamily ? runnerCraniumGeo : shamblerCraniumGeo);
             const craniumMesh = new THREE.Mesh(craniumGeo, skinMat);
             craniumMesh.userData.isHead = true;
             head.add(craniumMesh);
@@ -5427,7 +6068,7 @@
                     rightResp.userData.isHead = true;
                     head.add(rightResp);
                 } else {
-                    // Runner Glowing Bioluminescent Eyes in sunken orbital sockets
+                    // Runner & Stalker Glowing Bioluminescent Eyes in sunken orbital sockets
                     const leftEye = new THREE.Mesh(eyeOrbGeo, eyeMat);
                     leftEye.position.set(-0.092, 0.025, 0.215);
                     leftEye.rotation.y = -0.18;
@@ -5440,7 +6081,7 @@
                     rightEye.userData.isHead = true;
                     head.add(rightEye);
 
-                    // Runner secondary predatory photoreceptor eyes & swept cranial horns
+                    // Runner & Stalker secondary predatory photoreceptor eyes & swept cranial horns
                     const leftUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
                     leftUpperEye.position.set(-0.12, 0.075, 0.195);
                     leftUpperEye.userData.isHead = true;
@@ -5451,17 +6092,50 @@
                     rightUpperEye.userData.isHead = true;
                     head.add(rightUpperEye);
 
-                    const leftHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
-                    leftHorn.position.set(-0.11, 0.12, -0.04);
-                    leftHorn.rotation.set(-0.65, 0, 0.28);
-                    leftHorn.userData.isHead = true;
-                    head.add(leftHorn);
+                    if (type === 'stalker') {
+                        // Stalker Unique Vertical Third Forehead Optic Slit + Elongated Twin Whip-Horns
+                        const thirdEye = new THREE.Mesh(stalkerThirdEyeGeo, stalkerVioletGlowMat);
+                        thirdEye.position.set(0, 0.088, 0.205);
+                        thirdEye.userData.isHead = true;
+                        head.add(thirdEye);
 
-                    const rightHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
-                    rightHorn.position.set(0.11, 0.12, -0.04);
-                    rightHorn.rotation.set(-0.65, 0, -0.28);
-                    rightHorn.userData.isHead = true;
-                    head.add(rightHorn);
+                        const leftWhipHorn = new THREE.Mesh(stalkerCrownHornGeo, stalkerChitinMat);
+                        leftWhipHorn.position.set(-0.115, 0.12, -0.02);
+                        leftWhipHorn.rotation.set(-0.72, 0, 0.42);
+                        leftWhipHorn.userData.isHead = true;
+                        head.add(leftWhipHorn);
+
+                        const rightWhipHorn = new THREE.Mesh(stalkerCrownHornGeo, stalkerChitinMat);
+                        rightWhipHorn.position.set(0.115, 0.12, -0.02);
+                        rightWhipHorn.rotation.set(-0.72, 0, -0.42);
+                        rightWhipHorn.userData.isHead = true;
+                        head.add(rightWhipHorn);
+
+                        // Glowing bio-violet horn-tip nodes
+                        const leftTip = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
+                        leftTip.position.set(0, 0.34, -0.14);
+                        leftTip.scale.setScalar(0.7);
+                        leftTip.userData.isHead = true;
+                        leftWhipHorn.add(leftTip);
+
+                        const rightTip = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
+                        rightTip.position.set(0, 0.34, -0.14);
+                        rightTip.scale.setScalar(0.7);
+                        rightTip.userData.isHead = true;
+                        rightWhipHorn.add(rightTip);
+                    } else {
+                        const leftHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
+                        leftHorn.position.set(-0.11, 0.12, -0.04);
+                        leftHorn.rotation.set(-0.65, 0, 0.28);
+                        leftHorn.userData.isHead = true;
+                        head.add(leftHorn);
+
+                        const rightHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
+                        rightHorn.position.set(0.11, 0.12, -0.04);
+                        rightHorn.rotation.set(-0.65, 0, -0.28);
+                        rightHorn.userData.isHead = true;
+                        head.add(rightHorn);
+                    }
                 }
             }
 
@@ -5475,9 +6149,9 @@
             function buildArticulatedArm(isLeft) {
                 const side = isLeft ? -1 : 1;
                 const shoulderGroup = new THREE.Group();
-                const shoulderX = type === 'brute' ? 0.56 : (type === 'runner' ? 0.44 : 0.50);
-                const shoulderY = type === 'runner' ? 1.54 : (type === 'shambler' ? 1.58 : 1.62);
-                const shoulderZ = type === 'runner' ? 0.12 : (type === 'shambler' ? 0.06 : 0.0);
+                const shoulderX = type === 'brute' ? 0.56 : (isRunnerFamily ? 0.44 : 0.50);
+                const shoulderY = isRunnerFamily ? 1.54 : (type === 'shambler' ? 1.58 : 1.62);
+                const shoulderZ = isRunnerFamily ? 0.12 : (type === 'shambler' ? 0.06 : 0.0);
                 shoulderGroup.position.set(side * shoulderX, shoulderY, shoulderZ);
 
                 if (type === 'shambler') {
@@ -5584,7 +6258,7 @@
                     return { shoulderGroup, forearmGroup };
                 }
 
-                const deltoid = new THREE.Mesh(deltoidCapGeo, type === 'runner' ? skinMat : clothesMat);
+                const deltoid = new THREE.Mesh(deltoidCapGeo, isRunnerFamily ? skinMat : clothesMat);
                 shoulderGroup.add(deltoid);
 
                 if (type === 'brute') {
@@ -5603,6 +6277,17 @@
                     shoulderSpur.position.set(side * 0.06, 0.12, -0.02);
                     shoulderSpur.rotation.z = -side * 0.45;
                     shoulderGroup.add(shoulderSpur);
+                } else if (type === 'stalker') {
+                    // Flared Cobra/Mantis Scapular Shoulder Crest Fins + Plasma Node
+                    const frill = new THREE.Mesh(stalkerShoulderFrillGeo, stalkerChitinMat);
+                    frill.position.set(side * 0.08, 0.10, -0.04);
+                    frill.rotation.set(-0.35, 0, -side * 0.58);
+                    shoulderGroup.add(frill);
+
+                    const frillNode = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
+                    frillNode.position.set(0, 0.28, -0.06);
+                    frillNode.scale.setScalar(0.8);
+                    frill.add(frillNode);
                 }
 
                 const upperArm = new THREE.Mesh(upperArmGeo, skinMat);
@@ -5648,6 +6333,15 @@
                         const scythe = new THREE.Mesh(runnerScytheBladeGeo, clothesMat);
                         scythe.position.x = side * 0.055;
                         forearmGroup.add(scythe);
+                    } else if (type === 'stalker') {
+                        // Elongated Twin-Edge Mantis Scythe Blade with Searing Neon-Violet Plasma Edge
+                        const mantisBlade = new THREE.Mesh(stalkerMantisBladeGeo, stalkerChitinMat);
+                        mantisBlade.position.x = side * 0.06;
+                        forearmGroup.add(mantisBlade);
+
+                        const plasmaEdge = new THREE.Mesh(stalkerMantisEdgeGeo, stalkerVioletGlowMat);
+                        plasmaEdge.position.x = side * 0.06;
+                        forearmGroup.add(plasmaEdge);
                     }
                 }
 
@@ -5665,7 +6359,7 @@
                 const hipX = type === 'brute' ? 0.24 : 0.19;
                 hipGroup.position.set(side * hipX, 0.78, 0);
 
-                const thigh = new THREE.Mesh(thighGeo, type === 'runner' ? skinMat : clothesMat);
+                const thigh = new THREE.Mesh(thighGeo, isRunnerFamily ? skinMat : clothesMat);
                 hipGroup.add(thigh);
 
                 if (type === 'shambler') {
@@ -5683,11 +6377,11 @@
                 shinGroup.position.set(0, -0.40, 0);
                 hipGroup.add(shinGroup);
 
-                const kneePad = new THREE.Mesh(kneePadGeo, armorMat ? armorMat : clothesMat);
+                const kneePad = new THREE.Mesh(kneePadGeo, armorMat ? armorMat : (type === 'stalker' ? stalkerChitinMat : clothesMat));
                 kneePad.position.set(0, 0, 0.06);
                 shinGroup.add(kneePad);
 
-                const shin = new THREE.Mesh(shinGeo, type === 'runner' ? skinMat : (type === 'shambler' ? skinMat : clothesMat));
+                const shin = new THREE.Mesh(shinGeo, isRunnerFamily ? skinMat : (type === 'shambler' ? skinMat : clothesMat));
                 shinGroup.add(shin);
 
                 if (type === 'brute') {
@@ -5697,6 +6391,11 @@
                     const shinBrace = new THREE.Mesh(shamblerLegBraceGeo, armorMat);
                     shinBrace.position.set(side * 0.095, -0.18, 0.01);
                     shinGroup.add(shinBrace);
+                } else if (type === 'stalker') {
+                    // Curved Raptor Heel-Spur on Stalker Shins
+                    const heelSpur = new THREE.Mesh(stalkerHeelSpurGeo, stalkerChitinMat);
+                    heelSpur.position.set(0, -0.28, -0.10);
+                    shinGroup.add(heelSpur);
                 }
 
                 const boot = new THREE.Mesh(combatBootGeo, armorMat ? armorMat : clothesMat);
@@ -5746,6 +6445,7 @@
                 if (z.parts.armorMat) z.parts.armorMat.dispose();
                 if (z.parts.eyeMat) z.parts.eyeMat.dispose();
                 if (z.parts.coreMat) z.parts.coreMat.dispose();
+                if (z.parts.laserMat) z.parts.laserMat.dispose();
             }
         }
 
@@ -5776,7 +6476,7 @@
             });
         }
 
-        function spawnBloodParticles(position, count = 14, isKill = false) {
+        function spawnBloodParticles(position, count = 14, isKill = false, particleTheme = 'blood') {
             let spawned = 0;
             for (let i = 0; i < BLOOD_POOL_SIZE && spawned < count; i++) {
                 const p = bloodPool[i];
@@ -5784,6 +6484,14 @@
                 p.active = true;
                 p.mesh.visible = true;
                 p.mesh.position.copy(position);
+
+                if (particleTheme === 'droid') {
+                    p.mesh.material.color.setHex(i % 2 === 0 ? 0x00f5d4 : 0xff0055);
+                } else if (particleTheme === 'stalker') {
+                    p.mesh.material.color.setHex(i % 2 === 0 ? 0xd946ff : 0x6b00b3);
+                } else {
+                    p.mesh.material.color.setHex(i % 2 === 0 ? 0xff0033 : 0x800015);
+                }
 
                 const speed = isKill ? (3 + Math.random() * 6) : (2 + Math.random() * 4);
                 const theta = Math.random() * Math.PI * 2;
@@ -5972,6 +6680,89 @@
             }
         }
 
+        // Pre-allocated Nexus Hunter Droid Plasma Bolt Pool (Zero per-shot allocations)
+        const DROID_BOLT_POOL_SIZE = 24;
+        const droidBoltOuterGeo = new THREE.OctahedronGeometry(0.11, 0);
+        droidBoltOuterGeo.scale(0.85, 0.85, 4.6);
+        const droidBoltCoreGeo = new THREE.OctahedronGeometry(0.062, 0);
+        droidBoltCoreGeo.scale(0.85, 0.85, 4.2);
+        const droidBoltOuterMat = new THREE.MeshBasicMaterial({
+            color: 0xff0055,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const droidBoltCoreMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
+        const droidBoltPool = [];
+        for (let i = 0; i < DROID_BOLT_POOL_SIZE; i++) {
+            const boltGroup = new THREE.Group();
+            const outer = new THREE.Mesh(droidBoltOuterGeo, droidBoltOuterMat);
+            const inner = new THREE.Mesh(droidBoltCoreGeo, droidBoltCoreMat);
+            boltGroup.add(outer, inner);
+            boltGroup.visible = false;
+            scene.add(boltGroup);
+            droidBoltPool.push({
+                mesh: boltGroup,
+                velocity: new THREE.Vector3(),
+                originPos: new THREE.Vector3(),
+                life: 0,
+                damage: 10,
+                active: false
+            });
+        }
+
+        const _boltLookTarget = new THREE.Vector3();
+        const _droidMuzzleWorld = new THREE.Vector3();
+        const _droidAimDir = new THREE.Vector3();
+
+        function spawnDroidBolt(originPos, dirVec, shooterPos) {
+            for (let i = 0; i < DROID_BOLT_POOL_SIZE; i++) {
+                const b = droidBoltPool[i];
+                if (b.active) continue;
+                b.active = true;
+                b.mesh.visible = true;
+                b.mesh.position.copy(originPos);
+                b.originPos.copy(shooterPos);
+                b.velocity.copy(dirVec).normalize().multiplyScalar(23.0);
+                _boltLookTarget.copy(originPos).add(b.velocity);
+                b.mesh.lookAt(_boltLookTarget);
+                b.life = 2.6;
+                b.damage = 10;
+                break;
+            }
+        }
+
+        function clearDroidBolts() {
+            for (let i = 0; i < DROID_BOLT_POOL_SIZE; i++) {
+                droidBoltPool[i].active = false;
+                droidBoltPool[i].mesh.visible = false;
+            }
+        }
+
+        // Fast pure-math 2D obstacle Line-Of-Sight check for Hunter Droid flanking & targeting (Zero allocations)
+        function hasLineOfSight(ax, az, bx, bz) {
+            const dx = bx - ax;
+            const dz = bz - az;
+            const lenSq = dx * dx + dz * dz;
+            if (lenSq < 0.0001) return true;
+            for (let i = 0; i < obstacles.length; i++) {
+                const obs = obstacles[i];
+                const t = THREE.MathUtils.clamp(((obs.x - ax) * dx + (obs.z - az) * dz) / lenSq, 0, 1);
+                const closestX = ax + t * dx;
+                const closestZ = az + t * dz;
+                const distSq = (obs.x - closestX) * (obs.x - closestX) + (obs.z - closestZ) * (obs.z - closestZ);
+                const rad = obs.radius + 0.28;
+                if (distSq < rad * rad) return false;
+            }
+            return true;
+        }
+
+        function isNeonNexusActive() {
+            const activeMap = ARENA_MAPS[state.currentMapIndex];
+            return Boolean(activeMap && activeMap.id === 'map4');
+        }
+
         // Fast active zombie counter (Performance improvement: Zero Array Allocation per frame)
         function getActiveZombieCount() {
             let count = 0;
@@ -5983,12 +6774,19 @@
 
         function spawnZombie(waveNum) {
             let type = 'shambler';
+            const neonNexus = isNeonNexusActive();
             if (state.waveRoster && state.waveRoster.length > 0) {
                 type = state.waveRoster.pop();
+                // Strict enforcement: Nexus Hunter Droid is exclusively native to Map 04: Neon Nexus
+                if (type === 'droid' && !neonNexus) {
+                    type = waveNum >= 2 ? 'stalker' : 'shambler';
+                }
             } else {
                 const roll = Math.random();
-                if (waveNum >= 3 && roll > 0.72) type = 'brute';
-                else if (waveNum >= 2 && roll > 0.52) type = 'runner';
+                if (neonNexus && roll > 0.64) type = 'droid';
+                else if (waveNum >= 3 && roll > 0.72) type = 'brute';
+                else if (waveNum >= 2 && roll > 0.56) type = 'stalker';
+                else if (waveNum >= 2 && roll > 0.40) type = 'runner';
             }
 
             const parts = createZombieMesh(type);
@@ -6035,12 +6833,18 @@
                 spawnZ = chosenNode[1];
             }
 
-            parts.root.position.set(spawnX, 0, spawnZ);
+            parts.root.position.set(spawnX, type === 'droid' ? 0.28 : 0, spawnZ);
             scene.add(parts.root);
 
-            const baseSpeed = type === 'runner' ? 7.2 : (type === 'brute' ? 3.3 : 4.2);
+            const baseSpeed = type === 'runner' ? 7.2
+                : (type === 'stalker' ? 6.1
+                : (type === 'droid' ? 5.6
+                : (type === 'brute' ? 3.3 : 4.2)));
             const speed = baseSpeed + Math.min(waveNum * 0.22, 2.2) + (Math.random() * 0.5);
-            const maxHp = type === 'brute' ? 240 : (type === 'runner' ? 65 : 100);
+            const maxHp = type === 'brute' ? 240
+                : (type === 'droid' ? 130
+                : (type === 'stalker' ? 80
+                : (type === 'runner' ? 65 : 100)));
             const distToPlayer = Math.hypot(spawnX - camera.position.x, spawnZ - camera.position.z);
 
             const zombieObj = {
@@ -6051,13 +6855,13 @@
                 maxHp,
                 speed,
                 baseSpeed: speed,
-                damage: type === 'brute' ? 26 : 14,
+                damage: type === 'brute' ? 26 : (type === 'stalker' ? 18 : (type === 'droid' ? 16 : 14)),
                 walkCycle: Math.random() * Math.PI * 2,
                 hitFlashTimer: 0,
                 dying: false,
                 deathProgress: 0,
 
-                state: distToPlayer > 22 ? 'WANDER' : 'CHASE',
+                state: (type === 'droid' || distToPlayer <= 22) ? 'CHASE' : 'WANDER',
                 alertTimer: 0,
                 wanderTarget: new THREE.Vector3(
                     THREE.MathUtils.clamp(spawnX + (Math.random() * 28 - 14), -50, 50),
@@ -6079,7 +6883,27 @@
                 lungeTimer: 0,
                 lungeCooldown: 2 + Math.random() * 3,
                 isEnraged: false,
-                weaveOffset: Math.random() * Math.PI * 2
+                weaveOffset: Math.random() * Math.PI * 2,
+
+                // Phantom Stalker (Runner Variant) Flanking, Phase-Shroud & Sidestep Evade State
+                flankDir: Math.random() < 0.5 ? 1 : -1,
+                flankSwitchTimer: 2.2 + Math.random() * 2.2,
+                phaseTimer: 0,
+                phaseCooldown: 1.5 + Math.random() * 2.0,
+                blinkTelegraphTimer: 0,
+                blinkTimer: 0,
+                blinkCooldown: 2.5 + Math.random() * 2.0,
+                evadeTimer: 0,
+                evadeDir: 1,
+                evadeCooldown: 0,
+
+                // Nexus Hunter Droid (Map 04 Native) Strafe-Hunt, Target-Lock & Plasma Burst State
+                strafeDir: Math.random() < 0.5 ? 1 : -1,
+                strafeTimer: 1.8 + Math.random() * 1.8,
+                droidChargeTimer: 0,
+                droidBurstShots: 0,
+                droidBurstDelay: 0,
+                droidFireCooldown: 1.4 + Math.random() * 1.4
             };
 
             parts.root.traverse(child => {
@@ -6090,11 +6914,19 @@
 
             zombies.push(zombieObj);
 
-            // Announce Brute only once per wave (Issue 17 Fix: Prevents killfeed obliteration)
+            // One-time-per-wave specialist hostile announcements (prevents killfeed spam)
             if (type === 'brute' && !state.bruteAnnouncedThisWave) {
                 state.bruteAnnouncedThisWave = true;
                 showKillFeed('WARNING: ARMORED BRUTE DETECTED!');
                 sound.playZombieGroan(0.55);
+            } else if (type === 'droid' && !state.droidAnnouncedThisWave) {
+                state.droidAnnouncedThisWave = true;
+                showKillFeed('NEXUS ALERT: HUNTER DROID LOCK-ON!');
+                sound.playDroidScan();
+            } else if (type === 'stalker' && !state.stalkerAnnouncedThisWave && waveNum === 2) {
+                state.stalkerAnnouncedThisWave = true;
+                showKillFeed('WARNING: PHANTOM STALKER DETECTED!');
+                sound.playStalkerShriek();
             }
 
             updateHUD();
@@ -6131,6 +6963,8 @@
             waveZombiesRemainingToSpawn: 0,
             waveRoster: [],
             bruteAnnouncedThisWave: false,
+            stalkerAnnouncedThisWave: false,
+            droidAnnouncedThisWave: false,
             spawnTimer: 0,
 
             // Intermission Breather (Improvement 6)
@@ -6386,6 +7220,7 @@
             zombies.length = 0;
             clearParticles();
             clearBulletTracers();
+            clearDroidBolts();
             removeHealthJewel();
 
             weaponGroup.visible = false;
@@ -6822,13 +7657,17 @@
         }
 
         function announceWave(waveNumber) {
+            const neonNexus = isNeonNexusActive();
             let subTitle = 'PRIMARY THREAT: SHAMBLERS DETECTED';
             let bannerColor = 'text-red-400';
-            if (waveNumber === 2) {
-                subTitle = 'TACTICAL ALERT: CRIMSON RUNNERS APPROACHING';
-                bannerColor = 'text-red-500 font-bold';
+            if (neonNexus) {
+                subTitle = 'NEXUS PROTOCOL: HUNTER DROIDS & HOSTILES DEPLOYED';
+                bannerColor = 'text-cyan-400 font-bold';
+            } else if (waveNumber === 2) {
+                subTitle = 'TACTICAL ALERT: RUNNERS & PHANTOM STALKERS APPROACHING';
+                bannerColor = 'text-fuchsia-400 font-bold';
             } else if (waveNumber === 3) {
-                subTitle = 'CRITICAL WARNING: ARMORED BRUTES INBOUND';
+                subTitle = 'CRITICAL WARNING: ARMORED BRUTES & STALKERS INBOUND';
                 bannerColor = 'text-amber-500 font-bold';
             } else if (waveNumber >= 4) {
                 subTitle = `MUTATION LEVEL ${waveNumber}: FULL MULTI-CLASS HORDE`;
@@ -6851,42 +7690,77 @@
             state.wave = waveNumber;
             state.isIntermission = false;
             state.bruteAnnouncedThisWave = false;
+            state.stalkerAnnouncedThisWave = false;
+            state.droidAnnouncedThisWave = false;
+            clearDroidBolts();
 
             const targetMapIdx = selectMapIndexForWave(waveNumber);
             setActiveMap(targetMapIdx, waveNumber > 1);
 
+            const neonNexus = isNeonNexusActive();
             const totalZombies = 6 + waveNumber * 4;
 
             const roster = [];
-            if (waveNumber === 1) {
-                for (let i = 0; i < totalZombies; i++) roster.push('shambler');
-            } else if (waveNumber === 2) {
-                const numRunners = Math.max(3, Math.floor(totalZombies * 0.35));
-                for (let i = 0; i < numRunners; i++) roster.push('runner');
+            if (neonNexus) {
+                // Map 04: Neon Nexus — Native Nexus Hunter Droids deploy alongside Sector hostiles
+                const droidRatio = waveNumber === 1 ? 0.30 : Math.min(0.40, 0.30 + waveNumber * 0.015);
+                const numDroids = Math.max(3, Math.floor(totalZombies * droidRatio));
+                const numBrutes = waveNumber >= 3 ? Math.max(1, Math.floor(totalZombies * Math.min(0.20, 0.12 + waveNumber * 0.015))) : 0;
+                const numStalkers = waveNumber >= 2 ? Math.max(2, Math.floor(totalZombies * 0.18)) : 0;
+                const numRunners = waveNumber >= 2 ? Math.max(2, Math.floor(totalZombies * 0.16)) : 0;
+
+                for (let i = 0; i < numDroids && roster.length < totalZombies; i++) roster.push('droid');
+                for (let i = 0; i < numBrutes && roster.length < totalZombies; i++) roster.push('brute');
+                for (let i = 0; i < numStalkers && roster.length < totalZombies; i++) roster.push('stalker');
+                for (let i = 0; i < numRunners && roster.length < totalZombies; i++) roster.push('runner');
                 while (roster.length < totalZombies) roster.push('shambler');
                 shuffleArray(roster);
-                if (roster[0] !== 'runner' && roster[1] !== 'runner') {
-                    const rIdx = roster.indexOf('runner');
-                    if (rIdx > -1) { [roster[1], roster[rIdx]] = [roster[rIdx], roster[1]]; }
+
+                // Guarantee an early Hunter Droid encounter (remember spawnZombie pops from end of roster)
+                const dIdx = roster.lastIndexOf('droid');
+                const earlyPos = Math.max(0, roster.length - 2);
+                if (dIdx > -1 && dIdx < earlyPos) {
+                    [roster[earlyPos], roster[dIdx]] = [roster[dIdx], roster[earlyPos]];
+                }
+            } else if (waveNumber === 1) {
+                for (let i = 0; i < totalZombies; i++) roster.push('shambler');
+            } else if (waveNumber === 2) {
+                const numRunners = Math.max(3, Math.floor(totalZombies * 0.24));
+                const numStalkers = Math.max(2, Math.floor(totalZombies * 0.20));
+                for (let i = 0; i < numRunners; i++) roster.push('runner');
+                for (let i = 0; i < numStalkers; i++) roster.push('stalker');
+                while (roster.length < totalZombies) roster.push('shambler');
+                shuffleArray(roster);
+                // Ensure both Runner and Phantom Stalker show up early in Wave 2
+                const sIdx = roster.lastIndexOf('stalker');
+                const earlyStalkerPos = Math.max(0, roster.length - 3);
+                if (sIdx > -1 && sIdx < earlyStalkerPos) {
+                    [roster[earlyStalkerPos], roster[sIdx]] = [roster[sIdx], roster[earlyStalkerPos]];
                 }
             } else if (waveNumber === 3) {
                 const numBrutes = Math.max(2, Math.floor(totalZombies * 0.18));
-                const numRunners = Math.max(4, Math.floor(totalZombies * 0.35));
+                const numRunners = Math.max(3, Math.floor(totalZombies * 0.22));
+                const numStalkers = Math.max(3, Math.floor(totalZombies * 0.20));
                 for (let i = 0; i < numBrutes; i++) roster.push('brute');
                 for (let i = 0; i < numRunners; i++) roster.push('runner');
+                for (let i = 0; i < numStalkers; i++) roster.push('stalker');
                 while (roster.length < totalZombies) roster.push('shambler');
                 shuffleArray(roster);
-                const bIdx = roster.indexOf('brute');
-                if (bIdx > -1 && bIdx > 5) {
-                    [roster[4], roster[bIdx]] = [roster[bIdx], roster[4]];
+                const bIdx = roster.lastIndexOf('brute');
+                const earlyBrutePos = Math.max(0, roster.length - 5);
+                if (bIdx > -1 && bIdx < earlyBrutePos) {
+                    [roster[earlyBrutePos], roster[bIdx]] = [roster[bIdx], roster[earlyBrutePos]];
                 }
             } else {
-                const bruteRatio = Math.min(0.28, 0.18 + waveNumber * 0.02);
-                const runnerRatio = Math.min(0.42, 0.30 + waveNumber * 0.02);
+                const bruteRatio = Math.min(0.26, 0.16 + waveNumber * 0.018);
+                const runnerRatio = Math.min(0.26, 0.20 + waveNumber * 0.012);
+                const stalkerRatio = Math.min(0.26, 0.18 + waveNumber * 0.014);
                 const numBrutes = Math.max(2, Math.floor(totalZombies * bruteRatio));
-                const numRunners = Math.max(4, Math.floor(totalZombies * runnerRatio));
-                for (let i = 0; i < numBrutes; i++) roster.push('brute');
-                for (let i = 0; i < numRunners; i++) roster.push('runner');
+                const numRunners = Math.max(3, Math.floor(totalZombies * runnerRatio));
+                const numStalkers = Math.max(3, Math.floor(totalZombies * stalkerRatio));
+                for (let i = 0; i < numBrutes && roster.length < totalZombies; i++) roster.push('brute');
+                for (let i = 0; i < numRunners && roster.length < totalZombies; i++) roster.push('runner');
+                for (let i = 0; i < numStalkers && roster.length < totalZombies; i++) roster.push('stalker');
                 while (roster.length < totalZombies) roster.push('shambler');
                 shuffleArray(roster);
             }
@@ -6912,6 +7786,7 @@
             zombies.length = 0;
             clearParticles();
             clearBulletTracers();
+            clearDroidBolts();
             removeHealthJewel();
 
             camera.position.set(0, 1.75, 0);
@@ -6967,6 +7842,7 @@
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
+            clearDroidBolts();
             removeHealthJewel();
             weaponGroup.visible = false;
             muzzleFlashGroup.visible = false;
@@ -7059,7 +7935,7 @@
                 const d = Math.hypot(z.mesh.position.x - pos.x, z.mesh.position.z - pos.z);
                 if (d <= radius) {
                     z.state = 'ALERT';
-                    z.alertTimer = z.type === 'runner' ? 0.2 : 0.38;
+                    z.alertTimer = (z.type === 'runner' || z.type === 'stalker' || z.type === 'droid') ? 0.2 : 0.38;
                 }
             }
         }
@@ -7143,15 +8019,23 @@
                         }
                     }
 
+                    const hitParticleTheme = hitZombie.type === 'droid' ? 'droid' : (hitZombie.type === 'stalker' ? 'stalker' : 'blood');
                     let damage = 40;
                     if (hitZombie.type === 'brute') {
                         if (isHeadshot) {
                             damage = 120;
                         } else if (isCoreHit) {
                             damage = 110;
-                            spawnBloodParticles(hit.point, 16, false);
+                            spawnBloodParticles(hit.point, 16, false, 'blood');
                         } else {
                             damage = 26; // Heavy chest armor absorbs body shots
+                        }
+                    } else if (hitZombie.type === 'droid') {
+                        if (isHeadshot || isCoreHit) {
+                            damage = 110;
+                            spawnBloodParticles(hit.point, 14, false, 'droid');
+                        } else {
+                            damage = 32; // Cybernetic alloy hull reduces non-critical hits
                         }
                     } else {
                         damage = isHeadshot ? 110 : 40;
@@ -7159,15 +8043,30 @@
 
                     hitZombie.hp -= damage;
                     hitZombie.hitFlashTimer = 0.12;
-                    hitZombie.parts.skinMat.emissive.setHex(0xff0033);
-                    hitZombie.parts.clothesMat.emissive.setHex(0x88001b);
-                    if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0xaa2200);
+                    if (hitZombie.type === 'droid') {
+                        hitZombie.parts.skinMat.emissive.setHex(0x00f5d4);
+                        hitZombie.parts.clothesMat.emissive.setHex(0xff0055);
+                        if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0x00b8a0);
+                    } else if (hitZombie.type === 'stalker') {
+                        hitZombie.parts.skinMat.emissive.setHex(0xe879ff);
+                        hitZombie.parts.clothesMat.emissive.setHex(0x7a00cc);
+                        // Non-lethal hit snaps Stalker out of Phase-Shroud cloak immediately
+                        hitZombie.phaseTimer = 0;
+                        hitZombie.parts.skinMat.opacity = 1.0;
+                        hitZombie.parts.clothesMat.opacity = 1.0;
+                    } else {
+                        hitZombie.parts.skinMat.emissive.setHex(0xff0033);
+                        hitZombie.parts.clothesMat.emissive.setHex(0x88001b);
+                        if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0xaa2200);
+                    }
 
                     _knockDir.subVectors(hitZombie.mesh.position, camera.position).setY(0).normalize();
-                    const knockPower = isHeadshot ? (hitZombie.type === 'brute' ? 0.35 : 0.75) : (hitZombie.type === 'brute' ? 0.12 : 0.32);
+                    const knockPower = isHeadshot
+                        ? (hitZombie.type === 'brute' ? 0.35 : (hitZombie.type === 'droid' ? 0.45 : 0.75))
+                        : (hitZombie.type === 'brute' ? 0.12 : (hitZombie.type === 'droid' ? 0.18 : 0.32));
                     hitZombie.mesh.position.addScaledVector(_knockDir, knockPower);
 
-                    // Poise & Stagger System (Issue 11 Fix: Armored Brute cannot be stagger-locked)
+                    // Poise, Stagger & Reactive Specialist Responses
                     if (hitZombie.type === 'brute') {
                         if (isHeadshot || isCoreHit) {
                             if (!hitZombie.staggerCooldown || hitZombie.staggerCooldown <= 0) {
@@ -7178,6 +8077,31 @@
                         } else {
                             hitZombie.staggerTimer = 0;
                             hitZombie.staggerPush = 0;
+                        }
+                    } else if (hitZombie.type === 'droid') {
+                        if (isHeadshot || isCoreHit) {
+                            hitZombie.staggerTimer = 0.22;
+                            hitZombie.staggerPush = knockPower * 1.8;
+                            hitZombie.droidChargeTimer = 0; // Critical hit interrupts lock-on charge!
+                            hitZombie.droidBurstShots = 0;
+                            if (hitZombie.parts.laserBeam) hitZombie.parts.laserBeam.visible = false;
+                        } else {
+                            hitZombie.staggerTimer = 0.08;
+                            hitZombie.staggerPush = knockPower * 1.2;
+                        }
+                    } else if (hitZombie.type === 'stalker') {
+                        if (!isHeadshot && hitZombie.hp > 0 && hitZombie.evadeCooldown <= 0) {
+                            // Phantom Stalker Reactive Sidestep Snap-Dodge on non-lethal body shot!
+                            hitZombie.evadeTimer = 0.24;
+                            hitZombie.evadeDir = Math.random() < 0.5 ? 1 : -1;
+                            hitZombie.evadeCooldown = 2.6;
+                            hitZombie.blinkTelegraphTimer = 0;
+                            hitZombie.staggerTimer = 0.06;
+                            hitZombie.staggerPush = knockPower * 1.2;
+                            sound.playStalkerShriek();
+                        } else {
+                            hitZombie.staggerTimer = isHeadshot ? 0.30 : 0.14;
+                            hitZombie.staggerPush = knockPower * 2.5;
                         }
                     } else {
                         hitZombie.staggerTimer = isHeadshot ? 0.30 : 0.14;
@@ -7193,24 +8117,36 @@
                     // Bug 8 Fix: Set hitmarker.style.color and filter instead of borderColor on SVG
                     hitmarker.style.opacity = '1';
                     const isCrit = (isHeadshot || isCoreHit);
-                    hitmarker.style.color = isCrit ? '#ffcc00' : '#ff0033';
-                    hitmarker.style.filter = isCrit ? 'drop-shadow(0 0 6px #ffcc00)' : 'drop-shadow(0 0 6px #ff0033)';
+                    hitmarker.style.color = isCrit ? '#ffcc00' : (hitZombie.type === 'droid' ? '#00f5d4' : '#ff0033');
+                    hitmarker.style.filter = isCrit ? 'drop-shadow(0 0 6px #ffcc00)' : (hitZombie.type === 'droid' ? 'drop-shadow(0 0 6px #00f5d4)' : 'drop-shadow(0 0 6px #ff0033)');
                     clearTimeout(hitmarker._timer);
                     hitmarker._timer = setTimeout(() => {
                         hitmarker.style.opacity = '0';
                     }, 95);
 
                     sound.playHit(isCrit);
-                    spawnBloodParticles(hit.point, isCrit ? 18 : 9, hitZombie.hp <= 0);
+                    spawnBloodParticles(hit.point, isCrit ? 18 : 9, hitZombie.hp <= 0, hitParticleTheme);
 
                     if (hitZombie.hp <= 0) {
                         hitZombie.dying = true;
+                        if (hitZombie.parts.laserBeam) hitZombie.parts.laserBeam.visible = false;
+                        if (hitZombie.parts.hoverRing) hitZombie.parts.hoverRing.visible = false;
+                        if (hitZombie.type === 'stalker') {
+                            hitZombie.parts.skinMat.opacity = 1.0;
+                            hitZombie.parts.clothesMat.opacity = 1.0;
+                        }
                         state.kills++;
                         let killScore = 100;
                         let killMsg = '+100 SHAMBLER SLAIN';
                         if (hitZombie.type === 'runner') {
                             killScore = isHeadshot ? 180 : 120;
                             killMsg = isHeadshot ? '+180 RUNNER HEADSHOT!' : '+120 RUNNER SLAIN';
+                        } else if (hitZombie.type === 'stalker') {
+                            killScore = isHeadshot ? 230 : 160;
+                            killMsg = isHeadshot ? '+230 STALKER HEADSHOT!' : '+160 STALKER SLAIN';
+                        } else if (hitZombie.type === 'droid') {
+                            killScore = (isHeadshot || isCoreHit) ? 300 : 220;
+                            killMsg = (isHeadshot || isCoreHit) ? '+300 DROID CRIT SHUTDOWN!' : '+220 HUNTER DROID TERMINATED';
                         } else if (hitZombie.type === 'brute') {
                             killScore = isHeadshot ? 350 : 250;
                             killMsg = isHeadshot ? '+350 BRUTE DECIMATED!' : '+250 BRUTE DESTROYED';
@@ -7222,7 +8158,13 @@
                         if (isHeadshot) state.headshots++;
                         state.score += killScore;
                         showKillFeed(killMsg);
-                        sound.playZombieGroan(hitZombie.type === 'brute' ? 0.55 : (hitZombie.type === 'runner' ? 1.3 : 0.75));
+                        if (hitZombie.type === 'droid') {
+                            sound.playDroidDestroy();
+                        } else if (hitZombie.type === 'stalker') {
+                            sound.playStalkerShriek();
+                        } else {
+                            sound.playZombieGroan(hitZombie.type === 'brute' ? 0.55 : (hitZombie.type === 'runner' ? 1.3 : 0.75));
+                        }
                         updateHUD();
                     }
                 } else {
@@ -8276,22 +9218,44 @@
                 if (z.hitFlashTimer > 0) {
                     z.hitFlashTimer -= dt;
                     if (z.hitFlashTimer <= 0) {
-                        z.parts.skinMat.emissive.setHex(z.type === 'shambler' ? 0x0d0407 : 0x000000);
-                        z.parts.clothesMat.emissive.setHex(z.type === 'shambler' ? 0x080406 : 0x000000);
-                        if (z.parts.armorMat) z.parts.armorMat.emissive.setHex(z.type === 'shambler' ? 0x0a0d12 : 0x000000);
+                        z.parts.skinMat.emissive.setHex(
+                            z.type === 'shambler' ? 0x0d0407
+                                : (z.type === 'stalker' ? 0x1a062b
+                                    : (z.type === 'droid' ? 0x05161c : 0x000000))
+                        );
+                        z.parts.clothesMat.emissive.setHex(
+                            z.type === 'shambler' ? 0x080406
+                                : (z.type === 'stalker' ? 0x0c0318
+                                    : (z.type === 'droid' ? 0x080412 : 0x000000))
+                        );
+                        if (z.parts.armorMat) {
+                            z.parts.armorMat.emissive.setHex(
+                                z.type === 'shambler' ? 0x0a0d12
+                                    : (z.type === 'droid' ? 0x061018 : 0x000000)
+                            );
+                        }
                     }
                 }
 
                 if (z.dying) {
                     z.deathProgress += dt * 3.2;
-                    z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
-                    z.mesh.rotation.z = Math.min(0.25, z.deathProgress * 0.25);
-                    z.mesh.position.y = Math.min(0.22, z.deathProgress * 0.22) * z.parts.scale;
-                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = Math.min(0.85, z.deathProgress * 0.9);
-                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = Math.min(0.65, z.deathProgress * 0.7);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.35;
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.25;
-                    if (z.parts.jaw) z.parts.jaw.rotation.x = 0.28;
+                    if (z.type === 'droid') {
+                        // Cybernetic short-circuit slump & hover-drop crash
+                        z.mesh.rotation.x = Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
+                        z.mesh.rotation.z = Math.sin(z.deathProgress * 28) * 0.14 * Math.max(0, 1 - z.deathProgress);
+                        z.mesh.position.y = Math.max(0.14, 0.28 * (1 - z.deathProgress * 1.2));
+                        if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
+                        if (z.parts.hoverRing) z.parts.hoverRing.visible = false;
+                    } else {
+                        z.mesh.rotation.x = -Math.min(Math.PI / 2, z.deathProgress * (Math.PI / 2));
+                        z.mesh.rotation.z = Math.min(0.25, z.deathProgress * 0.25);
+                        z.mesh.position.y = Math.min(0.22, z.deathProgress * 0.22) * z.parts.scale;
+                        if (z.parts.leftShin) z.parts.leftShin.rotation.x = Math.min(0.85, z.deathProgress * 0.9);
+                        if (z.parts.rightShin) z.parts.rightShin.rotation.x = Math.min(0.65, z.deathProgress * 0.7);
+                        if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.35;
+                        if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.25;
+                        if (z.parts.jaw) z.parts.jaw.rotation.x = 0.28;
+                    }
                     if (z.deathProgress >= 1.4) {
                         disposeZombie(z);
                         zombies.splice(i, 1);
@@ -8300,13 +9264,29 @@
                     continue;
                 }
 
-                // Animate glowing chest bio-core / Brute exposed reactor core weakpoint
+                // Animate glowing chest bio-core / Brute exposed reactor core / Droid geodesic core & anti-grav hover ring
                 if (z.parts.coreMesh) {
-                    const corePulse = 1.0 + Math.sin(now * (z.isEnraged ? 0.014 : 0.007) + z.weaveOffset) * 0.10;
+                    const corePulse = 1.0 + Math.sin(now * (z.isEnraged || z.droidChargeTimer > 0 ? 0.016 : 0.007) + z.weaveOffset) * 0.10;
                     z.parts.coreMesh.scale.setScalar(corePulse);
+                    if (z.type === 'droid') {
+                        z.parts.coreMesh.rotation.y += dt * 2.6;
+                    }
                 }
                 if (z.parts.coreRing) {
-                    z.parts.coreRing.rotation.z += dt * (z.isEnraged ? 7.5 : 3.2);
+                    z.parts.coreRing.rotation.z += dt * (z.isEnraged || z.droidChargeTimer > 0 ? 7.5 : (z.type === 'stalker' ? 4.8 : 3.2));
+                }
+                if (z.type === 'droid') {
+                    // Smooth cybernetic hover levitation, repulsor spin & sweeping optic scanner
+                    z.mesh.position.y = 0.28 + Math.sin(now * 0.0055 + z.weaveOffset) * 0.09;
+                    if (z.parts.hoverRing) {
+                        z.parts.hoverRing.rotation.y += dt * 4.5;
+                    }
+                    if (z.parts.scannerEye) {
+                        const scanTargetX = (z.droidChargeTimer > 0 || z.droidBurstShots > 0)
+                            ? 0
+                            : Math.sin(now * 0.0065 + z.weaveOffset) * 0.135;
+                        z.parts.scannerEye.position.x = THREE.MathUtils.lerp(z.parts.scannerEye.position.x, scanTargetX, dt * 12);
+                    }
                 }
 
                 _toPlayer.set(
@@ -8319,10 +9299,12 @@
                 if (dist > 0.001) _toPlayerDir.divideScalar(dist);
 
                 if (z.staggerCooldown > 0) z.staggerCooldown -= dt;
+                if (z.evadeCooldown > 0) z.evadeCooldown -= dt;
 
                 // Bullet Stagger & Flinch recoil
                 if (z.staggerTimer > 0) {
                     z.staggerTimer -= dt;
+                    if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
                     if (z.staggerPush > 0) {
                         z.mesh.position.addScaledVector(_toPlayerDir, -z.staggerPush * dt * 4.0);
                         z.staggerPush = Math.max(0, z.staggerPush - dt * 3.5);
@@ -8337,7 +9319,7 @@
                     if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.88, dt * 10);
                     continue;
                 } else {
-                    const baseHeadPitch = z.type === 'runner' ? -0.12 : 0;
+                    const baseHeadPitch = z.type === 'stalker' ? -0.15 : (z.type === 'runner' ? -0.12 : 0);
                     z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, baseHeadPitch, dt * 6);
                 }
 
@@ -8347,13 +9329,16 @@
                     const forwardZ = Math.cos(z.mesh.rotation.y);
                     const dot = forwardX * _toPlayerDir.x + forwardZ * _toPlayerDir.z;
 
-                    const canSee = (dist < 34 && dot > 0.15);
-                    const canSmell = (dist < 7.5);
+                    const spotRange = z.type === 'droid' ? 44 : 34;
+                    const canSee = (dist < spotRange && dot > 0.15);
+                    const canSmell = (dist < (z.type === 'droid' ? 12 : 7.5));
 
                     if (canSee || canSmell) {
                         z.state = 'ALERT';
-                        z.alertTimer = z.type === 'runner' ? 0.22 : 0.42;
-                        sound.playZombieGroan(z.type === 'brute' ? 0.6 : (z.type === 'runner' ? 1.35 : 1.0));
+                        z.alertTimer = (z.type === 'runner' || z.type === 'stalker' || z.type === 'droid') ? 0.22 : 0.42;
+                        if (z.type === 'droid') sound.playDroidScan();
+                        else if (z.type === 'stalker') sound.playStalkerShriek();
+                        else sound.playZombieGroan(z.type === 'brute' ? 0.6 : (z.type === 'runner' ? 1.35 : 1.0));
                     }
                 }
 
@@ -8385,7 +9370,9 @@
                 // Movement AI
                 _moveDir.set(0, 0, 0);
                 let curSpeed = z.speed;
-                const attackReach = z.type === 'brute' ? 2.5 : 1.95;
+                const attackReach = z.type === 'brute' ? 2.5
+                    : (z.type === 'stalker' ? 2.15
+                        : (z.type === 'droid' ? 2.10 : 1.95));
                 // Stopping distance to prevent walking through the camera (Bug 6 Fix)
                 const stopDist = attackReach * 0.75;
 
@@ -8422,7 +9409,169 @@
                 } else if (z.state === 'CHASE') {
                     z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
 
-                    if (dist > stopDist) {
+                    if (z.type === 'stalker') {
+                        // PHANTOM STALKER AI: Flanking Orbit, Phase-Shroud Cloak, Telegraphed Phase-Leap & Reactive Evade
+                        _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
+
+                        z.flankSwitchTimer -= dt;
+                        if (z.flankSwitchTimer <= 0) {
+                            z.flankDir *= -1;
+                            z.flankSwitchTimer = 2.2 + Math.random() * 2.2;
+                        }
+
+                        if (z.blinkCooldown > 0) z.blinkCooldown -= dt;
+                        if (z.phaseCooldown > 0) z.phaseCooldown -= dt;
+
+                        if (z.evadeTimer > 0) {
+                            // Reactive Sidestep Snap-Dodge after taking body damage
+                            z.evadeTimer -= dt;
+                            _moveDir.copy(_sideDir).multiplyScalar(z.evadeDir);
+                            _moveDir.addScaledVector(_toPlayerDir, 0.22).normalize();
+                            curSpeed = z.speed * 2.15;
+                        } else if (z.blinkTelegraphTimer > 0) {
+                            // Predatory Crouch-Telegraph before Phase-Leap Ambush
+                            z.blinkTelegraphTimer -= dt;
+                            curSpeed = 0;
+                            if (z.hitFlashTimer <= 0) z.parts.skinMat.emissive.setHex(0x6b00b3);
+                            if (z.blinkTelegraphTimer <= 0) {
+                                z.blinkTimer = 0.30;
+                                z.blinkCooldown = 4.0 + Math.random() * 1.6;
+                                if (z.hitFlashTimer <= 0) z.parts.skinMat.emissive.setHex(0x1a062b);
+                                spawnBloodParticles(z.mesh.position, 8, false, 'stalker');
+                            }
+                        } else if (z.blinkTimer > 0) {
+                            // High-Speed Curved Flanking Phase-Leap!
+                            z.blinkTimer -= dt;
+                            _moveDir.copy(_toPlayerDir).multiplyScalar(0.86);
+                            _moveDir.addScaledVector(_sideDir, z.flankDir * 0.50).normalize();
+                            curSpeed = z.speed * 2.45;
+                        } else if (dist > stopDist) {
+                            // Flanking orbit when mid-range (6..22m), direct ambush rush when close (<6m)
+                            if (dist > 6.0 && dist < 22.0) {
+                                _moveDir.copy(_toPlayerDir).multiplyScalar(0.62);
+                                _moveDir.addScaledVector(_sideDir, z.flankDir * 0.78).normalize();
+                                curSpeed = z.speed * 1.06;
+                            } else {
+                                _moveDir.copy(_toPlayerDir);
+                                curSpeed = dist <= 6.0 ? z.speed * 1.18 : z.speed;
+                            }
+
+                            // Trigger Telegraphed Phase-Leap Ambush at mid-close range
+                            if (dist >= 5.2 && dist <= 14.5 && z.blinkCooldown <= 0) {
+                                z.blinkTelegraphTimer = 0.34;
+                                z.phaseTimer = 0;
+                                sound.playStalkerShriek();
+                            }
+                        } else {
+                            curSpeed = 0;
+                        }
+
+                        // Phase-Shroud Semi-Translucent Stalking Cloak (Eyes, Dorsal Quills & Plasma Mantis Blades stay bright!)
+                        const canCloak = (dist > 5.5 && dist < 24 && z.blinkTelegraphTimer <= 0 && z.blinkTimer <= 0 && z.evadeTimer <= 0 && z.hitFlashTimer <= 0);
+                        if (z.phaseTimer > 0) {
+                            z.phaseTimer -= dt;
+                            if (!canCloak) z.phaseTimer = 0;
+                        } else if (canCloak && z.phaseCooldown <= 0) {
+                            z.phaseTimer = 2.4;
+                            z.phaseCooldown = 3.6 + Math.random() * 1.6;
+                        }
+                        const targetOpacity = z.phaseTimer > 0 ? 0.32 : 1.0;
+                        z.parts.skinMat.opacity = THREE.MathUtils.lerp(z.parts.skinMat.opacity, targetOpacity, dt * 8);
+                        z.parts.clothesMat.opacity = THREE.MathUtils.lerp(z.parts.clothesMat.opacity, targetOpacity, dt * 8);
+                    } else if (z.type === 'droid') {
+                        // NEXUS HUNTER DROID AI: Cover-Flanking Pursuit, Hover-Strafe & Laser-Telegraphed Plasma Burst
+                        _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
+                        z.strafeTimer -= dt;
+                        if (z.strafeTimer <= 0) {
+                            z.strafeDir *= -1;
+                            z.strafeTimer = 1.9 + Math.random() * 1.8;
+                        }
+                        if (z.droidFireCooldown > 0) z.droidFireCooldown -= dt;
+
+                        const hasLOS = hasLineOfSight(z.mesh.position.x, z.mesh.position.z, camera.position.x, camera.position.z);
+
+                        if (dist > stopDist) {
+                            if (!hasLOS) {
+                                // Actively flank around Neon Nexus server pillars to reacquire line-of-sight
+                                _moveDir.copy(_toPlayerDir).multiplyScalar(0.68);
+                                _moveDir.addScaledVector(_sideDir, z.strafeDir * 0.74).normalize();
+                                curSpeed = z.speed * 1.25;
+                            } else if (dist > 15.0) {
+                                // Fast diagonal hunting approach
+                                _moveDir.copy(_toPlayerDir).multiplyScalar(0.80);
+                                _moveDir.addScaledVector(_sideDir, z.strafeDir * 0.50).normalize();
+                                curSpeed = z.speed * 1.08;
+                            } else if (dist >= 6.5) {
+                                // Tactical mid-range hover-strafe orbit
+                                _moveDir.copy(_sideDir).multiplyScalar(z.strafeDir * 0.88);
+                                _moveDir.addScaledVector(_toPlayerDir, 0.22).normalize();
+                                curSpeed = z.droidChargeTimer > 0 ? z.speed * 0.35 : z.speed * 0.88;
+                            } else {
+                                // Close-quarters cyber-blade rush
+                                _moveDir.copy(_toPlayerDir);
+                                curSpeed = z.speed * 1.22;
+                            }
+                        } else {
+                            curSpeed = 0;
+                        }
+
+                        // Ranged Plasma Railgun Lock-On & 2-Round Staggered Burst (Only with clear LOS at 6.5m..28m)
+                        if (z.droidBurstShots > 0) {
+                            z.droidBurstDelay -= dt;
+                            if (z.droidBurstDelay <= 0) {
+                                z.mesh.updateMatrixWorld(true);
+                                if (z.parts.muzzleCrystal) {
+                                    z.parts.muzzleCrystal.getWorldPosition(_droidMuzzleWorld);
+                                } else {
+                                    _droidMuzzleWorld.set(z.mesh.position.x, z.mesh.position.y + 1.5, z.mesh.position.z);
+                                }
+                                _droidAimDir.set(
+                                    camera.position.x - _droidMuzzleWorld.x + (Math.random() - 0.5) * 0.25,
+                                    (camera.position.y - 0.14) - _droidMuzzleWorld.y,
+                                    camera.position.z - _droidMuzzleWorld.z + (Math.random() - 0.5) * 0.25
+                                );
+                                spawnDroidBolt(_droidMuzzleWorld, _droidAimDir, z.mesh.position);
+                                sound.playDroidPlasmaShot();
+                                z.droidBurstShots--;
+                                z.droidBurstDelay = 0.20;
+                                if (z.droidBurstShots <= 0) {
+                                    z.droidFireCooldown = 2.4 + Math.random() * 1.2;
+                                }
+                            }
+                            if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
+                        } else if (z.droidChargeTimer > 0) {
+                            if (!hasLOS || dist < 5.0 || dist > 30.0) {
+                                // Cancel lock-on if player breaks LOS behind cover or closes to melee
+                                z.droidChargeTimer = 0;
+                                if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
+                                if (z.parts.muzzleCrystal) z.parts.muzzleCrystal.scale.setScalar(1.0);
+                            } else {
+                                z.droidChargeTimer -= dt;
+                                const chargePct = 1.0 - Math.max(0, z.droidChargeTimer / 0.55);
+                                if (z.parts.muzzleCrystal) {
+                                    z.parts.muzzleCrystal.scale.setScalar(1.0 + chargePct * 1.45);
+                                }
+                                if (z.parts.laserBeam) {
+                                    z.parts.laserBeam.visible = true;
+                                    z.parts.laserBeam.scale.set(1.0 + chargePct * 0.5, 1.0 + chargePct * 0.5, Math.min(dist, 28) / z.parts.scale);
+                                    if (z.parts.laserMat) z.parts.laserMat.opacity = 0.35 + chargePct * 0.55;
+                                }
+                                if (z.droidChargeTimer <= 0) {
+                                    z.droidBurstShots = 2;
+                                    z.droidBurstDelay = 0;
+                                    if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
+                                    if (z.parts.muzzleCrystal) z.parts.muzzleCrystal.scale.setScalar(1.0);
+                                }
+                            }
+                        } else {
+                            if (z.parts.laserBeam) z.parts.laserBeam.visible = false;
+                            if (z.parts.muzzleCrystal) z.parts.muzzleCrystal.scale.setScalar(1.0);
+                            if (hasLOS && dist >= 6.8 && dist <= 27.0 && z.droidFireCooldown <= 0) {
+                                z.droidChargeTimer = 0.55;
+                                sound.playDroidScan();
+                            }
+                        }
+                    } else if (dist > stopDist) {
                         if (z.type === 'runner') {
                             _moveDir.copy(_toPlayerDir);
                             _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
@@ -8504,14 +9653,18 @@
                 }
 
                 // Multi-Joint Skeletal Limb, Torso & Jaw Animation
-                const animPace = z.state === 'WANDER' ? 1.4 : (z.type === 'runner' ? 3.8 : (z.type === 'brute' ? 1.8 : 2.4));
+                const animPace = z.state === 'WANDER' ? 1.4
+                    : (z.type === 'runner' ? 3.8
+                        : (z.type === 'stalker' ? 3.4
+                            : (z.type === 'droid' ? 2.2
+                                : (z.type === 'brute' ? 1.8 : 2.4))));
                 z.walkCycle += dt * curSpeed * animPace;
 
                 if (z.isAttacking) {
                     z.parts.leftArm.rotation.x = 0.92;
-                    z.parts.rightArm.rotation.x = 0.52;
+                    z.parts.rightArm.rotation.x = z.type === 'droid' ? 0.15 : 0.52;
                     if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = -0.32;
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = -0.18;
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = z.type === 'droid' ? -0.10 : -0.18;
                     if (z.parts.torso) {
                         z.parts.torso.rotation.x = 0.34;
                         z.parts.torso.rotation.y = 0.22;
@@ -8529,30 +9682,58 @@
                     }
                     if (z.parts.jaw) z.parts.jaw.rotation.x = 0.44;
                     z.mesh.rotation.z = 0;
+                } else if (z.type === 'droid') {
+                    // Nexus Hunter Droid Hover-Skimming & Aiming Animation
+                    const isAiming = (z.droidChargeTimer > 0 || z.droidBurstShots > 0);
+                    const bankTarget = curSpeed > 0.2 ? (-z.strafeDir * 0.14) : 0;
+                    z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, isAiming ? 0 : bankTarget, dt * 7);
+
+                    // Reverse-jointed hover-stabilizer legs subtly tuck during aerial glide
+                    const glideSway = Math.sin(now * 0.004 + z.weaveOffset) * 0.12;
+                    z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0.28 + glideSway, dt * 8);
+                    z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0.28 - glideSway, dt * 8);
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, 0.42, dt * 8);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, 0.42, dt * 8);
+
+                    // Right Arm locks level forward when charging/firing plasma railgun
+                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, isAiming ? 0.0 : 0.24, dt * 12);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, isAiming ? 0.0 : -0.22, dt * 12);
+
+                    // Left Arc-Blade arm held in sleek cyber-assassin guard stance
+                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0.42 + glideSway * 0.6, dt * 8);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.52, dt * 8);
+
+                    if (z.parts.torso) {
+                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, curSpeed > 0.2 ? 0.16 : 0.06, dt * 8);
+                        z.parts.torso.rotation.y = THREE.MathUtils.lerp(z.parts.torso.rotation.y, isAiming ? -0.10 : 0, dt * 8);
+                    }
                 } else if (curSpeed === 0) {
                     z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0, dt * 8);
                     z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0, dt * 8);
-                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, 0.08, dt * 8);
-                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, 0.08, dt * 8);
-                    const idleLeftUpper = z.type === 'shambler' ? 0.92 : 0.62;
-                    const idleRightUpper = z.type === 'shambler' ? 0.82 : 0.62;
-                    const idleLeftForearm = z.type === 'shambler' ? -0.78 : -0.68;
-                    const idleRightForearm = z.type === 'shambler' ? -0.84 : -0.68;
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, idleLeftUpper, dt * 6);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, idleRightUpper, dt * 6);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, idleLeftForearm, dt * 6);
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, idleRightForearm, dt * 6);
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, dt * 8);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, dt * 8);
+                    const idleLeftUpper = z.type === 'shambler' ? 0.92 : (z.blinkTelegraphTimer > 0 ? 0.22 : 0.62);
+                    const idleRightUpper = z.type === 'shambler' ? 0.82 : (z.blinkTelegraphTimer > 0 ? 0.22 : 0.62);
+                    const idleLeftForearm = z.type === 'shambler' ? -0.78 : (z.blinkTelegraphTimer > 0 ? -1.05 : -0.68);
+                    const idleRightForearm = z.type === 'shambler' ? -0.84 : (z.blinkTelegraphTimer > 0 ? -1.05 : -0.68);
+                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, idleLeftUpper, dt * 8);
+                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, idleRightUpper, dt * 8);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, idleLeftForearm, dt * 8);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, idleRightForearm, dt * 8);
                     if (z.parts.torso) {
-                        const baseLean = z.type === 'runner' ? 0.28 : (z.type === 'shambler' ? 0.20 : 0.08);
-                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, baseLean, dt * 6);
+                        const baseLean = z.blinkTelegraphTimer > 0 ? 0.56
+                            : (z.type === 'stalker' ? 0.34
+                                : (z.type === 'runner' ? 0.28
+                                    : (z.type === 'shambler' ? 0.20 : 0.08)));
+                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, baseLean, dt * 8);
                         z.parts.torso.rotation.y = THREE.MathUtils.lerp(z.parts.torso.rotation.y, 0, dt * 6);
                     }
                     if (z.parts.jaw) {
-                        z.parts.jaw.rotation.x = 0.12 + Math.abs(Math.sin(now * 0.003 + z.weaveOffset)) * 0.16;
+                        z.parts.jaw.rotation.x = z.blinkTelegraphTimer > 0 ? 0.48 : (0.12 + Math.abs(Math.sin(now * 0.003 + z.weaveOffset)) * 0.16);
                     }
                     z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, 0, dt * 8);
                 } else {
-                    const strideAmp = z.type === 'runner' ? 0.86 : (z.type === 'brute' ? 0.58 : 0.68);
+                    const strideAmp = (z.type === 'runner' || z.type === 'stalker') ? 0.86 : (z.type === 'brute' ? 0.58 : 0.68);
                     const sinWalk = Math.sin(z.walkCycle);
                     const cosWalk = Math.cos(z.walkCycle);
 
@@ -8560,7 +9741,7 @@
                     z.parts.rightLeg.rotation.x = -sinWalk * strideAmp;
 
                     // Realistic knee articulation during leg lift & push-off
-                    const kneeAmp = z.type === 'runner' ? 0.88 : 0.68;
+                    const kneeAmp = (z.type === 'runner' || z.type === 'stalker') ? 0.88 : 0.68;
                     if (z.parts.leftShin) z.parts.leftShin.rotation.x = Math.max(0.06, -cosWalk * kneeAmp + 0.22);
                     if (z.parts.rightShin) z.parts.rightShin.rotation.x = Math.max(0.06, cosWalk * kneeAmp + 0.22);
 
@@ -8576,6 +9757,21 @@
                         }
                         if (z.parts.jaw) z.parts.jaw.rotation.x = isLunging ? 0.42 : (0.14 + Math.abs(sinWalk) * 0.18);
                         z.parts.head.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.18;
+                    } else if (z.type === 'stalker') {
+                        // Phantom Stalker: Low stalking mantis crouch, banking into flanks & outstretched blades during Phase-Leap
+                        const isLeaping = (z.blinkTimer > 0 || z.evadeTimer > 0);
+                        z.parts.leftArm.rotation.x = (isLeaping ? 0.20 : 0.56) + Math.sin(z.walkCycle * 0.8) * 0.28;
+                        z.parts.rightArm.rotation.x = (isLeaping ? 0.20 : 0.56) - Math.sin(z.walkCycle * 0.8) * 0.28;
+                        if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = isLeaping ? -0.25 : (-0.84 + cosWalk * 0.18);
+                        if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = isLeaping ? -0.25 : (-0.84 - cosWalk * 0.18);
+                        if (z.parts.torso) {
+                            z.parts.torso.rotation.x = isLeaping ? 0.48 : 0.36;
+                            z.parts.torso.rotation.y = -sinWalk * 0.14;
+                        }
+                        if (z.parts.jaw) z.parts.jaw.rotation.x = isLeaping ? 0.46 : (0.12 + Math.abs(sinWalk) * 0.16);
+                        z.parts.head.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.14;
+                        const leanDir = z.evadeTimer > 0 ? z.evadeDir : z.flankDir;
+                        z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, -leanDir * (isLeaping ? 0.22 : 0.10), dt * 8);
                     } else if (z.type === 'brute') {
                         z.parts.leftArm.rotation.x = 0.72 - sinWalk * 0.36;
                         z.parts.rightArm.rotation.x = 0.72 + sinWalk * 0.36;
@@ -8604,11 +9800,17 @@
                     }
                 }
 
-                // Groan Audio
+                // Ambient Vocalization / Droid Scan Audio
                 z.groanTimer -= dt;
                 if (z.groanTimer <= 0) {
                     if (dist < 32 && Math.random() < 0.45) {
-                        sound.playZombieGroan(z.type === 'brute' ? (z.isEnraged ? 0.5 : 0.65) : (z.type === 'runner' ? 1.3 : 1.0));
+                        if (z.type === 'droid') {
+                            sound.playDroidScan();
+                        } else if (z.type === 'stalker') {
+                            sound.playStalkerShriek();
+                        } else {
+                            sound.playZombieGroan(z.type === 'brute' ? (z.isEnraged ? 0.5 : 0.65) : (z.type === 'runner' ? 1.3 : 1.0));
+                        }
                     }
                     z.groanTimer = 3.5 + Math.random() * 5.5;
                 }
@@ -8625,7 +9827,13 @@
 
                 if (dist < attackReach && z.attackCooldown <= 0) {
                     if (z.attackWindup <= 0 && !z.isAttacking) {
-                        z.attackWindup = z.type === 'runner' ? 0.22 : (z.type === 'brute' ? 0.48 : 0.34);
+                        z.attackWindup = z.type === 'runner' ? 0.22
+                            : (z.type === 'stalker' ? 0.24
+                                : (z.type === 'droid' ? 0.26
+                                    : (z.type === 'brute' ? 0.48 : 0.34)));
+                        if (z.type === 'stalker') {
+                            z.phaseTimer = 0; // Reveal Stalker as it strikes
+                        }
                     }
                 }
 
@@ -8635,7 +9843,10 @@
                         if (dist < attackReach + 0.35) {
                             z.isAttacking = true;
                             z.isAttackingTimer = 0.18;
-                            z.attackCooldown = z.type === 'runner' ? 0.75 : (z.type === 'brute' ? 1.3 : 1.05);
+                            z.attackCooldown = z.type === 'runner' ? 0.75
+                                : (z.type === 'stalker' ? 0.85
+                                    : (z.type === 'droid' ? 0.90
+                                        : (z.type === 'brute' ? 1.3 : 1.05)));
 
                             state.health -= z.damage;
                             sound.playPlayerDamage();
@@ -8656,6 +9867,66 @@
                         } else {
                             z.attackCooldown = 0.4;
                         }
+                    }
+                }
+            }
+
+            // 4b. Update Pooled Nexus Hunter Droid Plasma Bolts (Zero Allocation)
+            for (let i = 0; i < DROID_BOLT_POOL_SIZE; i++) {
+                const b = droidBoltPool[i];
+                if (!b.active) continue;
+                b.life -= dt;
+                if (b.life <= 0) {
+                    b.active = false;
+                    b.mesh.visible = false;
+                    continue;
+                }
+                b.mesh.position.addScaledVector(b.velocity, dt);
+                const bx = b.mesh.position.x;
+                const by = b.mesh.position.y;
+                const bz = b.mesh.position.z;
+
+                // Arena wall & cyber pillar collision
+                let hitEnv = (Math.abs(bx) > ARENA_LIMIT || Math.abs(bz) > ARENA_LIMIT || by < 0.08);
+                if (!hitEnv) {
+                    for (let j = 0; j < obstacles.length; j++) {
+                        const obs = obstacles[j];
+                        const dx = bx - obs.x;
+                        const dz = bz - obs.z;
+                        const r = obs.radius + 0.24;
+                        if (dx * dx + dz * dz < r * r) {
+                            hitEnv = true;
+                            break;
+                        }
+                    }
+                }
+                if (hitEnv) {
+                    spawnBloodParticles(b.mesh.position, 6, false, 'droid');
+                    b.active = false;
+                    b.mesh.visible = false;
+                    continue;
+                }
+
+                // Player impact check
+                const pdx = bx - camera.position.x;
+                const pdz = bz - camera.position.z;
+                if (pdx * pdx + pdz * pdz < 0.72 * 0.72 && by > 0.25 && by < 2.35) {
+                    b.active = false;
+                    b.mesh.visible = false;
+                    state.health -= b.damage;
+                    sound.playPlayerDamage();
+                    showDamageDirection(b.originPos);
+                    updateHUD();
+
+                    damageOverlay.style.opacity = '0.78';
+                    clearTimeout(damageOverlay._timer);
+                    damageOverlay._timer = setTimeout(() => {
+                        damageOverlay.style.opacity = '0';
+                    }, 160);
+
+                    if (state.health <= 0) {
+                        triggerGameOver();
+                        return;
                     }
                 }
             }

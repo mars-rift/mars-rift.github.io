@@ -60,17 +60,21 @@ Designed specifically for effortless static hosting, the entire game—including
 
 ## 🧟 Hostile Classifications
 
-As you progress through waves, Sector 09 spawns three distinct mutations of the infected:
+As you progress through waves, Sector 09 deploys five distinct hostile classes—including a cybernetic Hunter Droid strictly native to **Map 04: Neon Nexus**:
 
 | **Class** | **Appearance** | **Health** | **Speed** | **Damage** | **Tactical Threat & Vulnerability** |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Shambler** | Putrid green-gray skin, dark coat | `100 HP` | Moderate | `14 DMG` | Standard fodder; lethal in swarms. Eliminated in 1 headshot (`110 DMG`). |
-| **Crimson Runner** *(Wave 2+)* | Flayed red sinew, raptor posture | `65 HP` | **High** | `14 DMG` | Predatory zig-zag sprint & sudden lunge. Prioritize before reloading. Eliminated in 1 headshot (`110 DMG`). |
+| **Shambler** | Cybernetic-grafted necrotic flesh, exposed glowing bio-heart, dual ripper blades | `100 HP` | Moderate | `14 DMG` | Standard fodder; lethal in swarms. Eliminated in 1 headshot (`110 DMG`). |
+| **Crimson Runner** *(Wave 2+)* | Flayed red sinew, raptor posture, forearm bone-scythes | `65 HP` | **High** | `14 DMG` | Predatory zig-zag sprint & sudden lunge. Prioritize before reloading. Eliminated in 1 headshot (`110 DMG`). |
+| **Phantom Stalker** *(Wave 2+)* | Charred-obsidian Runner mutant, curved predator whip-horns, dorsal plasma quills, glowing violet mantis-scythes | `80 HP` | **Fast / Flanking** | `18 DMG` | **Phase-Shroud Cloak & Flanking Ambush:** Circles your flank while semi-translucent, telegraphs a shrieking **Phase-Leap**, and sidestep-dodges non-lethal body shots. Eliminated in 1 headshot (`110 DMG`). |
 | **Armored Brute** *(Wave 3+)* | Massive scale, dark armor, glowing reactor core | `240 HP` | Heavy / Berserk | `26 DMG` | Frontal chestplate absorbs body damage (`26 DMG`). Heavy poise resists regular staggers. Aim for the head (`120 DMG`) or exposed reactor core (`110 DMG`). Enrages into a berserk sprint when damaged below 50% HP. |
+| **Nexus Hunter Droid** *(Native to Map 04: Neon Nexus)* | Midnight obsidian hex-chassis, cyan anti-grav hover ring, server-blade dorsal fins, sweeping optic visor & rail-plasma cannon | `130 HP` | Hover-Strafe | `10 DMG` *(Plasma)* / `16 DMG` *(Blade)* | **Exclusive to Map 04: Neon Nexus.** Actively flanks around cover pillars, locks on with a holographic laser telegraph to fire dodgeable neon plasma bursts, and rushes with an energy arc-blade at close range. Armored chassis (`32 DMG` body); aim for Sensor Head or Geodesic Chest Core (`110 DMG`). |
 
 ### Scoring System
 * **Shambler:** `+100 PTS` (Headshot: `+150 PTS`)
 * **Crimson Runner:** `+120 PTS` (Headshot: `+180 PTS`)
+* **Phantom Stalker:** `+160 PTS` (Headshot: `+230 PTS`)
+* **Nexus Hunter Droid:** `+220 PTS` (Headshot / Core Crit: `+300 PTS`)
 * **Armored Brute:** `+250 PTS` (Headshot: `+350 PTS`)
 
 ---
