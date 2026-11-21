@@ -25,7 +25,7 @@ Designed specifically for effortless static hosting, the entire gameâ€”including
 * **Multi-Class Horde AI:** Zombies dynamically path toward the player, navigate around arena pillars, avoid stacking on each other, and scale in speed and numbers with each wave.
 * **Poise & Stagger Mechanics:** Standard infected stagger under heavy fire, while Armored Brutes possess heavy frontal poise and stagger cooldowns, preventing continuous fire stagger-locks.
 * **Obstacle-Safe Spawning:** Intelligent coordinate rejection algorithms and fallback nodes prevent zombies and pick-ups from ever embedding inside arena pillars or spawning directly on the player.
-* **Neon Diamond Health Jewels:** From Wave 3 onward, rare crystalline health jewels have a 50% chance to appear per level. Projecting an ethereal cyan vertical beacon and gyroscopic orbital rings, collecting a jewel replenishes `+50%` Vital Integrity accompanied by harmonic chimes and radiant sparkle bursts.
+* **Neon Diamond Health Jewels:** From Wave 3 onward, rare crystalline health jewels have a 65% chance to appear per level. Projecting an ethereal cyan vertical beacon and gyroscopic orbital rings, collecting a jewel replenishes `+50%` Vital Integrity accompanied by harmonic chimes and radiant sparkle bursts.
 * **Zero-Allocation 60 FPS Engine:** Pre-allocated particle pools, pooled bullet tracer buffers, pre-created lighting rigs, and reusable scratch vectors prevent memory leaks and garbage collection stutters during prolonged survival.
 * **Configurable Tactical Settings:** Real-time settings modal supporting mouse look sensitivity, Y-axis inversion, touch sensitivity, and master audio synth volume.
 
@@ -64,14 +64,14 @@ As you progress through waves, Sector 09 deploys five distinct hostile classesâ€
 
 | **Class** | **Appearance** | **Health** | **Speed** | **Damage** | **Tactical Threat & Vulnerability** |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Shambler** | Cybernetic-grafted necrotic flesh, exposed glowing bio-heart, dual ripper blades | `100 HP` | Moderate | `14 DMG` | Standard fodder; lethal in swarms. Eliminated in 1 headshot (`110 DMG`). |
+| **Shambler Droid** | Menacing combat automaton in electric-veined gunmetal droid armor, single blazing neon-red Cyclops eye, glowing electric-red heart encased in an armored chest cage, twin shock-cleaver & pincer gauntlet | `100 HP` | Moderate | `14 DMG` | **Tactical Combat AI:** Uses predictive intercept pathing, coordinated squad pincer flanking, smart pillar bypass steering, and crosshair micro-jukes while keeping classic Shambler stats. Eliminated in 1 headshot (`110 DMG`). |
 | **Crimson Runner** *(Wave 2+)* | Flayed red sinew, raptor posture, forearm bone-scythes | `65 HP` | **High** | `14 DMG` | Predatory zig-zag sprint & sudden lunge. Prioritize before reloading. Eliminated in 1 headshot (`110 DMG`). |
 | **Phantom Stalker** *(Wave 2+)* | Charred-obsidian Runner mutant, curved predator whip-horns, dorsal plasma quills, glowing violet mantis-scythes | `80 HP` | **Fast / Flanking** | `18 DMG` | **Phase-Shroud Cloak & Flanking Ambush:** Circles your flank while semi-translucent, telegraphs a shrieking **Phase-Leap**, and sidestep-dodges non-lethal body shots. Eliminated in 1 headshot (`110 DMG`). |
 | **Armored Brute** *(Wave 3+)* | Massive scale, dark armor, glowing reactor core | `240 HP` | Heavy / Berserk | `26 DMG` | Frontal chestplate absorbs body damage (`26 DMG`). Heavy poise resists regular staggers. Aim for the head (`120 DMG`) or exposed reactor core (`110 DMG`). Enrages into a berserk sprint when damaged below 50% HP. |
 | **Nexus Hunter Droid** *(Native to Map 04: Neon Nexus)* | Midnight obsidian hex-chassis, cyan anti-grav hover ring, server-blade dorsal fins, sweeping optic visor & rail-plasma cannon | `130 HP` | Hover-Strafe | `10 DMG` *(Plasma)* / `16 DMG` *(Blade)* | **Exclusive to Map 04: Neon Nexus.** Actively flanks around cover pillars, locks on with a holographic laser telegraph to fire dodgeable neon plasma bursts, and rushes with an energy arc-blade at close range. Armored chassis (`32 DMG` body); aim for Sensor Head or Geodesic Chest Core (`110 DMG`). |
 
 ### Scoring System
-* **Shambler:** `+100 PTS` (Headshot: `+150 PTS`)
+* **Shambler Droid:** `+100 PTS` (Headshot: `+150 PTS`)
 * **Crimson Runner:** `+120 PTS` (Headshot: `+180 PTS`)
 * **Phantom Stalker:** `+160 PTS` (Headshot: `+230 PTS`)
 * **Nexus Hunter Droid:** `+220 PTS` (Headshot / Core Crit: `+300 PTS`)
