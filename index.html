@@ -197,7 +197,7 @@
 
         #damage-pointer {
             pointer-events: none;
-            transition: transform 0.05s ease-out, opacity 0.25s ease-out;
+            transition: opacity 0.25s ease-out;
         }
 
         /* Crosshair styling */
@@ -1071,6 +1071,24 @@
                         class="w-full accent-red-500 cursor-pointer">
                 </div>
 
+                <!-- Tactical Sprint Trigger -->
+                <div class="pt-2 border-t border-red-950/60">
+                    <div class="flex justify-between text-neutral-300 mb-1.5">
+                        <span>TACTICAL SPRINT TRIGGER</span>
+                        <span id="setting-sprint-label" class="text-red-400 font-bold">ALL ACTIVE</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button type="button" data-sprint-opt="all"
+                            class="sprint-opt-btn active py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">ALL</button>
+                        <button type="button" data-sprint-opt="shift"
+                            class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">SHIFT</button>
+                        <button type="button" data-sprint-opt="space"
+                            class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">SPACE</button>
+                        <button type="button" data-sprint-opt="rmb"
+                            class="sprint-opt-btn py-1.5 px-1 text-[11px] font-neon rounded border transition-all text-center">RMB</button>
+                    </div>
+                </div>
+
                 <!-- Sector Map Progression Mode -->
                 <div class="pt-2 border-t border-red-950/60">
                     <div class="flex justify-between text-neutral-300 mb-1.5">
@@ -1212,7 +1230,15 @@
         const VALID_SPRINT_BINDINGS = ['all', 'shift', 'space', 'rmb'];
         const VALID_MAP_MODES = ['cycle', 'random'];
         const VALID_RENDER_QUALITIES = ['ultra', 'high', 'performance'];
-        const isMobileInit = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        function isMobileDevice() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            const isIPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || /iPad/i.test(ua);
+            const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+            const hasPrimaryCoarse = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            return isMobileUA || isIPad || (hasTouchPoints && hasPrimaryCoarse) || ('ontouchstart' in window && hasPrimaryCoarse);
+        }
+        const isMobileInit = isMobileDevice();
         const safeStorage = {
             getItem(key, defaultVal = null) {
                 try {
@@ -1269,10 +1295,15 @@
                 this.limiter = null;
                 this.ambientInitialized = false;
                 this.noiseBuffers = [];
+                this.activeReloadNodes = null;
                 this.lastGroanTime = 0;
                 this.lastStalkerSoundTime = 0;
                 this.lastDroidScanTime = 0;
                 this.lastShamblerPingTime = 0;
+            }
+
+            isRunning() {
+                return Boolean(this.ctx && !this.muted && this.ctx.state === 'running');
             }
 
             init() {
@@ -1284,7 +1315,7 @@
 
                         // 1. Master Dynamics Compressor (Limiter)
                         this.limiter = this.ctx.createDynamicsCompressor();
-                        this.limiter.threshold.setValueAtTime(-1.0, this.ctx.currentTime);
+                        this.limiter.threshold.setValueAtTime(-3.0, this.ctx.currentTime);
                         this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
                         this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
                         this.limiter.attack.setValueAtTime(0.002, this.ctx.currentTime);
@@ -1299,7 +1330,7 @@
 
                         // 3. Sub-buses for SFX and Ambient
                         this.sfxGain = this.ctx.createGain();
-                        this.sfxGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+                        this.sfxGain.gain.setValueAtTime(0.72, this.ctx.currentTime);
                         this.sfxGain.connect(this.masterGain);
 
                         this.ambientGain = this.ctx.createGain();
@@ -1314,7 +1345,7 @@
                     }
                 }
 
-                if (this.ctx.state === 'suspended') {
+                if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
                     this.ctx.resume().catch(() => { });
                 }
 
@@ -1331,7 +1362,7 @@
             }
 
             resume() {
-                if (this.ctx && this.ctx.state === 'suspended') {
+                if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
                     this.ctx.resume().catch(() => { });
                 }
             }
@@ -1361,13 +1392,45 @@
                         clearTimeout(timerId);
                         timerId = null;
                     }
+                    if (this.activeReloadNodes && this.activeReloadNodes.click2 === source) {
+                        this.activeReloadNodes = null;
+                    }
                     try { source.disconnect(); } catch (e) { }
                     for (let i = 0; i < nodes.length; i++) {
                         try { nodes[i].disconnect(); } catch (e) { }
                     }
                 };
+                const fallbackCheck = () => {
+                    if (cleaned) return;
+                    if (this.ctx && this.ctx.state !== 'running') {
+                        timerId = setTimeout(fallbackCheck, 2200);
+                        return;
+                    }
+                    cleanup();
+                };
                 source.onended = cleanup;
-                timerId = setTimeout(cleanup, 2200);
+                source._cleanup = cleanup;
+                timerId = setTimeout(fallbackCheck, 3500);
+            }
+
+            cancelReload() {
+                if (!this.activeReloadNodes) return;
+                const { click2, gain2 } = this.activeReloadNodes;
+                this.activeReloadNodes = null;
+                try { click2.onended = null; } catch (e) { }
+                if (this.ctx) {
+                    try {
+                        gain2.gain.cancelScheduledValues(this.ctx.currentTime);
+                        gain2.gain.setValueAtTime(0, this.ctx.currentTime);
+                    } catch (e) { }
+                }
+                try { click2.stop(); } catch (e) { }
+                if (typeof click2._cleanup === 'function') {
+                    click2._cleanup();
+                } else {
+                    try { click2.disconnect(); } catch (e) { }
+                    try { gain2.disconnect(); } catch (e) { }
+                }
             }
 
             setMasterVolume(val) {
@@ -1433,7 +1496,7 @@
             }
 
             playGunshot() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 if (this.noiseBuffers && this.noiseBuffers.length > 0) {
@@ -1482,7 +1545,7 @@
             }
 
             playEmptyClick() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -1504,7 +1567,8 @@
             }
 
             playReload() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
+                this.cancelReload();
                 const now = this.ctx.currentTime;
 
                 const click1 = this.ctx.createOscillator();
@@ -1538,13 +1602,14 @@
 
                 click2.connect(gain2);
                 gain2.connect(this.sfxGain);
+                this.activeReloadNodes = { click2, gain2 };
                 this.registerCleanup(click2, gain2);
                 click2.start(now + 0.85);
                 click2.stop(now + 1.05);
             }
 
             playHit(isHeadshot = false) {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -1566,7 +1631,7 @@
             }
 
             playZombieGroan(pitchMultiplier = 1.0) {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 if (now - this.lastGroanTime < 0.12) return;
@@ -1603,7 +1668,7 @@
             }
 
             playStalkerShriek() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 if (now - this.lastStalkerSoundTime < 0.16) return;
                 this.lastStalkerSoundTime = now;
@@ -1648,7 +1713,7 @@
             }
 
             playDroidScan() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 if (now - this.lastDroidScanTime < 0.18) return;
                 this.lastDroidScanTime = now;
@@ -1677,7 +1742,7 @@
             }
 
             playDroidPlasmaShot() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 const osc = this.ctx.createOscillator();
@@ -1708,7 +1773,7 @@
             }
 
             playDroidDestroy() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 const osc = this.ctx.createOscillator();
@@ -1751,7 +1816,7 @@
             }
 
             playShamblerDroidPing() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 if (now - this.lastShamblerPingTime < 0.20) return;
                 this.lastShamblerPingTime = now;
@@ -1803,7 +1868,7 @@
             }
 
             playShamblerDroidDestroy() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 // Heavy industrial combat-droid reactor shutdown & electrical arc burst
@@ -1848,7 +1913,7 @@
             }
 
             playPlayerDamage() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -1870,7 +1935,7 @@
             }
 
             playHealthPickup() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 const notes = [587.33, 739.99, 880.00, 1174.66];
@@ -1878,9 +1943,15 @@
                     const noteTime = now + i * 0.055;
                     const stopTime = noteTime + 0.35;
                     const osc = this.ctx.createOscillator();
+                    const filter = this.ctx.createBiquadFilter();
                     const gain = this.ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(freq, noteTime);
+
+                    filter.type = 'peaking';
+                    filter.frequency.setValueAtTime(freq, noteTime);
+                    filter.Q.setValueAtTime(8.0, noteTime);
+                    filter.gain.setValueAtTime(6.0, noteTime);
 
                     gain.gain.setValueAtTime(0.0001, now);
                     gain.gain.setValueAtTime(0.0001, noteTime);
@@ -1888,16 +1959,17 @@
                     gain.gain.exponentialRampToValueAtTime(0.0001, stopTime - 0.01);
                     gain.gain.linearRampToValueAtTime(0, stopTime);
 
-                    osc.connect(gain);
+                    osc.connect(filter);
+                    filter.connect(gain);
                     gain.connect(this.sfxGain);
-                    this.registerCleanup(osc, gain);
+                    this.registerCleanup(osc, filter, gain);
                     osc.start(noteTime);
                     osc.stop(stopTime);
                 });
             }
 
             playMapTransition() {
-                if (!this.ctx || this.muted) return;
+                if (!this.isRunning()) return;
                 const now = this.ctx.currentTime;
 
                 const subOsc = this.ctx.createOscillator();
@@ -2330,12 +2402,10 @@
             return new THREE.CanvasTexture(canvas);
         }
 
-        function createCyberBillboardTexture(mainTitle, subTitle, accentColor = '#00f5d4') {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 160;
-            const ctx = canvas.getContext('2d');
-
+        const cyberBillboardEntries = [];
+        function drawCyberBillboardCanvas(ctx, mainTitle, subTitle, accentColor = '#00f5d4') {
+            ctx.save();
+            ctx.clearRect(0, 0, 512, 160);
             ctx.fillStyle = 'rgba(10, 2, 14, 0.86)';
             ctx.fillRect(0, 0, 512, 160);
 
@@ -2373,8 +2443,28 @@
             ctx.fillStyle = accentColor;
             ctx.font = '700 18px Orbitron, monospace, sans-serif';
             ctx.fillText(subTitle, 256, 118);
+            ctx.restore();
+        }
 
-            return new THREE.CanvasTexture(canvas);
+        function createCyberBillboardTexture(mainTitle, subTitle, accentColor = '#00f5d4') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 160;
+            const ctx = canvas.getContext('2d');
+            drawCyberBillboardCanvas(ctx, mainTitle, subTitle, accentColor);
+            const tex = new THREE.CanvasTexture(canvas);
+            cyberBillboardEntries.push({ ctx, tex, mainTitle, subTitle, accentColor });
+            return tex;
+        }
+
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                for (let i = 0; i < cyberBillboardEntries.length; i++) {
+                    const entry = cyberBillboardEntries[i];
+                    drawCyberBillboardCanvas(entry.ctx, entry.mainTitle, entry.subTitle, entry.accentColor);
+                    entry.tex.needsUpdate = true;
+                }
+            }).catch(() => { });
         }
 
         function createNecroFloorTexture() {
@@ -2517,12 +2607,14 @@
         scene.background = new THREE.Color(0x050002);
         scene.fog = new THREE.FogExp2(0x090004, 0.028);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 160);
+        const initW = Math.max(1, window.innerWidth);
+        const initH = Math.max(1, window.innerHeight);
+        const camera = new THREE.PerspectiveCamera(75, initW / initH, 0.1, 160);
         camera.rotation.order = 'YXZ';
         scene.add(camera);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: false });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(initW, initH);
         renderer.autoClear = false;
         renderer.shadowMap.enabled = false;
         container.appendChild(renderer.domElement);
@@ -2539,6 +2631,8 @@
         renderer.domElement.addEventListener('webglcontextrestored', () => {
             contextLost = false;
             lastTime = null;
+            applyRenderQuality();
+            prewarmShaders();
         });
 
         const arenaAnisoTextures = [];
@@ -2760,6 +2854,19 @@
                 }
             }
             geosToDispose.forEach(g => g.dispose());
+
+            // Prune empty non-animated Group wrappers left behind after mesh extraction
+            function pruneEmptyGroups(obj) {
+                for (let i = obj.children.length - 1; i >= 0; i--) {
+                    const child = obj.children[i];
+                    if (animatedSet.has(child) || child.isMesh) continue;
+                    pruneEmptyGroups(child);
+                    if (child.type === 'Group' && child.children.length === 0) {
+                        obj.remove(child);
+                    }
+                }
+            }
+            pruneEmptyGroups(group);
 
             shootableList.length = 0;
             for (let i = 0; i < mergedShootables.length; i++) {
@@ -3864,7 +3971,7 @@
             botSquareRim.position.y = -1.9;
             charnelCageGroup.add(botSquareRim);
 
-            // 12 Square Vertical Prison Bars & 8 Downward Square Pyramid Meat-Spikes around the Square Cage
+            // 8 Square Vertical Prison Bars & 8 Downward Square Pyramid Meat-Spikes around the Square Cage
             const sqBarGeo = new THREE.BoxGeometry(0.22, 3.8, 0.22);
             const sqSpikeGeo = new THREE.ConeGeometry(0.32, 1.55, 4);
             const cageOffsets = [-2.6, 0, 2.6];
@@ -3966,7 +4073,6 @@
             const vaultFleshCoreGeo = new THREE.BoxGeometry(2.35, 7.8, 2.35);
             const vaultCornerPostGeo = new THREE.BoxGeometry(0.52, 8.4, 0.52);
             const vaultIronBarGeo = new THREE.BoxGeometry(3.15, 0.22, 3.15);
-            const specimenCages = [];
 
             charnelVaultCoords.forEach(([vx, vz], vIdx) => {
                 // Square iron base & top cap
@@ -3986,7 +4092,6 @@
                 group.add(fleshCore);
                 mapShootables.push(fleshCore);
                 mapObstacles.push({ x: vx, z: vz, radius: 2.12 });
-                specimenCages.push(fleshCore);
 
                 // 4 Heavy Square Corner Cage Posts
                 for (const cx of [-1.32, 1.32]) {
@@ -4198,7 +4303,7 @@
         vmDirLight.position.set(35, 60, -40);
         viewmodelScene.add(vmDirLight);
 
-        const viewmodelCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 10);
+        const viewmodelCamera = new THREE.PerspectiveCamera(70, Math.max(1, window.innerWidth) / Math.max(1, window.innerHeight), 0.05, 10);
         const vmPlayerLight = new THREE.PointLight(0xff2244, 0.9, 18);
         viewmodelCamera.add(vmPlayerLight);
         viewmodelScene.add(viewmodelCamera);
@@ -5440,26 +5545,11 @@
         function setStalkerOpacity(z, opacity) {
             if (!z || z.type !== 'stalker') return;
             const clamped = Math.max(0.30, Math.min(1.0, opacity));
-            const isCloaked = clamped < 0.99;
-            const targetOpacity = isCloaked ? clamped : 1.0;
+            const targetOpacity = clamped < 0.99 ? clamped : 1.0;
             const skinMat = z.parts.skinMat;
             const clothesMat = z.parts.clothesMat;
-            if (skinMat) {
-                skinMat.opacity = targetOpacity;
-                if (skinMat.transparent !== isCloaked) {
-                    skinMat.transparent = isCloaked;
-                    skinMat.depthWrite = !isCloaked;
-                    skinMat.needsUpdate = true;
-                }
-            }
-            if (clothesMat) {
-                clothesMat.opacity = targetOpacity;
-                if (clothesMat.transparent !== isCloaked) {
-                    clothesMat.transparent = isCloaked;
-                    clothesMat.depthWrite = !isCloaked;
-                    clothesMat.needsUpdate = true;
-                }
-            }
+            if (skinMat) skinMat.opacity = targetOpacity;
+            if (clothesMat) clothesMat.opacity = targetOpacity;
         }
 
         function setZombieHitFlash(z, active) {
@@ -6135,6 +6225,19 @@
             { geo: combatBootGeo }
         ]);
 
+        // Dispose primitive geometries that are consumed solely by bakeRigidPart/mergeGeometriesWithTransforms
+        [
+            sDroidHeadGeo, sDroidBrowCowlGeo, sDroidBrowFinGeo, sDroidVocoderBarGeo, sDroidTempleSensorGeo, sDroidEarFinGeo,
+            sDroidTorsoGeo, sDroidWaistPistonGeo, sDroidChestPlateGeo, sDroidChestTrimGeo, sDroidCageRibGeo,
+            sDroidCollarGuardGeo, sDroidPowerCellGeo, sDroidPowerRingGeo, sDroidPauldronTrimGeo, sDroidElbowDrumGeo,
+            sDroidCleaverMountGeo, sDroidCleaverBladeGeo, sDroidCleaverEdgeGeo, sDroidKneeServoGeo, sDroidMechBootGeo,
+            droidChestPlateGeo, droidBackFinGeo, droidAntennaGeo, droidArcBladeGeo, droidArcBladeEdgeGeo, droidBlasterRailGeo,
+            ribBoneArcGeo, eyeOrbGeo, runnerSecondaryEyeGeo, runnerHornGeo, stalkerCrownHornGeo, stalkerThirdEyeGeo,
+            stalkerHeelSpurGeo, clawFingerGeo, handPalmGeo, forearmGeo, bruteSideBreastplateGeo, bruteGorgetGeo,
+            bruteBackPackGeo, bruteExhaustNozzleGeo, bruteHelmDomeGeo, bruteRespiratorGeo, bruteGauntletGeo,
+            bruteKnuckleGuardGeo, bruteGreavePlateGeo
+        ].forEach(g => g.dispose());
+
         function createZombieMesh(type) {
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
@@ -6635,7 +6738,7 @@
                     roughness: 0.34,
                     metalness: 0.26,
                     emissive: 0x1a062b,
-                    transparent: false,
+                    transparent: true,
                     opacity: 1.0,
                     depthWrite: true,
                     depthTest: true,
@@ -6650,7 +6753,7 @@
                     roughness: 0.48,
                     metalness: 0.32,
                     emissive: 0x0c0318,
-                    transparent: false,
+                    transparent: true,
                     opacity: 1.0,
                     depthWrite: true,
                     depthTest: true,
@@ -7067,6 +7170,8 @@
                     p.mesh.material.color.setHex(i % 2 === 0 ? 0xff002b : 0xffaa44);
                 } else if (particleTheme === 'stalker') {
                     p.mesh.material.color.setHex(i % 2 === 0 ? 0xd946ff : 0x6b00b3);
+                } else if (particleTheme === 'spark') {
+                    p.mesh.material.color.setHex(i % 2 === 0 ? 0xffaa44 : 0xff4422);
                 } else {
                     p.mesh.material.color.setHex(i % 2 === 0 ? 0xff0033 : 0x800015);
                 }
@@ -7364,10 +7469,18 @@
                 }
             } else {
                 const roll = Math.random();
-                if (neonNexus && roll > 0.64) type = 'droid';
-                else if (waveNum >= 3 && roll > 0.72) type = 'brute';
-                else if (waveNum >= 2 && roll > 0.56) type = 'stalker';
-                else if (waveNum >= 2 && roll > 0.40) type = 'runner';
+                if (neonNexus) {
+                    if (roll > 0.66) type = 'droid';
+                    else if (waveNum >= 3 && roll > 0.52) type = 'brute';
+                    else if (waveNum >= 2 && roll > 0.36) type = 'stalker';
+                    else if (waveNum >= 2 && roll > 0.22) type = 'runner';
+                } else if (waveNum >= 3 && roll > 0.72) {
+                    type = 'brute';
+                } else if (waveNum >= 2 && roll > 0.56) {
+                    type = 'stalker';
+                } else if (waveNum >= 2 && roll > 0.40) {
+                    type = 'runner';
+                }
             }
 
             const parts = createZombieMesh(type);
@@ -7518,8 +7631,6 @@
                 showKillFeed('WARNING: PHANTOM STALKER DETECTED!');
                 sound.playStalkerShriek();
             }
-
-            updateHUD();
         }
 
         /********************************************************************
@@ -7564,11 +7675,18 @@
 
             recoilOffset: 0,
             recoilPitch: 0,
+            weaponSprintRoll: 0,
+            weaponReloadPitch: 0,
             muzzleTimer: 0,
             bobTimer: 0,
-            lastShootTime: 0,
+            autoFireProbeTimer: 0,
             pointerLocked: false,
+            pointerLockBlocked: false,
             isDraggingLook: false,
+            dragMoved: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            allowClickShotOnUp: false,
             lastMouseX: 0,
             lastMouseY: 0,
             sprintBinding: safeStorage.getEnum('mr_sprint_binding', VALID_SPRINT_BINDINGS, 'all'),
@@ -7582,7 +7700,8 @@
             joystickX: 0,
             joystickY: 0,
             joystickSprint: false,
-            touchSprint: false
+            touchSprint: false,
+            staminaExhausted: false
         };
         stateInitialized = true;
 
@@ -7636,7 +7755,6 @@
 
         // Mobile Touch DOM Elements
         const mobileControls = document.getElementById('mobile-controls');
-        const mobileTopBtns = document.getElementById('mobile-top-btns');
         const joystickZone = document.getElementById('joystick-zone');
         const joystickBase = document.getElementById('joystick-base');
         const joystickKnob = document.getElementById('joystick-knob');
@@ -7697,9 +7815,11 @@
         let aimTouchId = null;
         let lastAimX = 0;
         let lastAimY = 0;
+        let lastAimTime = 0;
         let fireTouchId = null;
         let lastFireAimX = 0;
         let lastFireAimY = 0;
+        let lastFireAimTime = 0;
         let leftFireTouchId = null;
 
         function resetKeys() {
@@ -7709,6 +7829,8 @@
             state.isRightMouseDown = false;
             state.isLeftMouseDown = false;
             state.isTouchFiring = false;
+            state.dragMoved = false;
+            state.allowClickShotOnUp = false;
             state.turn180Remaining = 0;
             state.joystickX = 0;
             state.joystickY = 0;
@@ -7716,7 +7838,9 @@
             state.touchSprint = false;
             joystickTouchId = null;
             aimTouchId = null;
+            lastAimTime = 0;
             fireTouchId = null;
+            lastFireAimTime = 0;
             leftFireTouchId = null;
             if (touchBtnSprint) {
                 touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
@@ -7741,9 +7865,10 @@
             if (!attackerPos || !damagePointer) return;
             const dx = attackerPos.x - camera.position.x;
             const dz = attackerPos.z - camera.position.z;
-            const worldAngle = Math.atan2(dx, dz);
-            const relAngle = worldAngle - (camera.rotation.y + Math.PI);
-            const deg = (relAngle * 180 / Math.PI);
+            const yaw = camera.rotation.y;
+            const rightComp = dx * Math.cos(yaw) - dz * Math.sin(yaw);
+            const fwdComp = -dx * Math.sin(yaw) - dz * Math.cos(yaw);
+            const deg = Math.atan2(rightComp, fwdComp) * (180 / Math.PI);
             damagePointer.style.transform = `rotate(${deg}deg)`;
             damagePointer.style.opacity = '1';
             clearTimeout(damagePointer._timer);
@@ -7803,7 +7928,7 @@
         function resumeGame() {
             if (state.mode !== 'PLAYING' || !state.isPaused) return;
             sound.resume();
-            sound.duckAmbient(false);
+            sound.duckAmbient(state.isIntermission);
             state.isPaused = false;
             resetKeys();
             state.isDraggingLook = false;
@@ -7818,7 +7943,16 @@
             state.isIntermission = false;
             state.lastIntermissionSec = -1;
             state.lastIntermissionMapIdx = -1;
+            state.nextWaveMapIndex = null;
+            state.isReloading = false;
+            state.reloadTimer = 0;
+            state.autoReloadTimer = 0;
+            state.staminaExhausted = false;
+            state.weaponSprintRoll = 0;
+            state.weaponReloadPitch = 0;
+            magazine.position.y = -0.14;
             lastTime = null;
+            sound.cancelReload();
             sound.duckAmbient(false);
             sound.resume();
             if (document.pointerLockElement) {
@@ -7863,80 +7997,15 @@
         refreshHighScoresUI();
 
         /********************************************************************
-         * NEON DIAMOND HEALTH JEWEL SYSTEM (Bug 9 Fix: No Dynamic PointLights)
+         * NEON DIAMOND HEALTH JEWEL SYSTEM (Pre-Allocated Pooled Rig & Light)
          ********************************************************************/
         let healthJewel = null;
         const healOverlay = document.getElementById('heal-overlay');
 
-        function showHealOverlay() {
-            if (!healOverlay) return;
-            healOverlay.style.opacity = '0.75';
-            clearTimeout(healOverlay._timer);
-            healOverlay._timer = setTimeout(() => {
-                healOverlay.style.opacity = '0';
-            }, 280);
-        }
-
-        function removeHealthJewel() {
-            if (!healthJewel) return;
-            scene.remove(healthJewel.group);
-            // Keep visible=true permanently so NUM_POINT_LIGHTS never changes mid-combat
-            persistentJewelLight.intensity = 0;
-            persistentJewelLight.position.set(0, -100, 0);
-
-            healthJewel.group.traverse(child => {
-                if (child.isMesh || child.isLineSegments) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                        else child.material.dispose();
-                    }
-                }
-            });
-            healthJewel = null;
-        }
-
-        // Safe jewel spawn relative to actual player position (Issue 14 Fix)
-        function findSafeJewelPosition() {
-            for (let attempt = 0; attempt < 50; attempt++) {
-                const x = (Math.random() - 0.5) * 80;
-                const z = (Math.random() - 0.5) * 80;
-
-                // Never spawn right on top of player's actual coordinate
-                if (Math.hypot(x - camera.position.x, z - camera.position.z) < 16) continue;
-
-                let collides = false;
-                for (let i = 0; i < obstacles.length; i++) {
-                    const obs = obstacles[i];
-                    if (Math.hypot(x - obs.x, z - obs.z) < obs.radius + 3.0) {
-                        collides = true;
-                        break;
-                    }
-                }
-
-                if (!collides) {
-                    return { x, z };
-                }
-            }
-            const safeNodes = currentMapSafeNodes;
-            let bestNode = safeNodes[0];
-            let bestDist = -1;
-            for (let i = 0; i < safeNodes.length; i++) {
-                const d = Math.hypot(safeNodes[i][0] - camera.position.x, safeNodes[i][1] - camera.position.z);
-                if (d > bestDist) {
-                    bestDist = d;
-                    bestNode = safeNodes[i];
-                }
-            }
-            return { x: bestNode[0], z: bestNode[1] };
-        }
-
-        function spawnHealthJewel() {
-            removeHealthJewel();
-
-            const pos = findSafeJewelPosition();
+        function createHealthJewelRig() {
             const group = new THREE.Group();
-            group.position.set(pos.x, 1.4, pos.z);
+            group.visible = false;
+            group.position.set(0, -100, 0);
 
             const jewelGeo = new THREE.OctahedronGeometry(0.72, 0);
             jewelGeo.scale(1.0, 1.45, 1.0);
@@ -7952,7 +8021,7 @@
             group.add(diamondMesh);
 
             const edgesGeo = new THREE.EdgesGeometry(jewelGeo);
-            const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
             const edgesMesh = new THREE.LineSegments(edgesGeo, edgesMat);
             diamondMesh.add(edgesMesh);
 
@@ -8017,12 +8086,7 @@
 
             scene.add(group);
 
-            // Re-activate persistent jewel light without modifying scene graph lights count
-            persistentJewelLight.position.set(pos.x, 1.4, pos.z);
-            persistentJewelLight.intensity = 3.2;
-            persistentJewelLight.visible = true;
-
-            healthJewel = {
+            return {
                 group,
                 diamondMesh,
                 coreMesh,
@@ -8035,9 +8099,9 @@
                 beaconOuterMat,
                 jewelMat,
                 baseY: 1.4,
-                position: new THREE.Vector3(pos.x, 1.4, pos.z),
-                update(dt, now) {
-                    const t = now * 0.001;
+                position: new THREE.Vector3(0, 1.4, 0),
+                update(dt, simMs) {
+                    const t = simMs * 0.001;
                     diamondMesh.rotation.y += dt * 1.6;
                     diamondMesh.rotation.x = Math.sin(t * 1.8) * 0.15;
                     group.position.y = this.baseY + Math.sin(t * 2.8) * 0.22;
@@ -8064,6 +8128,79 @@
             };
         }
 
+        const healthJewelRig = createHealthJewelRig();
+
+        function showHealOverlay() {
+            if (!healOverlay) return;
+            healOverlay.style.opacity = '0.75';
+            clearTimeout(healOverlay._timer);
+            healOverlay._timer = setTimeout(() => {
+                healOverlay.style.opacity = '0';
+            }, 280);
+        }
+
+        function removeHealthJewel() {
+            if (healthJewelRig && healthJewelRig.group) {
+                healthJewelRig.group.visible = false;
+                healthJewelRig.group.position.set(0, -100, 0);
+            }
+            // Keep visible=true permanently so NUM_POINT_LIGHTS never changes mid-combat
+            persistentJewelLight.intensity = 0;
+            persistentJewelLight.position.set(0, -100, 0);
+            healthJewel = null;
+        }
+
+        // Safe jewel spawn relative to actual player position (Issue 14 Fix)
+        function findSafeJewelPosition() {
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const x = (Math.random() - 0.5) * 80;
+                const z = (Math.random() - 0.5) * 80;
+
+                // Never spawn right on top of player's actual coordinate
+                if (Math.hypot(x - camera.position.x, z - camera.position.z) < 16) continue;
+
+                let collides = false;
+                for (let i = 0; i < obstacles.length; i++) {
+                    const obs = obstacles[i];
+                    if (Math.hypot(x - obs.x, z - obs.z) < obs.radius + 3.0) {
+                        collides = true;
+                        break;
+                    }
+                }
+
+                if (!collides) {
+                    return { x, z };
+                }
+            }
+            const safeNodes = currentMapSafeNodes;
+            let bestNode = safeNodes[0];
+            let bestDist = -1;
+            for (let i = 0; i < safeNodes.length; i++) {
+                const d = Math.hypot(safeNodes[i][0] - camera.position.x, safeNodes[i][1] - camera.position.z);
+                if (d > bestDist) {
+                    bestDist = d;
+                    bestNode = safeNodes[i];
+                }
+            }
+            return { x: bestNode[0], z: bestNode[1] };
+        }
+
+        function spawnHealthJewel() {
+            removeHealthJewel();
+
+            const pos = findSafeJewelPosition();
+            healthJewelRig.group.position.set(pos.x, healthJewelRig.baseY, pos.z);
+            healthJewelRig.position.set(pos.x, healthJewelRig.baseY, pos.z);
+            healthJewelRig.group.visible = true;
+
+            // Re-activate persistent jewel light without modifying scene graph lights count
+            persistentJewelLight.position.set(pos.x, healthJewelRig.baseY, pos.z);
+            persistentJewelLight.intensity = 3.2;
+            persistentJewelLight.visible = true;
+
+            healthJewel = healthJewelRig;
+        }
+
         function collectHealthJewel() {
             if (!healthJewel || state.mode !== 'PLAYING') return;
 
@@ -8088,16 +8225,23 @@
                 if (renderer.domElement.requestPointerLock) {
                     const lockPromise = renderer.domElement.requestPointerLock();
                     if (lockPromise && typeof lockPromise.catch === 'function') {
-                        lockPromise.catch(() => { });
+                        lockPromise.catch(() => {
+                            state.pointerLockBlocked = true;
+                        });
                     }
                 }
-            } catch (err) { }
+            } catch (err) {
+                state.pointerLockBlocked = true;
+            }
         }
 
         document.addEventListener('pointerlockchange', () => {
             state.pointerLocked = (document.pointerLockElement === renderer.domElement);
+            state.isLeftMouseDown = false;
             if (state.pointerLocked) {
+                state.pointerLockBlocked = false;
                 state.isDraggingLook = false;
+                state.allowClickShotOnUp = false;
             } else if (state.mode === 'PLAYING' && !state.isTouchMode) {
                 if (!state.isPaused) {
                     pauseGame();
@@ -8105,7 +8249,9 @@
             }
         });
 
-        document.addEventListener('pointerlockerror', () => { });
+        document.addEventListener('pointerlockerror', () => {
+            state.pointerLockBlocked = true;
+        });
 
         function shuffleArray(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
@@ -8164,6 +8310,7 @@
             }
 
             const activeMap = ARENA_MAPS[safeIdx];
+            activeMap.group.updateMatrixWorld(true);
 
             obstacles.length = 0;
             for (let i = 0; i < activeMap.obstacles.length; i++) {
@@ -8212,12 +8359,13 @@
         }
 
         function setMapMode(mode) {
+            const prevMode = state.mapMode;
             const safeMode = VALID_MAP_MODES.includes(mode) ? mode : 'cycle';
             state.mapMode = safeMode;
             safeStorage.setItem('mr_map_mode', safeMode);
             if (safeMode === 'cycle') {
                 state.nextWaveMapIndex = null;
-            } else if (state.isIntermission && state.nextWaveMapIndex === null) {
+            } else if (state.isIntermission && (state.nextWaveMapIndex === null || prevMode !== 'random')) {
                 const candidates = [];
                 for (let i = 0; i < ARENA_MAPS.length; i++) {
                     if (i !== state.currentMapIndex) candidates.push(i);
@@ -8440,6 +8588,8 @@
 
         function startGame() {
             sound.init();
+            sound.cancelReload();
+            sound.duckAmbient(false);
             sound.resume();
 
             zombies.forEach(disposeZombie);
@@ -8456,6 +8606,7 @@
 
             weaponGroup.position.copy(WEAPON_BASE_POS);
             weaponGroup.rotation.set(0, 0, 0);
+            magazine.position.y = -0.14;
             weaponGroup.visible = true;
             muzzleFlashGroup.visible = false;
             muzzleLight.intensity = 0;
@@ -8467,10 +8618,12 @@
             state.isIntermission = false;
             state.lastIntermissionSec = -1;
             state.lastIntermissionMapIdx = -1;
+            state.nextWaveMapIndex = null;
             resetKeys();
             state.isDraggingLook = false;
             state.health = 100;
             state.stamina = 100;
+            state.staminaExhausted = false;
             state.ammo = MAX_AMMO;
             state.isReloading = false;
             state.reloadTimer = 0;
@@ -8481,7 +8634,13 @@
             state.headshots = 0;
             state.recoilOffset = 0;
             state.recoilPitch = 0;
+            state.weaponSprintRoll = 0;
+            state.weaponReloadPitch = 0;
             state.muzzleTimer = 0;
+            state.bobTimer = 0;
+            state.autoFireProbeTimer = 0;
+            state.pointerLockBlocked = false;
+            simTime = 0;
 
             titleScreen.classList.add('hidden');
             gameoverScreen.classList.add('hidden');
@@ -8505,12 +8664,25 @@
             state.isIntermission = false;
             state.lastIntermissionSec = -1;
             state.lastIntermissionMapIdx = -1;
+            state.nextWaveMapIndex = null;
+            state.isReloading = false;
+            state.reloadTimer = 0;
+            state.autoReloadTimer = 0;
+            state.shootCooldownTimer = 0;
+            state.waveZombiesRemainingToSpawn = 0;
+            state.weaponSprintRoll = 0;
+            state.weaponReloadPitch = 0;
+            magazine.position.y = -0.14;
             lastTime = null;
+            sound.cancelReload();
+            sound.duckAmbient(false);
             resetKeys();
             state.isDraggingLook = false;
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
+            clearParticles();
+            clearBulletTracers();
             clearDroidBolts();
             removeHealthJewel();
             clearOverlayTimers();
@@ -8522,6 +8694,7 @@
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
             resumeLockPrompt.classList.add('hidden');
+            reloadPrompt.classList.add('hidden');
 
             // Save High Score & Best Wave
             const currentHigh = safeStorage.getInt('mr_high_score', 0, 0, 999999999);
@@ -8631,6 +8804,7 @@
                 _raySphere.radius = 1.45 * s;
                 if (raycaster.ray.intersectSphere(_raySphere, _tracerEnd)) {
                     if (maxDistSq === Infinity || _tracerEnd.distanceToSquared(camera.position) <= maxDistSq) {
+                        z.mesh.updateMatrixWorld(true);
                         _raycastTargets.push(z.mesh);
                     }
                 }
@@ -8651,7 +8825,6 @@
             }
 
             state.shootCooldownTimer = 0.135;
-            state.lastShootTime = performance.now();
             state.ammo--;
             sound.playGunshot();
 
@@ -8674,6 +8847,11 @@
             const intersects = precomputedIntersects || performWeaponRaycast();
             viewmodelCamera.updateMatrixWorld(true);
             muzzleFlashGroup.getWorldPosition(_muzzlePos);
+            const vmTan = Math.tan(THREE.MathUtils.degToRad(35));
+            const worldTan = Math.tan(THREE.MathUtils.degToRad(37.5));
+            const fovScale = worldTan / vmTan;
+            _muzzlePos.x *= fovScale;
+            _muzzlePos.y *= fovScale;
             _muzzlePos.applyMatrix4(camera.matrixWorld);
             raycaster.ray.at(60, _tracerEnd);
 
@@ -8712,14 +8890,12 @@
                             damage = 120;
                         } else if (isCoreHit) {
                             damage = 110;
-                            spawnBloodParticles(hit.point, 16, false, 'blood');
                         } else {
                             damage = 26; // Heavy chest armor absorbs body shots
                         }
                     } else if (hitZombie.type === 'droid') {
                         if (isHeadshot || isCoreHit) {
                             damage = 110;
-                            spawnBloodParticles(hit.point, 14, false, 'droid');
                         } else {
                             damage = 32; // Cybernetic alloy hull reduces non-critical hits
                         }
@@ -8784,8 +8960,10 @@
                         hitZombie.staggerPush = knockPower * 2.5;
                     }
 
-                    hitZombie.attackWindup = 0;
-                    hitZombie.isAttacking = false;
+                    if (hitZombie.staggerTimer > 0) {
+                        hitZombie.attackWindup = 0;
+                        hitZombie.isAttacking = false;
+                    }
                     hitZombie.state = 'CHASE';
 
                     alertZombiesNear(hitZombie.mesh.position, 18);
@@ -8801,7 +8979,9 @@
                     }, 95);
 
                     sound.playHit(isCrit);
-                    spawnBloodParticles(hit.point, isCrit ? 18 : 9, hitZombie.hp <= 0, hitParticleTheme);
+                    const particleScale = userSettings.renderQuality === 'performance' ? 0.55 : 1.0;
+                    const burstCount = Math.max(4, Math.round((isCrit ? 18 : 9) * particleScale));
+                    spawnBloodParticles(hit.point, burstCount, hitZombie.hp <= 0, hitParticleTheme);
 
                     if (hitZombie.hp <= 0) {
                         hitZombie.dying = true;
@@ -8846,7 +9026,8 @@
                         updateHUD();
                     }
                 } else {
-                    spawnBloodParticles(hit.point, 5, false);
+                    const wallSparkCount = userSettings.renderQuality === 'performance' ? 3 : 5;
+                    spawnBloodParticles(hit.point, wallSparkCount, false, 'spark');
                 }
             }
 
@@ -8866,11 +9047,13 @@
          ********************************************************************/
         window.addEventListener('keydown', (e) => {
             if (e.code === 'KeyM') {
+                if (e.repeat) return;
                 sound.toggleMute();
                 return;
             }
 
             if (e.code === 'Escape') {
+                if (e.repeat) return;
                 if (!settingsModal.classList.contains('hidden')) {
                     settingsModal.classList.add('hidden');
                     return;
@@ -8890,16 +9073,20 @@
             }
 
             if (state.mode !== 'PLAYING' || state.isPaused) return;
+            sound.resume();
+
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                e.preventDefault();
+            }
 
             if (e.code === 'Space') {
-                e.preventDefault();
                 keys.Space = true;
                 return;
             }
 
             if (e.code in keys) keys[e.code] = true;
 
-            if (e.code === 'KeyR') {
+            if (e.code === 'KeyR' && !e.repeat) {
                 startReload();
             }
         });
@@ -8926,6 +9113,9 @@
                 camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
                 camera.rotation.z = 0;
             } else if (state.isDraggingLook) {
+                if (Math.hypot(e.clientX - state.dragStartX, e.clientY - state.dragStartY) > 6) {
+                    state.dragMoved = true;
+                }
                 const dx = e.clientX - state.lastMouseX;
                 const dy = e.clientY - state.lastMouseY;
                 state.lastMouseX = e.clientX;
@@ -8940,6 +9130,7 @@
 
         renderer.domElement.addEventListener('mousedown', (e) => {
             if (state.mode !== 'PLAYING' || state.isPaused) return;
+            sound.resume();
 
             if (e.button === 2) {
                 state.isRightMouseDown = true;
@@ -8947,32 +9138,37 @@
                 return;
             }
 
-            let justLocked = false;
-            // Bug 7 Fix: If resuming without pointer lock, first click re-locks aim without firing accidental shot
+            if (e.button !== 0) return;
+
             if (!state.pointerLocked && !state.isTouchMode) {
-                requestGamePointerLock();
                 state.isDraggingLook = true;
+                state.dragStartX = e.clientX;
+                state.dragStartY = e.clientY;
+                state.dragMoved = false;
                 state.lastMouseX = e.clientX;
                 state.lastMouseY = e.clientY;
-                justLocked = true;
+                state.allowClickShotOnUp = state.pointerLockBlocked;
+                requestGamePointerLock();
+                return;
             }
 
-            if (e.button === 0) {
-                state.isLeftMouseDown = true;
-                if (!justLocked) {
-                    shootWeapon();
-                }
-            }
+            state.isLeftMouseDown = true;
+            shootWeapon();
         });
 
         window.addEventListener('mouseup', (e) => {
             if (e.button === 0) {
+                if (state.isDraggingLook && state.allowClickShotOnUp && !state.dragMoved && !state.pointerLocked && state.mode === 'PLAYING' && !state.isPaused) {
+                    shootWeapon();
+                }
                 state.isLeftMouseDown = false;
+                state.isDraggingLook = false;
+                state.dragMoved = false;
+                state.allowClickShotOnUp = false;
             }
             if (e.button === 2 || (e.buttons !== undefined && !(e.buttons & 2))) {
                 state.isRightMouseDown = false;
             }
-            state.isDraggingLook = false;
         });
 
         window.addEventListener('contextmenu', (e) => {
@@ -9017,12 +9213,12 @@
                 }
             });
 
-            if (pauseSprintLabel) {
-                if (cur === 'all') pauseSprintLabel.textContent = 'ALL ACTIVE';
-                else if (cur === 'shift') pauseSprintLabel.textContent = 'SHIFT KEY';
-                else if (cur === 'space') pauseSprintLabel.textContent = 'SPACEBAR';
-                else if (cur === 'rmb') pauseSprintLabel.textContent = 'RIGHT MOUSE (RMB)';
-            }
+            const labelText = cur === 'shift' ? 'SHIFT KEY'
+                : (cur === 'space' ? 'SPACEBAR'
+                    : (cur === 'rmb' ? 'RIGHT MOUSE (RMB)' : 'ALL ACTIVE'));
+            if (pauseSprintLabel) pauseSprintLabel.textContent = labelText;
+            const settingSprintLabel = document.getElementById('setting-sprint-label');
+            if (settingSprintLabel) settingSprintLabel.textContent = labelText;
         }
 
         document.querySelectorAll('.sprint-opt-btn').forEach(btn => {
@@ -9102,17 +9298,62 @@
                 }
                 const dummyTypes = ['shambler', 'runner', 'stalker', 'brute', 'droid'];
                 const tempRoots = [];
+                const prevLasers = [];
                 for (let i = 0; i < dummyTypes.length; i++) {
                     const p = createZombieMesh(dummyTypes[i]);
                     p.root.position.set(0, -100, 0);
+                    if (p.laserBeam) {
+                        prevLasers.push({ beam: p.laserBeam, vis: p.laserBeam.visible });
+                        p.laserBeam.visible = true;
+                    }
                     scene.add(p.root);
                     tempRoots.push(p);
                 }
+
+                const prevJewelVis = healthJewelRig.group.visible;
+                const prevJewelPos = healthJewelRig.group.position.clone();
+                healthJewelRig.group.position.set(0, -100, 0);
+                healthJewelRig.group.visible = true;
+
+                const poolVisSnapshots = [];
+                const warmMeshes = [
+                    bloodPool[0]?.mesh,
+                    sparklePool[0]?.mesh,
+                    muzzleSparkPool[0]?.mesh,
+                    tracerPool[0]?.line,
+                    droidBoltPool[0]?.mesh
+                ];
+                for (let i = 0; i < warmMeshes.length; i++) {
+                    const obj = warmMeshes[i];
+                    if (!obj) continue;
+                    poolVisSnapshots.push({ obj, vis: obj.visible, pos: obj.position.clone() });
+                    if (obj !== tracerPool[0]?.line) obj.position.set(0, -100, 0);
+                    obj.visible = true;
+                }
+
+                const prevWeaponVis = weaponGroup.visible;
+                const prevMuzzleVis = muzzleFlashGroup.visible;
                 weaponGroup.visible = true;
+                muzzleFlashGroup.visible = true;
+
                 renderer.compile(scene, camera);
                 renderer.compile(viewmodelScene, viewmodelCamera);
-                weaponGroup.visible = false;
 
+                weaponGroup.visible = prevWeaponVis;
+                muzzleFlashGroup.visible = prevMuzzleVis;
+
+                for (let i = 0; i < poolVisSnapshots.length; i++) {
+                    const snap = poolVisSnapshots[i];
+                    snap.obj.visible = snap.vis;
+                    snap.obj.position.copy(snap.pos);
+                }
+
+                healthJewelRig.group.visible = prevJewelVis;
+                healthJewelRig.group.position.copy(prevJewelPos);
+
+                for (let i = 0; i < prevLasers.length; i++) {
+                    prevLasers[i].beam.visible = prevLasers[i].vis;
+                }
                 for (let i = 0; i < tempRoots.length; i++) {
                     disposeZombie({ mesh: tempRoots[i].root, parts: tempRoots[i] });
                 }
@@ -9124,15 +9365,6 @@
         prewarmShaders();
 
         // 8b. PRO MOBILE & IPAD DUAL-THUMB FPS TOUCH CONTROLS
-        function isMobileDevice() {
-            const ua = navigator.userAgent || navigator.vendor || window.opera || '';
-            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-            const isIPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || /iPad/i.test(ua);
-            const hasTouchPoints = Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
-            const hasPrimaryCoarse = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            return isMobileUA || isIPad || (hasTouchPoints && hasPrimaryCoarse) || ('ontouchstart' in window && hasPrimaryCoarse);
-        }
-
         function updateAutoFireHudPill() {
             if (!touchBtnAutoFire || !touchAutoFireDot || !touchAutoFireLabel) return;
             if (userSettings.touchAutoFire) {
@@ -9154,19 +9386,20 @@
 
             if (isMobile) {
                 document.body.classList.add('is-mobile-device');
-                document.getElementById('hud-bottom-bar')?.classList.add('mobile-hud-spacing');
             } else {
                 document.body.classList.remove('is-mobile-device');
-                document.getElementById('hud-bottom-bar')?.classList.remove('mobile-hud-spacing');
             }
             updateAutoFireHudPill();
         }
 
-        // Velocity-Accelerated 2D Touch Look (Yaw + Pitch) with Target Friction
-        function applyTouchLookDelta(dx, dy) {
-            const swipeSpeed = Math.hypot(dx, dy);
+        // Velocity-Accelerated 2D Touch Look (Yaw + Pitch) with Target Friction (Refresh-rate independent)
+        function applyTouchLookDelta(dx, dy, evDt = 0.016) {
+            const dist = Math.hypot(dx, dy);
+            if (dist > 250) return;
+            const clampedDt = Math.max(0.004, Math.min(0.05, evDt));
+            const normSpeed = (dist / clampedDt) / 60;
             // Smooth non-linear velocity acceleration: 1.0x for fine micro-aim, up to 2.35x for fast 180° flicks
-            const accel = 1.0 + Math.min(1.35, Math.pow(swipeSpeed * 0.042, 1.25));
+            const accel = 1.0 + Math.min(1.35, Math.pow(normSpeed * 0.042, 1.25));
             // Subtle target friction slowdown when crosshair sweeps over an active hostile
             const friction = (userSettings.touchAimAssist && state.touchTargetHovered) ? 0.62 : 1.0;
 
@@ -9201,6 +9434,7 @@
             if (joystickZone && joystickBase && joystickKnob) {
                 joystickZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
+                    sound.resume();
                     if (joystickTouchId !== null) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
@@ -9327,6 +9561,7 @@
             if (touchLookZone) {
                 touchLookZone.addEventListener('touchstart', (e) => {
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
+                    sound.resume();
                     if (aimTouchId !== null) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
@@ -9334,6 +9569,7 @@
                         aimTouchId = t.identifier;
                         lastAimX = t.clientX;
                         lastAimY = t.clientY;
+                        lastAimTime = performance.now();
                         e.preventDefault();
                         break;
                     }
@@ -9341,22 +9577,27 @@
 
                 window.addEventListener('touchmove', (e) => {
                     if (aimTouchId === null && fireTouchId === null) return;
+                    const nowMs = performance.now();
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         const t = e.changedTouches[i];
                         if (t.identifier === aimTouchId) {
                             const dx = t.clientX - lastAimX;
                             const dy = t.clientY - lastAimY;
+                            const evDt = lastAimTime > 0 ? (nowMs - lastAimTime) / 1000 : 0.016;
                             lastAimX = t.clientX;
                             lastAimY = t.clientY;
-                            applyTouchLookDelta(dx, dy);
+                            lastAimTime = nowMs;
+                            applyTouchLookDelta(dx, dy, evDt);
                             e.preventDefault();
                         } else if (t.identifier === fireTouchId) {
                             // Drag-While-Firing: Right thumb on Fire button can simultaneously aim!
                             const dx = t.clientX - lastFireAimX;
                             const dy = t.clientY - lastFireAimY;
+                            const evDt = lastFireAimTime > 0 ? (nowMs - lastFireAimTime) / 1000 : 0.016;
                             lastFireAimX = t.clientX;
                             lastFireAimY = t.clientY;
-                            applyTouchLookDelta(dx, dy);
+                            lastFireAimTime = nowMs;
+                            applyTouchLookDelta(dx, dy, evDt);
                             e.preventDefault();
                         }
                     }
@@ -9367,6 +9608,7 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         if (e.changedTouches[i].identifier === aimTouchId) {
                             aimTouchId = null;
+                            lastAimTime = 0;
                             break;
                         }
                     }
@@ -9382,12 +9624,14 @@
                     e.preventDefault();
                     e.stopPropagation();
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
+                    sound.resume();
 
                     if (fireTouchId === null && e.changedTouches.length > 0) {
                         const t = e.changedTouches[0];
                         fireTouchId = t.identifier;
                         lastFireAimX = t.clientX;
                         lastFireAimY = t.clientY;
+                        lastFireAimTime = performance.now();
                     }
 
                     state.isTouchFiring = true;
@@ -9400,6 +9644,7 @@
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         if (e.changedTouches[i].identifier === fireTouchId) {
                             fireTouchId = null;
+                            lastFireAimTime = 0;
                             if (leftFireTouchId === null) {
                                 state.isTouchFiring = false;
                             }
@@ -9418,6 +9663,7 @@
                     e.preventDefault();
                     e.stopPropagation();
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
+                    sound.resume();
 
                     if (leftFireTouchId === null && e.changedTouches.length > 0) {
                         leftFireTouchId = e.changedTouches[0].identifier;
@@ -9476,7 +9722,7 @@
                     if (state.mode !== 'PLAYING' || state.isPaused) return;
 
                     state.touchSprint = !state.touchSprint;
-                    if (state.touchSprint && state.stamina > 5) {
+                    if (state.touchSprint && !state.staminaExhausted && state.stamina > 5) {
                         touchBtnSprint.classList.add('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
                         if (navigator.vibrate) navigator.vibrate(25);
                     } else {
@@ -9498,9 +9744,16 @@
 
             // 9. Touch Pause Button
             if (touchBtnPause) {
+                let lastPauseTouch = 0;
                 const handlePause = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const nowMs = performance.now();
+                    if (e.type === 'touchstart') {
+                        lastPauseTouch = nowMs;
+                    } else if (nowMs - lastPauseTouch < 400) {
+                        return;
+                    }
                     if (state.mode === 'PLAYING') pauseGame();
                 };
                 touchBtnPause.addEventListener('click', handlePause);
@@ -9509,9 +9762,16 @@
 
             // 10. Touch Mute Button
             if (touchBtnMute) {
+                let lastMuteTouch = 0;
                 const handleMute = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const nowMs = performance.now();
+                    if (e.type === 'touchstart') {
+                        lastMuteTouch = nowMs;
+                    } else if (nowMs - lastMuteTouch < 400) {
+                        return;
+                    }
                     sound.toggleMute();
                 };
                 touchBtnMute.addEventListener('click', handleMute);
@@ -9523,31 +9783,32 @@
 
         // Settings Modal Handlers (Improvement 4)
         function openSettingsModal() {
-            settingMouseSens.value = userSettings.mouseSens;
-            valMouseSens.textContent = `${userSettings.mouseSens.toFixed(1)}x`;
-            settingInvertY.checked = userSettings.invertY;
-            settingTouchSens.value = userSettings.touchSens;
-            valTouchSens.textContent = `${userSettings.touchSens.toFixed(1)}x`;
+            if (settingMouseSens) settingMouseSens.value = userSettings.mouseSens;
+            if (valMouseSens) valMouseSens.textContent = `${userSettings.mouseSens.toFixed(1)}x`;
+            if (settingInvertY) settingInvertY.checked = userSettings.invertY;
+            if (settingTouchSens) settingTouchSens.value = userSettings.touchSens;
+            if (valTouchSens) valTouchSens.textContent = `${userSettings.touchSens.toFixed(1)}x`;
             if (settingTouchAimAssist) settingTouchAimAssist.checked = userSettings.touchAimAssist;
             if (settingTouchAutoFire) settingTouchAutoFire.checked = userSettings.touchAutoFire;
-            settingMasterVol.value = userSettings.masterVol;
-            valMasterVol.textContent = `${Math.round(userSettings.masterVol * 100)}%`;
+            if (settingMasterVol) settingMasterVol.value = userSettings.masterVol;
+            if (valMasterVol) valMasterVol.textContent = `${Math.round(userSettings.masterVol * 100)}%`;
             if (settingShowPerf) settingShowPerf.checked = userSettings.showPerfHud;
             updateRenderQualityUI();
-            settingsModal.classList.remove('hidden');
+            updateSprintOptionUI();
+            if (settingsModal) settingsModal.classList.remove('hidden');
         }
 
         function closeSettingsModal() {
-            settingsModal.classList.add('hidden');
+            if (settingsModal) settingsModal.classList.add('hidden');
         }
 
         function saveSettings() {
-            const rawMouse = parseFloat(settingMouseSens.value);
-            const rawTouch = parseFloat(settingTouchSens.value);
-            const rawVol = parseFloat(settingMasterVol.value);
+            const rawMouse = settingMouseSens ? parseFloat(settingMouseSens.value) : userSettings.mouseSens;
+            const rawTouch = settingTouchSens ? parseFloat(settingTouchSens.value) : userSettings.touchSens;
+            const rawVol = settingMasterVol ? parseFloat(settingMasterVol.value) : userSettings.masterVol;
 
             userSettings.mouseSens = Number.isFinite(rawMouse) ? Math.min(2.6, Math.max(0.4, rawMouse)) : 1.0;
-            userSettings.invertY = Boolean(settingInvertY.checked);
+            if (settingInvertY) userSettings.invertY = Boolean(settingInvertY.checked);
             userSettings.touchSens = Number.isFinite(rawTouch) ? Math.min(2.5, Math.max(0.5, rawTouch)) : 1.0;
             if (settingTouchAimAssist) userSettings.touchAimAssist = Boolean(settingTouchAimAssist.checked);
             if (settingTouchAutoFire) userSettings.touchAutoFire = Boolean(settingTouchAutoFire.checked);
@@ -9632,8 +9893,8 @@
         });
 
         window.addEventListener('resize', () => {
-            const w = window.innerWidth;
-            const h = window.innerHeight;
+            const w = Math.max(1, window.innerWidth);
+            const h = Math.max(1, window.innerHeight);
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             viewmodelCamera.aspect = w / h;
@@ -9678,9 +9939,14 @@
         }
 
         let lastTime = null;
+        let simTime = 0;
         let _perfFrames = 0;
         let _perfAccum = 0;
         let _perfMsAccum = 0;
+
+        function getMaxActiveZombies() {
+            return userSettings.renderQuality === 'performance' ? 22 : 30;
+        }
 
         // Exponential frame-rate-independent smoothing helper
         function damp(current, target, lambda, dt) {
@@ -9728,12 +9994,12 @@
             const frameCpuStart = performance.now();
 
             const activeArenaMap = ARENA_MAPS[state.currentMapIndex];
-            if (activeArenaMap && typeof activeArenaMap.update === 'function') {
-                activeArenaMap.update(now);
-            }
 
             if (state.mode !== 'PLAYING') {
                 lastTime = now;
+                if (activeArenaMap && typeof activeArenaMap.update === 'function') {
+                    activeArenaMap.update(now);
+                }
                 const t = now * 0.00025;
                 camera.position.set(Math.cos(t) * 18, 3.5, Math.sin(t) * 18);
                 camera.lookAt(0, 1.5, 0);
@@ -9748,8 +10014,14 @@
             }
 
             const rawDt = lastTime === null ? 0.016 : (now - lastTime) / 1000;
+            const perfDt = Math.max(0, Math.min(rawDt, 1.0));
             const dt = Math.max(0, Math.min(rawDt, 0.05));
             lastTime = now;
+            simTime += dt * 1000;
+
+            if (activeArenaMap && typeof activeArenaMap.update === 'function') {
+                activeArenaMap.update(simTime);
+            }
 
             if (state.shootCooldownTimer > 0) {
                 state.shootCooldownTimer = Math.max(0, state.shootCooldownTimer - dt);
@@ -9768,7 +10040,7 @@
             }
 
             // Desktop Automatic Hold-to-Fire (Improvement 1)
-            if (state.isLeftMouseDown && !state.isTouchMode && !state.isReloading && state.ammo > 0 && state.shootCooldownTimer <= 0) {
+            if (state.isLeftMouseDown && state.pointerLocked && !state.isTouchMode && !state.isReloading && state.ammo > 0 && state.shootCooldownTimer <= 0) {
                 shootWeapon();
             }
 
@@ -9804,6 +10076,8 @@
                     const dPitch = Math.atan2(targetY - camera.position.y, horizDist) - camera.rotation.x;
                     if (Math.abs(dPitch) > 0.17) continue;
 
+                    if (!hasLineOfSight(camera.position.x, camera.position.z, z.mesh.position.x, z.mesh.position.z)) continue;
+
                     const angSq = dYaw * dYaw + dPitch * dPitch * 0.65;
                     if (angSq < bestAngSq) {
                         bestAngSq = angSq;
@@ -9833,11 +10107,16 @@
                     }
                 }
 
+                if (state.autoFireProbeTimer > 0) {
+                    state.autoFireProbeTimer = Math.max(0, state.autoFireProbeTimer - dt);
+                }
+
                 // Touch Hold-to-Fire & Target Acquisition Auto-Fire
                 if (!state.isReloading && state.ammo > 0 && state.shootCooldownTimer <= 0) {
                     if (state.isTouchFiring) {
                         shootWeapon();
-                    } else if (userSettings.touchAutoFire && state.touchTargetHovered) {
+                    } else if (userSettings.touchAutoFire && state.touchTargetHovered && state.autoFireProbeTimer <= 0) {
+                        state.autoFireProbeTimer = 0.05;
                         const hits = performWeaponRaycast(38);
                         if (hits.length > 0 && hits[0].distance <= 38) {
                             const hitZ = hits[0].object.userData.zombie;
@@ -9891,20 +10170,26 @@
                 sprintInput = true;
             }
 
-            const wantsSprint = sprintInput && isMoving && state.stamina > 5;
+            const wantsSprint = sprintInput && isMoving && !state.staminaExhausted && state.stamina > 0;
 
             let moveSpeed = 7.5;
             if (wantsSprint) {
                 moveSpeed = 12.2;
                 state.stamina = Math.max(0, state.stamina - 32 * dt);
-                if (state.stamina <= 5 && state.touchSprint) {
-                    state.touchSprint = false;
-                    if (touchBtnSprint) {
-                        touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
+                if (state.stamina <= 0) {
+                    state.staminaExhausted = true;
+                    if (state.touchSprint) {
+                        state.touchSprint = false;
+                        if (touchBtnSprint) {
+                            touchBtnSprint.classList.remove('bg-red-600', 'text-white', 'shadow-[0_0_20px_#ff0033]');
+                        }
                     }
                 }
             } else {
                 state.stamina = Math.min(100, state.stamina + 20 * dt);
+                if (state.staminaExhausted && state.stamina >= 25) {
+                    state.staminaExhausted = false;
+                }
             }
 
             // Performance: Only update DOM when stamina value changes
@@ -9913,7 +10198,7 @@
                 _lastStaminaRounded = roundedStamina;
                 hudStaminaBar.style.width = `${roundedStamina}%`;
             }
-            const stText = state.stamina < 15 ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
+            const stText = (state.staminaExhausted || state.stamina < 15) ? 'DEPLETED' : (wantsSprint ? 'BOOSTING' : 'READY');
             if (stText !== _lastStaminaTextVal) {
                 _lastStaminaTextVal = stText;
                 hudStaminaText.textContent = stText;
@@ -9958,19 +10243,35 @@
 
             state.recoilOffset = damp(state.recoilOffset, 0, 16, dt);
             state.recoilPitch = damp(state.recoilPitch, 0, 14, dt);
+            state.weaponSprintRoll = damp(state.weaponSprintRoll, wantsSprint ? 0.16 : 0, 14, dt);
+            state.weaponReloadPitch = damp(state.weaponReloadPitch, state.isReloading ? -0.45 : 0, 14, dt);
 
-            const reloadDip = state.isReloading ? Math.sin((1 - state.reloadTimer / 1.15) * Math.PI) * 0.22 : 0;
+            let reloadDip = 0;
+            if (state.isReloading) {
+                const reloadProgress = 1 - Math.max(0, state.reloadTimer) / 1.15;
+                reloadDip = Math.sin(reloadProgress * Math.PI) * 0.22;
+                if (reloadProgress < 0.74) {
+                    const ejectT = reloadProgress / 0.74;
+                    magazine.position.y = -0.14 - Math.sin(ejectT * Math.PI * 0.5) * 0.16;
+                } else {
+                    const insertT = Math.min(1, (reloadProgress - 0.74) / 0.26);
+                    magazine.position.y = -0.30 + insertT * 0.16;
+                }
+            } else {
+                magazine.position.y = damp(magazine.position.y, -0.14, 18, dt);
+            }
+
             weaponGroup.position.x = WEAPON_BASE_POS.x + Math.cos(state.bobTimer * 0.5) * 0.012;
             weaponGroup.position.y = WEAPON_BASE_POS.y + Math.abs(Math.sin(state.bobTimer)) * 0.015 - reloadDip;
             weaponGroup.position.z = WEAPON_BASE_POS.z + state.recoilOffset;
-            weaponGroup.rotation.x = state.recoilPitch - (state.isReloading ? 0.45 : 0);
-            weaponGroup.rotation.z = wantsSprint ? 0.16 : 0;
+            weaponGroup.rotation.x = state.recoilPitch + state.weaponReloadPitch;
+            weaponGroup.rotation.z = state.weaponSprintRoll;
 
             updateMuzzleFlash(dt);
 
             // 2b. Update Neon Diamond Health Jewel & Player Pickup Check
             if (healthJewel) {
-                healthJewel.update(dt, now);
+                healthJewel.update(dt, simTime);
                 const dx = camera.position.x - healthJewel.position.x;
                 const dz = camera.position.z - healthJewel.position.z;
                 if (Math.hypot(dx, dz) < 2.2) {
@@ -9994,7 +10295,7 @@
                 }
             } else if (state.waveZombiesRemainingToSpawn > 0) {
                 state.spawnTimer -= dt;
-                if (state.spawnTimer <= 0) {
+                if (state.spawnTimer <= 0 && getActiveZombieCount() < getMaxActiveZombies()) {
                     spawnZombie(state.wave);
                     state.waveZombiesRemainingToSpawn--;
                     state.spawnTimer = Math.max(0.55, 1.8 - state.wave * 0.14);
@@ -10006,6 +10307,7 @@
                 state.intermissionTimer = 3.5;
                 state.lastIntermissionSec = null;
                 state.lastIntermissionMapIdx = null;
+                clearDroidBolts();
                 if (state.mapMode === 'random') {
                     const candidates = [];
                     for (let i = 0; i < ARENA_MAPS.length; i++) {
@@ -10013,7 +10315,7 @@
                     }
                     state.nextWaveMapIndex = candidates[Math.floor(Math.random() * candidates.length)];
                 } else {
-                    state.nextWaveMapIndex = state.wave % ARENA_MAPS.length;
+                    state.nextWaveMapIndex = null;
                 }
                 sound.duckAmbient(true);
             }
@@ -10065,12 +10367,12 @@
 
                 // Animate glowing chest bio-core / Shambler Droid Electric Red Heart / Brute & Hunter Droid cores
                 if (z.type === 'shambler') {
-                    const beatPhase = now * 0.0055 + z.weaveOffset;
+                    const beatPhase = simTime * 0.0055 + z.weaveOffset;
                     const cardiacBeat = Math.pow(Math.max(0, Math.sin(beatPhase)), 6) * 0.22
                         + Math.pow(Math.max(0, Math.sin(beatPhase - 0.85)), 8) * 0.14;
                     if (z.parts.coreMesh) {
                         z.parts.coreMesh.scale.setScalar(1.0 + cardiacBeat);
-                        z.parts.coreMesh.rotation.y = Math.sin(now * 0.002 + z.weaveOffset) * 0.28;
+                        z.parts.coreMesh.rotation.y = Math.sin(simTime * 0.002 + z.weaveOffset) * 0.28;
                     }
                     if (z.parts.coreRing) {
                         z.parts.coreRing.rotation.z += dt * (4.4 + cardiacBeat * 10);
@@ -10084,12 +10386,12 @@
                         z.parts.eyeHalo.scale.setScalar(eyeFlare);
                     }
                     if (z.parts.opticUnit) {
-                        const eyeScanX = z.state === 'WANDER' ? Math.sin(now * 0.004 + z.weaveOffset) * 0.048 : 0;
+                        const eyeScanX = z.state === 'WANDER' ? Math.sin(simTime * 0.004 + z.weaveOffset) * 0.048 : 0;
                         z.parts.opticUnit.position.x = damp(z.parts.opticUnit.position.x, eyeScanX, 10, dt);
                     }
                 } else {
                     if (z.parts.coreMesh) {
-                        const corePulse = 1.0 + Math.sin(now * (z.isEnraged || z.droidChargeTimer > 0 ? 0.016 : 0.007) + z.weaveOffset) * 0.10;
+                        const corePulse = 1.0 + Math.sin(simTime * (z.isEnraged || z.droidChargeTimer > 0 ? 0.016 : 0.007) + z.weaveOffset) * 0.10;
                         z.parts.coreMesh.scale.setScalar(corePulse);
                         if (z.type === 'droid') {
                             z.parts.coreMesh.rotation.y += dt * 2.6;
@@ -10101,14 +10403,14 @@
                 }
                 if (z.type === 'droid') {
                     // Smooth cybernetic hover levitation, repulsor spin & sweeping optic scanner
-                    z.mesh.position.y = 0.28 + Math.sin(now * 0.0055 + z.weaveOffset) * 0.09;
+                    z.mesh.position.y = 0.28 + Math.sin(simTime * 0.0055 + z.weaveOffset) * 0.09;
                     if (z.parts.hoverRing) {
                         z.parts.hoverRing.rotation.y += dt * 4.5;
                     }
                     if (z.parts.scannerEye) {
                         const scanTargetX = (z.droidChargeTimer > 0 || z.droidBurstShots > 0)
                             ? 0
-                            : Math.sin(now * 0.0065 + z.weaveOffset) * 0.135;
+                            : Math.sin(simTime * 0.0065 + z.weaveOffset) * 0.135;
                         z.parts.scannerEye.position.x = damp(z.parts.scannerEye.position.x, scanTargetX, 12, dt);
                     }
                 }
@@ -10228,7 +10530,7 @@
                             );
                             z.wanderTimer = 3 + Math.random() * 4;
                         } else {
-                            z.parts.head.rotation.y = Math.sin(now * 0.003 + z.walkCycle) * 0.45;
+                            z.parts.head.rotation.y = Math.sin(simTime * 0.003 + z.walkCycle) * 0.45;
                         }
                     } else {
                         z.parts.head.rotation.y = damp(z.parts.head.rotation.y, 0, 6, dt);
@@ -10412,7 +10714,7 @@
                         if (z.type === 'runner') {
                             _moveDir.copy(_toPlayerDir);
                             _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
-                            const weave = Math.sin(now * 0.006 + z.weaveOffset) * 0.45;
+                            const weave = Math.sin(simTime * 0.006 + z.weaveOffset) * 0.45;
                             _moveDir.addScaledVector(_sideDir, weave);
                             _moveDir.normalize();
 
@@ -10547,7 +10849,7 @@
                     z.mesh.rotation.z = damp(z.mesh.rotation.z, isAiming ? 0 : bankTarget, 7, dt);
 
                     // Reverse-jointed hover-stabilizer legs subtly tuck during aerial glide
-                    const glideSway = Math.sin(now * 0.004 + z.weaveOffset) * 0.12;
+                    const glideSway = Math.sin(simTime * 0.004 + z.weaveOffset) * 0.12;
                     z.parts.leftLeg.rotation.x = damp(z.parts.leftLeg.rotation.x, 0.28 + glideSway, 8, dt);
                     z.parts.rightLeg.rotation.x = damp(z.parts.rightLeg.rotation.x, 0.28 - glideSway, 8, dt);
                     if (z.parts.leftShin) z.parts.leftShin.rotation.x = damp(z.parts.leftShin.rotation.x, 0.42, 8, dt);
@@ -10587,7 +10889,7 @@
                         z.parts.torso.rotation.y = damp(z.parts.torso.rotation.y, 0, 6, dt);
                     }
                     if (z.parts.jaw) {
-                        z.parts.jaw.rotation.x = z.blinkTelegraphTimer > 0 ? 0.48 : (0.12 + Math.abs(Math.sin(now * 0.003 + z.weaveOffset)) * 0.16);
+                        z.parts.jaw.rotation.x = z.blinkTelegraphTimer > 0 ? 0.48 : (0.12 + Math.abs(Math.sin(simTime * 0.003 + z.weaveOffset)) * 0.16);
                     }
                     z.mesh.rotation.z = damp(z.mesh.rotation.z, 0, 8, dt);
                 } else {
@@ -10765,35 +11067,39 @@
             }
 
             // Pass 2: Hard Player-vs-Enemy Separation AFTER Flocking (Prevents near-plane camera clipping)
-            for (let i = 0; i < zombies.length; i++) {
-                const z = zombies[i];
-                if (z.dying) continue;
-                const zombieRadius = 0.55 * z.parts.scale;
-                const combinedRadius = PLAYER_RADIUS + zombieRadius;
-                let dx = camera.position.x - z.mesh.position.x;
-                let dz = camera.position.z - z.mesh.position.z;
-                let d = Math.hypot(dx, dz);
-                if (d < combinedRadius) {
-                    const nx = d > 0.001 ? dx / d : 0;
-                    const nz = d > 0.001 ? dz / d : 1;
-                    const overlap = combinedRadius - d;
-                    camera.position.x += nx * overlap * 0.55;
-                    camera.position.z += nz * overlap * 0.55;
-                    z.mesh.position.x -= nx * overlap * 0.45;
-                    z.mesh.position.z -= nz * overlap * 0.45;
-                    resolveArenaCollisions(camera.position, PLAYER_RADIUS);
-                    resolveArenaCollisions(z.mesh.position, zombieRadius);
-
-                    dx = camera.position.x - z.mesh.position.x;
-                    dz = camera.position.z - z.mesh.position.z;
-                    d = Math.hypot(dx, dz);
+            for (let sepPass = 0; sepPass < 2; sepPass++) {
+                for (let i = 0; i < zombies.length; i++) {
+                    const z = zombies[i];
+                    if (z.dying) continue;
+                    const zScale = z.parts.scale;
+                    const zombieRadius = 0.55 * zScale;
+                    const zombieObsRadius = 0.75 * zScale;
+                    const combinedRadius = PLAYER_RADIUS + zombieRadius;
+                    let dx = camera.position.x - z.mesh.position.x;
+                    let dz = camera.position.z - z.mesh.position.z;
+                    let d = Math.hypot(dx, dz);
                     if (d < combinedRadius) {
-                        const rem = combinedRadius - d;
-                        const pnx = d > 0.001 ? dx / d : nx;
-                        const pnz = d > 0.001 ? dz / d : nz;
-                        z.mesh.position.x -= pnx * rem;
-                        z.mesh.position.z -= pnz * rem;
-                        resolveArenaCollisions(z.mesh.position, zombieRadius);
+                        const nx = d > 0.001 ? dx / d : 0;
+                        const nz = d > 0.001 ? dz / d : 1;
+                        const overlap = combinedRadius - d;
+                        camera.position.x += nx * overlap * 0.55;
+                        camera.position.z += nz * overlap * 0.55;
+                        z.mesh.position.x -= nx * overlap * 0.45;
+                        z.mesh.position.z -= nz * overlap * 0.45;
+                        resolveArenaCollisions(camera.position, PLAYER_RADIUS);
+                        resolveArenaCollisions(z.mesh.position, zombieObsRadius);
+
+                        dx = camera.position.x - z.mesh.position.x;
+                        dz = camera.position.z - z.mesh.position.z;
+                        d = Math.hypot(dx, dz);
+                        if (d < combinedRadius) {
+                            const rem = combinedRadius - d;
+                            const pnx = d > 0.001 ? dx / d : nx;
+                            const pnz = d > 0.001 ? dz / d : nz;
+                            z.mesh.position.x -= pnx * rem;
+                            z.mesh.position.z -= pnz * rem;
+                            resolveArenaCollisions(z.mesh.position, zombieObsRadius);
+                        }
                     }
                 }
             }
@@ -10959,7 +11265,7 @@
 
             if (userSettings.showPerfHud && perfHud) {
                 _perfFrames++;
-                _perfAccum += dt;
+                _perfAccum += perfDt;
                 _perfMsAccum += frameWorkMs;
                 if (_perfAccum >= 0.25) {
                     const fpsVal = Math.round(_perfFrames / _perfAccum);
@@ -10974,11 +11280,7 @@
             }
         }
 
-        if (document.readyState === 'complete') {
-            requestAnimationFrame(animate);
-        } else {
-            window.addEventListener('load', () => requestAnimationFrame(animate), { once: true });
-        }
+        requestAnimationFrame(animate);
     })();
     </script>
 </body>

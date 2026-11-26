@@ -4,7 +4,7 @@
 
 ---
 
-## ⚡ Overview
+## 💥 Overview
 
 **RUN FROM THE DEAD** drops you into **Sector 09**, a pitch-black industrial quarantine zone lit only by flickering crimson neon and a looming blood moon. Armed with an **NX-9 Pulse Carbine**, you must survive infinitely scaling waves of the infected.
 
@@ -12,7 +12,7 @@ Designed specifically for effortless static hosting, the entire game—including
 
 ---
 
-## 🚀 Key Features
+## 🕹️ Key Features
 
 * **Red Neon & Black Aesthetic:** Atmospheric exponential fog, CRT scanline overlays, glowing neon hazard structures, and a dynamic blood moon.
 * **Five Distinct Sector 09 Combat Arenas & Map Modes:** Battle across five procedural next-gen levels—**Map 01: Containment Grid**, **Map 02: Crimson Reactor**, **Map 03: Obsidian Sanctum**, **Map 04: Neon Nexus** *(Cyberpunk Megacity Data-Core)*, and **Map 05: Necro Ossuary** *(Dark Bio-Horror Catacombs)*. Play in **Wave Cycle Mode** (`Wave 1 → 2 → 3 → 4 → 5`, repeating) or enable **Random Map Mode** for unpredictable arena rotations every wave.
@@ -26,7 +26,7 @@ Designed specifically for effortless static hosting, the entire game—including
 * **Poise & Stagger Mechanics:** Standard infected stagger under heavy fire, while Armored Brutes possess heavy frontal poise and stagger cooldowns, preventing continuous fire stagger-locks.
 * **Obstacle-Safe Spawning:** Intelligent coordinate rejection algorithms and fallback nodes prevent zombies and pick-ups from ever embedding inside arena pillars or spawning directly on the player.
 * **Neon Diamond Health Jewels:** From Wave 3 onward, rare crystalline health jewels have a 65% chance to appear per level. Projecting an ethereal cyan vertical beacon and gyroscopic orbital rings, collecting a jewel replenishes `+50%` Vital Integrity accompanied by harmonic chimes and radiant sparkle bursts.
-* **High-Refresh-Rate Frame-Rate-Independent Engine:** Exponential `dt` smoothing (`damp`), static arena and per-bone enemy geometry batching, dedicated dual-pass first-person viewmodel rendering, pre-allocated object pools, and shared GPU material registries keep combat responsive and tear-free on high-refresh-rate displays (`120Hz`–`240Hz+`).
+* **High-Refresh-Rate Frame-Rate-Independent Engine:** Exponential `dt` smoothing (`damp`), pausable simulation time (`simTime`), static arena and per-bone enemy geometry batching, dedicated dual-pass first-person viewmodel rendering, pre-allocated object pools (including a reusable Health Jewel rig), and shared GPU material registries keep combat responsive and tear-free on high-refresh-rate displays (`120Hz`–`240Hz+`).
 * **Configurable Tactical & Render Settings:** Real-time settings modal supporting Render Quality presets (`Ultra`, `High`, `Performance`) with adaptive DPR and texture anisotropy scaling, optional live Performance Telemetry HUD (`FPS`, frame render `ms`, and Draw Calls `DC`), mouse look sensitivity, Y-axis inversion, touch sensitivity/aim assist/auto-fire, arena map rotation mode, and master audio synth volume.
 
 ---
@@ -40,7 +40,7 @@ Designed specifically for effortless static hosting, the entire game—including
 | **W A S D / Arrows** | **Move / Strafe** | Navigate around neon pillars to break line-of-sight |
 | **Mouse** | **Look / Aim** | Uses Pointer Lock API (includes click-and-drag fallback) |
 | **Left Mouse Button** | **Shoot Weapon** | Hold down LMB for automatic continuous fire (`15` rounds per mag) |
-| **Shift / Space / RMB** | **Tactical Sprint** | Boosts speed while consuming thruster stamina. Configurable in Settings / Briefing |
+| **Shift / Space / RMB** | **Tactical Sprint** | Boosts speed while consuming thruster stamina. Configurable in Title Briefing / Pause Menu / Settings Modal |
 | **R** | **Reload** | Replenishes magazine from infinite reserve (`1.15s` duration) |
 | **M** | **Mute / Unmute** | Toggles audio with live HUD status indicator |
 | **ESC** | **Pause / Settings** | Freezes simulation and opens tactical telemetry & settings modal |
@@ -49,11 +49,12 @@ Designed specifically for effortless static hosting, the entire game—including
 
 | **Touch Input** | **Action** | **Notes** |
 | :--- | :--- | :--- |
-| **Virtual Analog Joystick** | **Move & Turn** | Bottom-left thumbstick: push up/down to move forward/backward; tilt left/right to turn view left/right |
-| **Screen Touch (Outside Stick)** | **Strafe & Aim** | Touch and slide anywhere outside the joystick: horizontal drag strafes left/right; vertical drag aims pitch up/down |
-| **FIRE Button** | **Shoot Weapon** | Tap for precision single shots or hold for rapid continuous pulse fire |
-| **SPRINT Button** | **Tactical Sprint** | Tap to engage/disengage Sprint Thrusters on mobile/tablets |
-| **RELOAD Button** | **Reload Carbine** | Tap to initiate tactical magazine swap |
+| **Floating Virtual Joystick** | **Move & Strafe** | Bottom-left dynamic 360° thumbstick: push in any direction to move/strafe; push forward past the outer ring to engage `⚡ SPRINT LOCK` |
+| **Screen Touch (Outside Stick)** | **2D Free-Look Aim** | Touch and drag anywhere outside buttons/joystick for refresh-rate-independent horizontal yaw + vertical pitch aiming with line-of-sight Target Magnetism |
+| **FIRE / L-FIRE Buttons** | **Shoot Weapon** | Hold primary `FIRE` (supports simultaneous thumb drag-to-aim while firing) or secondary left-hand claw `L-FIRE` trigger |
+| **AUTO-FIRE Toggle** | **Crosshair Auto-Fire** | Top-right of action cluster: toggles automatic firing whenever a visible hostile enters your reticle |
+| **↺ 180° Button** | **Quick 180° Turn** | Executes a fast smooth `180°` turnaround for immediate rear threats |
+| **SPRINT / RELOAD Buttons** | **Sprint / Reload** | Toggle Sprint Thrusters or initiate two-stage tactical magazine swap |
 | **PAUSE & MUTE Buttons** | **HUD Controls** | Top-right on-screen buttons to pause simulation or toggle audio on touch devices |
 
 ---
@@ -99,7 +100,7 @@ Players can choose between two arena rotation modes on the **Title Screen**, **P
 
 * **3D Rendering (`Three.js r128`):** Uses `THREE.PerspectiveCamera` with `YXZ` Euler rotation order for gimbal-lock-free FPS aiming, deep `THREE.FogExp2` with local crimson `playerLight` and per-map `arenaBeacons` for pitch-black neon horror atmosphere, and a dual-pass isolated viewmodel camera (`viewmodelScene` / `viewmodelCamera`) to eliminate weapon clipping.
 * **Draw-Call Batching & Shader Pre-Warming:** `batchStaticMapGroup()` merges static arena geometry per material across all five maps, `bakeRigidPart()` consolidates rigid enemy limb sub-parts onto shared bone pivots, `ENEMY_MATS` shares opaque GPU materials (with depth-correct `transparent: false, depthWrite: true` outside Phantom Stalker cloaking), and `prewarmShaders()` pre-compiles all maps, enemy archetypes, and the viewmodel pass at startup.
-* **Pre-Allocated Pooling & Frame-Rate-Independent Simulation:** Pre-allocated particle, tracer, and Hunter Droid bolt pools combine with reusable scratch math vectors, sphere-culled raycasting (`performWeaponRaycast`), post-flocking player separation, continuous swept projectile impact checks (`segmentCircleHitT`), and exponential `damp()` integration.
+* **Pre-Allocated Pooling & Frame-Rate-Independent Simulation:** Pre-allocated particle, tracer, Hunter Droid bolt pools, and a reusable Health Jewel rig combine with reusable scratch math vectors, sphere-culled raycasting (`performWeaponRaycast`), two-pass post-flocking player separation, continuous swept projectile impact checks (`segmentCircleHitT`), pausable `simTime`, and exponential `damp()` integration.
 * **Persistent Scene Lighting Architecture:** The pickup point light (`persistentJewelLight`) remains permanently attached with `visible = true` and zero-cost intensity updates, eliminating WebGL shader recompilation hitches during jewel spawn and collection.
 * **Safe Storage & Audio Lifecycle Resilience:** Encapsulated `safeStorage` wrappers guard `localStorage` in sandboxed iframes, while `visibilitychange` handlers automatically suspend Web Audio and pause combat safely when tabs lose focus.
 * **Sound Synthesis (`Web Audio API`):**
