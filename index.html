@@ -242,10 +242,27 @@
             animation: pulseBanner 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Tactical Sprint & Map Mode Option Buttons */
+        @keyframes fadeBannerIn {
+            0% {
+                transform: scale(0.92);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .intermission-banner {
+            animation: fadeBannerIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Tactical Sprint, Map Mode & Quality Option Buttons */
         .sprint-opt-btn,
         .map-mode-btn,
-        .map-preview-btn {
+        .map-preview-btn,
+        .render-quality-btn {
             background: rgba(20, 0, 5, 0.75);
             color: #d1d5db;
             border: 1px solid rgba(255, 0, 51, 0.35);
@@ -259,7 +276,8 @@
 
         .sprint-opt-btn:hover,
         .map-mode-btn:hover,
-        .map-preview-btn:hover {
+        .map-preview-btn:hover,
+        .render-quality-btn:hover {
             border-color: #ff0033;
             color: #ffffff;
             box-shadow: 0 0 10px rgba(255, 0, 51, 0.4);
@@ -268,7 +286,8 @@
 
         .sprint-opt-btn.active,
         .map-mode-btn.active,
-        .map-preview-btn.active {
+        .map-preview-btn.active,
+        .render-quality-btn.active {
             background: #ff0033;
             color: #050002;
             font-weight: 800;
@@ -433,9 +452,9 @@
     <div id="heal-overlay" class="absolute inset-0 z-20"></div>
 
     <!-- ================= IN-GAME HUD ================= -->
-    <!-- Z-Index 35 ensures top buttons receive pointer events above touch zones (Bug 2 Fix) -->
+    <!-- Z-Index 35 ensures top buttons & crosshair render cleanly above damage/scanline overlays -->
     <div id="hud"
-        class="hidden absolute inset-0 z-35 pointer-events-none flex flex-col justify-between p-3 sm:p-6 md:p-8">
+        class="hidden absolute inset-0 z-[35] pointer-events-none flex flex-col justify-between p-3 sm:p-6 md:p-8">
         <!-- Top Bar: Score, Wave, Kills & Audio / Pause -->
         <div class="relative z-40 flex justify-between items-start gap-2 sm:gap-4">
             <div class="flex flex-wrap gap-2 sm:gap-4 pointer-events-auto">
@@ -460,8 +479,12 @@
                 </div>
             </div>
 
-            <!-- Right Top Info: Radar / Threat Count & Mobile Pause/Mute buttons -->
+            <!-- Right Top Info: Perf Telemetry, Radar / Threat Count & Mobile Pause/Mute buttons -->
             <div class="flex items-center gap-2 pointer-events-auto">
+                <div id="perf-hud" class="hidden neon-box px-2.5 py-1.5 rounded-lg text-right font-neon text-[10px] leading-tight tracking-wider text-emerald-300 border-emerald-500/40">
+                    <div><span id="perf-fps">60</span> FPS</div>
+                    <div class="text-neutral-400"><span id="perf-ms">16.7</span>ms | <span id="perf-dc">0</span> DC</div>
+                </div>
                 <div class="neon-box px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-right">
                     <div class="text-[10px] sm:text-xs uppercase tracking-widest text-red-400 font-semibold">Hostiles
                         Active</div>
@@ -981,7 +1004,7 @@
     <!-- ================= SETTINGS MODAL (Improvement 4) ================= -->
     <div id="settings-modal"
         class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md pointer-events-auto">
-        <div class="neon-box max-w-md w-full rounded-2xl p-6 text-left relative">
+        <div class="neon-box max-w-md w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6 text-left relative">
             <div class="flex justify-between items-center mb-4 border-b border-red-900/60 pb-2">
                 <div class="font-neon text-base font-bold text-white tracking-widest uppercase flex items-center gap-2">
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
@@ -1065,6 +1088,37 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Render Quality / DPR Scaling -->
+                <div class="pt-2 border-t border-red-950/60">
+                    <div class="flex justify-between text-neutral-300 mb-1.5">
+                        <span>RENDER QUALITY</span>
+                        <span id="setting-quality-label" class="text-red-400 font-bold">ULTRA</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-render-quality="ultra"
+                            class="render-quality-btn active py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
+                            ULTRA
+                        </button>
+                        <button type="button" data-render-quality="high"
+                            class="render-quality-btn py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
+                            HIGH
+                        </button>
+                        <button type="button" data-render-quality="performance"
+                            class="render-quality-btn py-1.5 px-2 text-[11px] font-neon rounded border transition-all text-center">
+                            PERF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Performance Telemetry HUD Toggle -->
+                <div class="flex items-center justify-between py-1 border-t border-red-950/60">
+                    <span class="text-neutral-300">PERFORMANCE TELEMETRY (FPS / DC)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="setting-show-perf" type="checkbox" class="sr-only peer">
+                        <div class="w-9 h-5 bg-neutral-900 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end">
@@ -1141,11 +1195,15 @@
 
     <!-- ================= MAIN GAME SCRIPT ================= -->
     <script>
+        (function () {
+        'use strict';
+
         document.getElementById('cdn-retry-btn')?.addEventListener('click', () => location.reload());
 
-        // Check for WebGL library availability
+        // Check for WebGL library availability and abort cleanly before touching THREE
         if (typeof THREE === 'undefined') {
-            document.getElementById('cdn-error-modal').classList.remove('hidden');
+            document.getElementById('cdn-error-modal')?.classList.remove('hidden');
+            return;
         }
 
         /********************************************************************
@@ -1153,6 +1211,8 @@
          ********************************************************************/
         const VALID_SPRINT_BINDINGS = ['all', 'shift', 'space', 'rmb'];
         const VALID_MAP_MODES = ['cycle', 'random'];
+        const VALID_RENDER_QUALITIES = ['ultra', 'high', 'performance'];
+        const isMobileInit = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         const safeStorage = {
             getItem(key, defaultVal = null) {
                 try {
@@ -1183,6 +1243,18 @@
             }
         };
 
+        // Tactical Settings (Initialized early so renderer, audio & HUD share one source of truth)
+        const userSettings = {
+            mouseSens: safeStorage.getFloat('mr_mouse_sens', 1.0, 0.4, 2.6),
+            invertY: safeStorage.getItem('mr_invert_y', 'false') === 'true',
+            touchSens: safeStorage.getFloat('mr_touch_sens', 1.0, 0.5, 2.5),
+            touchAimAssist: safeStorage.getItem('mr_touch_aim_assist', 'true') !== 'false',
+            touchAutoFire: safeStorage.getItem('mr_touch_autofire', 'true') !== 'false',
+            masterVol: safeStorage.getFloat('mr_master_vol', 1.0, 0, 1),
+            renderQuality: safeStorage.getEnum('mr_render_quality', VALID_RENDER_QUALITIES, isMobileInit ? 'high' : 'ultra'),
+            showPerfHud: safeStorage.getItem('mr_show_fps', 'false') === 'true'
+        };
+
         /********************************************************************
          * 1. PROCEDURAL WEB AUDIO SYNTHESIZER (Zero External Assets)
          ********************************************************************/
@@ -1205,35 +1277,41 @@
 
             init() {
                 if (!this.ctx) {
-                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioCtx();
+                    try {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioCtx) return;
+                        this.ctx = new AudioCtx();
 
-                    // 1. Master Dynamics Compressor (Limiter)
-                    this.limiter = this.ctx.createDynamicsCompressor();
-                    this.limiter.threshold.setValueAtTime(-1.0, this.ctx.currentTime);
-                    this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
-                    this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
-                    this.limiter.attack.setValueAtTime(0.002, this.ctx.currentTime);
-                    this.limiter.release.setValueAtTime(0.05, this.ctx.currentTime);
-                    this.limiter.connect(this.ctx.destination);
+                        // 1. Master Dynamics Compressor (Limiter)
+                        this.limiter = this.ctx.createDynamicsCompressor();
+                        this.limiter.threshold.setValueAtTime(-1.0, this.ctx.currentTime);
+                        this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
+                        this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+                        this.limiter.attack.setValueAtTime(0.002, this.ctx.currentTime);
+                        this.limiter.release.setValueAtTime(0.05, this.ctx.currentTime);
+                        this.limiter.connect(this.ctx.destination);
 
-                    // 2. Master Gain (Mute & Master Level bus)
-                    this.masterGain = this.ctx.createGain();
-                    const targetGain = this.muted ? 0 : this.masterVolume;
-                    this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
-                    this.masterGain.connect(this.limiter);
+                        // 2. Master Gain (Mute & Master Level bus)
+                        this.masterGain = this.ctx.createGain();
+                        const targetGain = this.muted ? 0 : this.masterVolume;
+                        this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
+                        this.masterGain.connect(this.limiter);
 
-                    // 3. Sub-buses for SFX and Ambient
-                    this.sfxGain = this.ctx.createGain();
-                    this.sfxGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
-                    this.sfxGain.connect(this.masterGain);
+                        // 3. Sub-buses for SFX and Ambient
+                        this.sfxGain = this.ctx.createGain();
+                        this.sfxGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+                        this.sfxGain.connect(this.masterGain);
 
-                    this.ambientGain = this.ctx.createGain();
-                    this.ambientGain.gain.setValueAtTime(0.14, this.ctx.currentTime);
-                    this.ambientGain.connect(this.masterGain);
+                        this.ambientGain = this.ctx.createGain();
+                        this.ambientGain.gain.setValueAtTime(0.14, this.ctx.currentTime);
+                        this.ambientGain.connect(this.masterGain);
 
-                    // 4. Pre-bake noise buffer pool
-                    this.buildNoiseBufferPool();
+                        // 4. Pre-bake noise buffer pool
+                        this.buildNoiseBufferPool();
+                    } catch (e) {
+                        this.ctx = null;
+                        return;
+                    }
                 }
 
                 if (this.ctx.state === 'suspended') {
@@ -1243,6 +1321,18 @@
                 if (!this.ambientInitialized) {
                     this.startAmbientDrone();
                     this.ambientInitialized = true;
+                }
+            }
+
+            suspend() {
+                if (this.ctx && this.ctx.state === 'running') {
+                    this.ctx.suspend().catch(() => { });
+                }
+            }
+
+            resume() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => { });
                 }
             }
 
@@ -1263,16 +1353,21 @@
 
             registerCleanup(source, ...nodes) {
                 let cleaned = false;
+                let timerId = null;
                 const cleanup = () => {
                     if (cleaned) return;
                     cleaned = true;
+                    if (timerId !== null) {
+                        clearTimeout(timerId);
+                        timerId = null;
+                    }
                     try { source.disconnect(); } catch (e) { }
                     for (let i = 0; i < nodes.length; i++) {
                         try { nodes[i].disconnect(); } catch (e) { }
                     }
                 };
                 source.onended = cleanup;
-                setTimeout(cleanup, 2200);
+                timerId = setTimeout(cleanup, 2200);
             }
 
             setMasterVolume(val) {
@@ -2426,15 +2521,57 @@
         camera.rotation.order = 'YXZ';
         scene.add(camera);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // Mobile DPR cap (Performance improvement: 1.5 on mobile to avoid fillrate throttling)
-        const isMobileInit = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileInit ? 1.5 : 2.0));
+        renderer.autoClear = false;
         renderer.shadowMap.enabled = false;
         container.appendChild(renderer.domElement);
 
-        // Lighting
+        let contextLost = false;
+        let stateInitialized = false;
+        renderer.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            contextLost = true;
+            if (stateInitialized && state.mode === 'PLAYING' && !state.isPaused) {
+                pauseGame();
+            }
+        });
+        renderer.domElement.addEventListener('webglcontextrestored', () => {
+            contextLost = false;
+            lastTime = null;
+        });
+
+        const arenaAnisoTextures = [];
+        function applyRenderQuality() {
+            const quality = userSettings.renderQuality || 'ultra';
+            const nativeDpr = window.devicePixelRatio || 1;
+            const mobileMode = isMobileInit || (stateInitialized && state.isTouchMode);
+            let maxDpr = 2.0;
+            let targetAniso = 8;
+            if (quality === 'performance') {
+                maxDpr = 1.0;
+                targetAniso = 2;
+            } else if (quality === 'high') {
+                maxDpr = 1.5;
+                targetAniso = 4;
+            } else {
+                maxDpr = mobileMode ? 1.5 : 2.0;
+                targetAniso = 8;
+            }
+            renderer.setPixelRatio(Math.min(nativeDpr, maxDpr));
+
+            const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+            const appliedAniso = Math.max(1, Math.min(targetAniso, maxAniso));
+            for (let i = 0; i < arenaAnisoTextures.length; i++) {
+                const tex = arenaAnisoTextures[i];
+                if (tex && tex.anisotropy !== appliedAniso) {
+                    tex.anisotropy = appliedAniso;
+                    tex.needsUpdate = true;
+                }
+            }
+        }
+
+        // Lighting (Original Dark Horror Rig — no global IBL/hemisphere wash)
         const ambientLight = new THREE.AmbientLight(0x2a0c14, 0.85);
         scene.add(ambientLight);
 
@@ -2445,9 +2582,10 @@
         const playerLight = new THREE.PointLight(0xff2244, 0.9, 18);
         camera.add(playerLight);
 
-        // Persistent Pre-Created Jewel Light (Bug 9 Fix: Eliminates shader recompile stutter)
+        // Persistent Pre-Created Jewel Light (Keep visible=true permanently so NUM_POINT_LIGHTS never changes)
         const persistentJewelLight = new THREE.PointLight(0x00ffcc, 0, 18);
-        persistentJewelLight.visible = false;
+        persistentJewelLight.position.set(0, -100, 0);
+        persistentJewelLight.visible = true;
         scene.add(persistentJewelLight);
 
         // Crimson Blood Moon in the sky
@@ -2464,6 +2602,7 @@
         const sanctumFloorTex = createSanctumFloorTexture();
         const cyberNexusFloorTex = createCyberNexusFloorTexture();
         const necroOssuaryFloorTex = createNecroFloorTexture();
+        arenaAnisoTextures.push(gridFloorTex, reactorFloorTex, sanctumFloorTex, cyberNexusFloorTex, necroOssuaryFloorTex);
 
         const floorGeo = new THREE.PlaneGeometry(140, 140);
         const floorMat = new THREE.MeshStandardMaterial({
@@ -2490,13 +2629,165 @@
 
         const neonRingMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
         const neonBrightMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
-        const neonDeepMat = new THREE.MeshBasicMaterial({ color: 0x990022 });
         const wallConfigs = [
             { pos: [0, 4, -62], size: [124, 8, 2] },
             { pos: [0, 4, 62], size: [124, 8, 2] },
             { pos: [-62, 4, 0], size: [2, 8, 124] },
             { pos: [62, 4, 0], size: [2, 8, 124] }
         ];
+
+        // Zero-dependency Geometry Merger & Static Arena Batcher
+        function mergeGeometriesWithTransforms(items) {
+            if (!items || items.length === 0) return null;
+            const tempGeos = [];
+            let totalVerts = 0;
+            let hasAnyUv = false;
+
+            for (let i = 0; i < items.length; i++) {
+                const it = items[i];
+                const raw = it.geo;
+                if (!raw || !raw.attributes || !raw.attributes.position) continue;
+                const temp = raw.index ? raw.toNonIndexed() : raw.clone();
+                if (it.matrix) temp.applyMatrix4(it.matrix);
+                if (!temp.attributes.normal) temp.computeVertexNormals();
+                if (temp.attributes.uv) hasAnyUv = true;
+                totalVerts += temp.attributes.position.count;
+                tempGeos.push(temp);
+            }
+
+            if (totalVerts === 0) {
+                for (let i = 0; i < tempGeos.length; i++) tempGeos[i].dispose();
+                return null;
+            }
+
+            const positions = new Float32Array(totalVerts * 3);
+            const normals = new Float32Array(totalVerts * 3);
+            const uvs = hasAnyUv ? new Float32Array(totalVerts * 2) : null;
+            let vOffset = 0;
+
+            for (let i = 0; i < tempGeos.length; i++) {
+                const g = tempGeos[i];
+                const posAttr = g.attributes.position;
+                const normAttr = g.attributes.normal;
+                const uvAttr = g.attributes.uv;
+                const count = posAttr.count;
+
+                for (let v = 0; v < count; v++) {
+                    const pIdx = (vOffset + v) * 3;
+                    positions[pIdx] = posAttr.getX(v);
+                    positions[pIdx + 1] = posAttr.getY(v);
+                    positions[pIdx + 2] = posAttr.getZ(v);
+
+                    normals[pIdx] = normAttr.getX(v);
+                    normals[pIdx + 1] = normAttr.getY(v);
+                    normals[pIdx + 2] = normAttr.getZ(v);
+
+                    if (uvs && uvAttr) {
+                        const uIdx = (vOffset + v) * 2;
+                        uvs[uIdx] = uvAttr.getX(v);
+                        uvs[uIdx + 1] = uvAttr.getY(v);
+                    }
+                }
+                vOffset += count;
+                g.dispose();
+            }
+
+            const merged = new THREE.BufferGeometry();
+            merged.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            merged.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+            if (uvs) merged.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+            merged.computeBoundingSphere();
+            merged.computeBoundingBox();
+            return merged;
+        }
+
+        function batchStaticMapGroup(group, shootableList, animatedRoots = []) {
+            const animatedSet = new Set(animatedRoots);
+            const shootableSet = new Set(shootableList);
+            const usedByAnimated = new Set();
+            for (let i = 0; i < animatedRoots.length; i++) {
+                animatedRoots[i].traverse(obj => {
+                    if (obj.isMesh && obj.geometry) usedByAnimated.add(obj.geometry);
+                });
+            }
+
+            group.updateMatrixWorld(true);
+            const invGroupMatrix = new THREE.Matrix4().copy(group.matrixWorld).invert();
+            const buckets = new Map();
+            const toRemove = [];
+
+            function walk(obj) {
+                if (animatedSet.has(obj)) return;
+                if (obj.isMesh) {
+                    const isShootable = shootableSet.has(obj);
+                    const key = obj.material.uuid + '|' + (isShootable ? '1' : '0');
+                    let bucket = buckets.get(key);
+                    if (!bucket) {
+                        bucket = { material: obj.material, isShootable, items: [] };
+                        buckets.set(key, bucket);
+                    }
+                    const relMat = new THREE.Matrix4().multiplyMatrices(invGroupMatrix, obj.matrixWorld);
+                    bucket.items.push({ geo: obj.geometry, matrix: relMat });
+                    toRemove.push(obj);
+                    return;
+                }
+                const children = obj.children;
+                for (let i = 0; i < children.length; i++) {
+                    walk(children[i]);
+                }
+            }
+
+            walk(group);
+
+            const mergedShootables = [];
+            buckets.forEach(bucket => {
+                if (bucket.items.length === 0) return;
+                const mergedGeo = mergeGeometriesWithTransforms(bucket.items);
+                if (!mergedGeo) return;
+                const mesh = new THREE.Mesh(mergedGeo, bucket.material);
+                group.add(mesh);
+                if (bucket.isShootable) {
+                    mergedShootables.push(mesh);
+                }
+            });
+
+            const geosToDispose = new Set();
+            for (let i = 0; i < toRemove.length; i++) {
+                const m = toRemove[i];
+                if (m.parent) m.parent.remove(m);
+                if (m.geometry && !usedByAnimated.has(m.geometry)) {
+                    geosToDispose.add(m.geometry);
+                }
+            }
+            geosToDispose.forEach(g => g.dispose());
+
+            shootableList.length = 0;
+            for (let i = 0; i < mergedShootables.length; i++) {
+                shootableList.push(mergedShootables[i]);
+            }
+        }
+
+        const _bakePos = new THREE.Vector3();
+        const _bakeQuat = new THREE.Quaternion();
+        const _bakeEuler = new THREE.Euler();
+        const _bakeScale = new THREE.Vector3();
+
+        function bakeRigidPart(specs) {
+            const items = [];
+            for (let i = 0; i < specs.length; i++) {
+                const sp = specs[i];
+                if (!sp || !sp.geo) continue;
+                const p = sp.pos || [0, 0, 0];
+                const r = sp.rot || [0, 0, 0];
+                const s = sp.scale || [1, 1, 1];
+                _bakePos.set(p[0], p[1], p[2]);
+                _bakeEuler.set(r[0], r[1], r[2], 'XYZ');
+                _bakeQuat.setFromEuler(_bakeEuler);
+                _bakeScale.set(s[0], s[1], s[2]);
+                items.push({ geo: sp.geo, matrix: new THREE.Matrix4().compose(_bakePos, _bakeQuat, _bakeScale) });
+            }
+            return mergeGeometriesWithTransforms(items);
+        }
 
         // ====================================================================
         // MAP 01: SECTOR 09 — CONTAINMENT GRID (Original Classic Arena)
@@ -2506,8 +2797,10 @@
             const mapObstacles = [];
             const mapShootables = [];
 
+            const pillarTex = createPillarTexture();
+            arenaAnisoTextures.push(pillarTex);
             const pillarMat = new THREE.MeshStandardMaterial({
-                map: createPillarTexture(),
+                map: pillarTex,
                 roughness: 0.5,
                 metalness: 0.4
             });
@@ -2553,6 +2846,7 @@
                 group.add(strip);
             });
 
+            batchStaticMapGroup(group, mapShootables, []);
             scene.add(group);
 
             return {
@@ -2591,8 +2885,10 @@
             const mapObstacles = [];
             const mapShootables = [];
 
+            const reactorPylonTex = createReactorPylonTexture();
+            arenaAnisoTextures.push(reactorPylonTex);
             const reactorPylonMat = new THREE.MeshStandardMaterial({
-                map: createReactorPylonTexture(),
+                map: reactorPylonTex,
                 roughness: 0.38,
                 metalness: 0.62
             });
@@ -2784,6 +3080,7 @@
                 group.add(stripMid);
             });
 
+            batchStaticMapGroup(group, mapShootables, [overheadCoreGroup]);
             group.visible = false;
             scene.add(group);
 
@@ -2829,8 +3126,10 @@
             const mapObstacles = [];
             const mapShootables = [];
 
+            const sanctumMonolithTex = createSanctumMonolithTexture();
+            arenaAnisoTextures.push(sanctumMonolithTex);
             const monolithMat = new THREE.MeshStandardMaterial({
-                map: createSanctumMonolithTexture(),
+                map: sanctumMonolithTex,
                 roughness: 0.32,
                 metalness: 0.65
             });
@@ -3048,6 +3347,7 @@
                 });
             });
 
+            batchStaticMapGroup(group, mapShootables, [sanctumApexGroup, ...peakCrystals]);
             group.visible = false;
             scene.add(group);
 
@@ -3095,8 +3395,10 @@
             const mapObstacles = [];
             const mapShootables = [];
 
+            const cyberServerTex = createCyberServerTexture();
+            arenaAnisoTextures.push(cyberServerTex);
             const cyberServerMat = new THREE.MeshStandardMaterial({
-                map: createCyberServerTexture(),
+                map: cyberServerTex,
                 roughness: 0.30,
                 metalness: 0.78
             });
@@ -3111,7 +3413,8 @@
                 color: 0xff0055,
                 wireframe: true,
                 transparent: true,
-                opacity: 0.65
+                opacity: 0.65,
+                depthWrite: false
             });
             const holoBeamMat = new THREE.MeshBasicMaterial({
                 color: 0x00f5d4,
@@ -3408,6 +3711,7 @@
                 group.add(vertStrip);
             });
 
+            batchStaticMapGroup(group, mapShootables, [neuralCoreGroup, ...floatingPrisms]);
             group.visible = false;
             scene.add(group);
 
@@ -3459,8 +3763,10 @@
             const mapObstacles = [];
             const mapShootables = [];
 
+            const necroPillarTex = createNecroPillarTexture();
+            arenaAnisoTextures.push(necroPillarTex);
             const necroPillarMat = new THREE.MeshStandardMaterial({
-                map: createNecroPillarTexture(),
+                map: necroPillarTex,
                 roughness: 0.46,
                 metalness: 0.58
             });
@@ -3823,6 +4129,7 @@
                 });
             });
 
+            batchStaticMapGroup(group, mapShootables, [charnelCageGroup, ...relicCubes]);
             group.visible = false;
             scene.add(group);
 
@@ -3880,15 +4187,27 @@
             buildMap4CyberNexus(),
             buildMap5NecroOssuary()
         ];
+        applyRenderQuality();
 
         /********************************************************************
-         * 4. 3D WEAPON VIEWMODEL
+         * 4. 3D WEAPON VIEWMODEL (DEDICATED PASS — ZERO WALL/ENEMY CLIPPING)
          ********************************************************************/
+        const viewmodelScene = new THREE.Scene();
+        viewmodelScene.add(new THREE.AmbientLight(0x2a0c14, 0.85));
+        const vmDirLight = new THREE.DirectionalLight(0xff1a40, 0.55);
+        vmDirLight.position.set(35, 60, -40);
+        viewmodelScene.add(vmDirLight);
+
+        const viewmodelCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 10);
+        const vmPlayerLight = new THREE.PointLight(0xff2244, 0.9, 18);
+        viewmodelCamera.add(vmPlayerLight);
+        viewmodelScene.add(viewmodelCamera);
+
         const weaponGroup = new THREE.Group();
         const WEAPON_BASE_POS = new THREE.Vector3(0.32, -0.27, -0.52);
         weaponGroup.position.copy(WEAPON_BASE_POS);
         weaponGroup.visible = false;
-        camera.add(weaponGroup);
+        viewmodelCamera.add(weaponGroup);
 
         const gunMetalMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.35, metalness: 0.8 });
         const gunDarkMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0f, roughness: 0.6, metalness: 0.4 });
@@ -4297,7 +4616,7 @@
             opacity: 1,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleCrownSprite = new THREE.Sprite(muzzleCrownMat);
@@ -4313,7 +4632,7 @@
             opacity: 1,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleCoreSprite = new THREE.Sprite(muzzleCoreMat);
@@ -4328,7 +4647,7 @@
             opacity: 0.95,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleMidSliceSprite = new THREE.Sprite(muzzleMidSliceMat);
@@ -4343,7 +4662,7 @@
             opacity: 0.85,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleTipSliceSprite = new THREE.Sprite(muzzleTipSliceMat);
@@ -4359,7 +4678,7 @@
             opacity: 0.88,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleFlareSprite = new THREE.Sprite(muzzleFlareMat);
@@ -4375,7 +4694,7 @@
             opacity: 0.82,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             fog: false
         });
         const muzzleShockSprite = new THREE.Sprite(muzzleShockMat);
@@ -4391,7 +4710,7 @@
             opacity: 1.0,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             side: THREE.DoubleSide,
             fog: false
         });
@@ -4417,7 +4736,7 @@
             opacity: 0.95,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            depthTest: false,
+            depthTest: true,
             side: THREE.DoubleSide,
             fog: false
         });
@@ -4458,8 +4777,12 @@
         muzzleFlashGroup.add(topVentGroup);
 
         const muzzleLight = new THREE.PointLight(0xff5533, 0, 22);
-        muzzleLight.position.set(0, 0.05, -0.78);
-        weaponGroup.add(muzzleLight);
+        muzzleLight.position.set(0.28, -0.22, -1.1);
+        camera.add(muzzleLight);
+
+        const vmMuzzleLight = new THREE.PointLight(0xff5533, 0, 5);
+        vmMuzzleLight.position.set(0, 0.05, -0.78);
+        weaponGroup.add(vmMuzzleLight);
 
         const MUZZLE_FLASH_DURATION = 0.068;
         const muzzleFlashVariation = {
@@ -4513,6 +4836,7 @@
                 state.muzzleTimer = 0;
                 muzzleFlashGroup.visible = false;
                 muzzleLight.intensity = 0;
+                vmMuzzleLight.intensity = 0;
                 return;
             }
 
@@ -4572,13 +4896,13 @@
             upperRightVentGroup.scale.set(drS, drS, drS);
             topVentGroup.scale.set(tS, tS * 0.78, tS);
 
-            // 5. Dynamic Muzzle PointLight temperature & intensity decay
-            muzzleLight.intensity = 4.8 * Math.pow(1 - p, 1.35);
-            if (p < 0.35) {
-                muzzleLight.color.setHex(0xff7744);
-            } else {
-                muzzleLight.color.setHex(0xff2244);
-            }
+            // 5. Dynamic Muzzle PointLight temperature & intensity decay (world + viewmodel)
+            const mIntensity = 4.8 * Math.pow(1 - p, 1.35);
+            const mHex = p < 0.35 ? 0xff7744 : 0xff2244;
+            muzzleLight.intensity = mIntensity;
+            muzzleLight.color.setHex(mHex);
+            vmMuzzleLight.intensity = mIntensity;
+            vmMuzzleLight.color.setHex(mHex);
         }
 
         /********************************************************************
@@ -4943,33 +5267,59 @@
         const sDroidElectricRedMat = new THREE.MeshBasicMaterial({ color: 0xff002b });
         const sDroidBrightArcMat = new THREE.MeshBasicMaterial({ color: 0xff4d6d });
         const sDroidCavityDarkMat = new THREE.MeshBasicMaterial({ color: 0x060205 });
+        const sDroidEyeHaloMat = new THREE.MeshBasicMaterial({
+            color: 0xff002b,
+            transparent: true,
+            opacity: 0.50,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
         const sDroidDarkSteelMat = new THREE.MeshStandardMaterial({
             color: 0x161922,
-            roughness: 0.28,
-            metalness: 0.86,
-            emissive: 0x090205
+            roughness: 0.30,
+            metalness: 0.58,
+            emissive: 0x090205,
+            transparent: false,
+            opacity: 1.0,
+            depthWrite: true
         });
         const runnerBoneMat = new THREE.MeshStandardMaterial({
             color: 0xd8cbb8,
             roughness: 0.42,
             metalness: 0.12,
-            emissive: 0x1c1410
+            emissive: 0x1c1410,
+            transparent: false,
+            opacity: 1.0,
+            depthWrite: true
         });
         const stalkerChitinMat = new THREE.MeshStandardMaterial({
             color: 0x1b0b29,
             roughness: 0.34,
             metalness: 0.45,
-            emissive: 0x0e0318
+            emissive: 0x0e0318,
+            transparent: false,
+            opacity: 1.0,
+            depthWrite: true
         });
         const stalkerVioletGlowMat = new THREE.MeshBasicMaterial({ color: 0xd946ff });
         const droidDarkTrimMat = new THREE.MeshStandardMaterial({
             color: 0x090410,
-            roughness: 0.24,
-            metalness: 0.88,
-            emissive: 0x04020a
+            roughness: 0.26,
+            metalness: 0.60,
+            emissive: 0x04020a,
+            transparent: false,
+            opacity: 1.0,
+            depthWrite: true
         });
         const droidCyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
         const droidMagentaGlowMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+        const droidLaserMat = new THREE.MeshBasicMaterial({
+            color: 0xff0055,
+            transparent: true,
+            opacity: 0.72,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
         const droidRepulsorDiscMat = new THREE.MeshBasicMaterial({
             color: 0x00f5d4,
             transparent: true,
@@ -4978,6 +5328,172 @@
             side: THREE.DoubleSide,
             depthWrite: false
         });
+
+        // Shared Per-Class Enemy Materials (Strict Opacity Invariant: non-Stalker materials NEVER enter transparent pass)
+        function makeFlashVariant(baseMat, emissiveHex) {
+            const m = baseMat.clone();
+            m.emissive.setHex(emissiveHex);
+            m.transparent = false;
+            m.opacity = 1.0;
+            m.depthWrite = true;
+            m.depthTest = true;
+            m.blending = THREE.NormalBlending;
+            m.side = THREE.FrontSide;
+            return m;
+        }
+
+        const ENEMY_MATS = {
+            shambler: {
+                armor: new THREE.MeshStandardMaterial({
+                    color: 0x3b4252, map: shamblerArmorTex, bumpMap: shamblerArmorTex, bumpScale: 0.026,
+                    metalness: 0.56, roughness: 0.30, emissive: 0x160308,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                skin: new THREE.MeshStandardMaterial({
+                    color: 0x252a34, map: shamblerFrameTex, bumpMap: shamblerFrameTex, bumpScale: 0.022,
+                    metalness: 0.52, roughness: 0.36, emissive: 0x0d0306,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                clothes: new THREE.MeshStandardMaterial({
+                    color: 0x1a1d24, map: shamblerFrameTex,
+                    metalness: 0.54, roughness: 0.34, emissive: 0x0a0306,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                eye: new THREE.MeshBasicMaterial({ color: 0xff002b, transparent: false, opacity: 1.0, depthWrite: true }),
+                core: new THREE.MeshBasicMaterial({ color: 0xff002b, transparent: false, opacity: 1.0, depthWrite: true })
+            },
+            droid: {
+                skin: new THREE.MeshStandardMaterial({
+                    color: 0x1a2638, map: droidChassisTex, bumpMap: droidChassisTex, bumpScale: 0.022,
+                    roughness: 0.28, metalness: 0.58, emissive: 0x05161c,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                clothes: new THREE.MeshStandardMaterial({
+                    color: 0x10081c, map: droidChassisTex,
+                    roughness: 0.30, metalness: 0.56, emissive: 0x080412,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                armor: new THREE.MeshStandardMaterial({
+                    color: 0x180e28, map: droidChassisTex, bumpMap: droidChassisTex, bumpScale: 0.018,
+                    roughness: 0.26, metalness: 0.62, emissive: 0x061018,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                eye: new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: false, opacity: 1.0, depthWrite: true }),
+                core: new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: false, opacity: 1.0, depthWrite: true })
+            },
+            runner: {
+                skin: new THREE.MeshStandardMaterial({
+                    color: 0xc4162e, map: runnerFleshTex, bumpMap: runnerFleshTex, bumpScale: 0.036,
+                    roughness: 0.42, metalness: 0.18, emissive: 0x000000,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                clothes: new THREE.MeshStandardMaterial({
+                    color: 0x1c050a, map: hostileSuitTex, bumpMap: hostileSuitTex, bumpScale: 0.020,
+                    roughness: 0.68, metalness: 0.18, emissive: 0x000000,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                eye: new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: false, opacity: 1.0, depthWrite: true }),
+                core: new THREE.MeshBasicMaterial({ color: 0xff1144, transparent: false, opacity: 1.0, depthWrite: true })
+            },
+            brute: {
+                skin: new THREE.MeshStandardMaterial({
+                    color: 0x453b4f, map: bruteFleshTex, bumpMap: bruteFleshTex, bumpScale: 0.022,
+                    roughness: 0.68, metalness: 0.08, emissive: 0x000000,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                clothes: new THREE.MeshStandardMaterial({
+                    color: 0x240910, map: hostileSuitTex, bumpMap: hostileSuitTex, bumpScale: 0.020,
+                    roughness: 0.68, metalness: 0.18, emissive: 0x000000,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                armor: new THREE.MeshStandardMaterial({
+                    color: 0x3b0d18, map: bruteArmorTex,
+                    metalness: 0.58, roughness: 0.28, emissive: 0x000000,
+                    transparent: false, opacity: 1.0, depthWrite: true, depthTest: true, blending: THREE.NormalBlending, side: THREE.FrontSide
+                }),
+                eye: new THREE.MeshBasicMaterial({ color: 0xff7700, transparent: false, opacity: 1.0, depthWrite: true }),
+                core: new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: false, opacity: 1.0, depthWrite: true }),
+                enragedEye: new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: false, opacity: 1.0, depthWrite: true }),
+                enragedCore: new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: false, opacity: 1.0, depthWrite: true })
+            },
+            stalker: {
+                eye: new THREE.MeshBasicMaterial({ color: 0xe879ff, transparent: false, opacity: 1.0, depthWrite: true }),
+                core: new THREE.MeshBasicMaterial({ color: 0xb400ff, transparent: false, opacity: 1.0, depthWrite: true })
+            }
+        };
+
+        ENEMY_MATS.shambler.flashArmor = makeFlashVariant(ENEMY_MATS.shambler.armor, 0xff2244);
+        ENEMY_MATS.shambler.flashSkin = makeFlashVariant(ENEMY_MATS.shambler.skin, 0xff002b);
+        ENEMY_MATS.shambler.flashClothes = makeFlashVariant(ENEMY_MATS.shambler.clothes, 0xaa001f);
+
+        ENEMY_MATS.droid.flashArmor = makeFlashVariant(ENEMY_MATS.droid.armor, 0x00b8a0);
+        ENEMY_MATS.droid.flashSkin = makeFlashVariant(ENEMY_MATS.droid.skin, 0x00f5d4);
+        ENEMY_MATS.droid.flashClothes = makeFlashVariant(ENEMY_MATS.droid.clothes, 0xff0055);
+
+        ENEMY_MATS.runner.flashSkin = makeFlashVariant(ENEMY_MATS.runner.skin, 0xff0033);
+        ENEMY_MATS.runner.flashClothes = makeFlashVariant(ENEMY_MATS.runner.clothes, 0x88001b);
+
+        ENEMY_MATS.brute.flashArmor = makeFlashVariant(ENEMY_MATS.brute.armor, 0xaa2200);
+        ENEMY_MATS.brute.flashSkin = makeFlashVariant(ENEMY_MATS.brute.skin, 0xff0033);
+        ENEMY_MATS.brute.flashClothes = makeFlashVariant(ENEMY_MATS.brute.clothes, 0x88001b);
+
+        function setStalkerOpacity(z, opacity) {
+            if (!z || z.type !== 'stalker') return;
+            const clamped = Math.max(0.30, Math.min(1.0, opacity));
+            const isCloaked = clamped < 0.99;
+            const targetOpacity = isCloaked ? clamped : 1.0;
+            const skinMat = z.parts.skinMat;
+            const clothesMat = z.parts.clothesMat;
+            if (skinMat) {
+                skinMat.opacity = targetOpacity;
+                if (skinMat.transparent !== isCloaked) {
+                    skinMat.transparent = isCloaked;
+                    skinMat.depthWrite = !isCloaked;
+                    skinMat.needsUpdate = true;
+                }
+            }
+            if (clothesMat) {
+                clothesMat.opacity = targetOpacity;
+                if (clothesMat.transparent !== isCloaked) {
+                    clothesMat.transparent = isCloaked;
+                    clothesMat.depthWrite = !isCloaked;
+                    clothesMat.needsUpdate = true;
+                }
+            }
+        }
+
+        function setZombieHitFlash(z, active) {
+            if (!z || !z.parts) return;
+            if (z.type === 'stalker') {
+                z.parts.skinMat.emissive.setHex(active ? 0xe879ff : 0x1a062b);
+                z.parts.clothesMat.emissive.setHex(active ? 0x7a00cc : 0x0c0318);
+                if (active) setStalkerOpacity(z, 1.0);
+                return;
+            }
+            const bank = ENEMY_MATS[z.type];
+            const fm = z.parts.flashMeshes;
+            if (!bank || !fm) return;
+            const skinTarget = active ? bank.flashSkin : bank.skin;
+            const clothesTarget = active ? bank.flashClothes : bank.clothes;
+            const armorTarget = active ? bank.flashArmor : bank.armor;
+            for (let i = 0; i < fm.skin.length; i++) fm.skin[i].material = skinTarget;
+            for (let i = 0; i < fm.clothes.length; i++) fm.clothes[i].material = clothesTarget;
+            if (armorTarget) {
+                for (let i = 0; i < fm.armor.length; i++) fm.armor[i].material = armorTarget;
+            }
+        }
+
+        function applyBruteEnrageMaterials(z) {
+            if (!z || z.type !== 'brute' || !z.parts) return;
+            const eyes = z.parts.enrageEyeMeshes;
+            const cores = z.parts.enrageCoreMeshes;
+            if (eyes) {
+                for (let i = 0; i < eyes.length; i++) eyes[i].material = ENEMY_MATS.brute.enragedEye;
+            }
+            if (cores) {
+                for (let i = 0; i < cores.length; i++) cores[i].material = ENEMY_MATS.brute.enragedCore;
+            }
+        }
 
         // ---- 1. SCULPTED HEAD, COMBAT DROID HELM, JAW & VISOR GEOMETRIES ----
         // Shambler Droid Menacing Angular Combat Automaton Head & Neon Red Cyclops Optic Assembly
@@ -5052,7 +5568,6 @@
 
         // Teeth ridge inside jaw
         const teethRidgeGeo = new THREE.CylinderGeometry(0.11, 0.10, 0.035, 10, 1, true, -Math.PI * 0.42, Math.PI * 0.84);
-        teethRidgeGeo.rotation?.set(0, 0, 0);
 
         // Glowing eye & photoreceptor geometries
         const eyeOrbGeo = new THREE.SphereGeometry(0.038, 10, 8);
@@ -5121,11 +5636,15 @@
             const normY = (y + 0.38) / 0.76;
             let nx = x * (0.84 + normY * 0.34);
             let nz = z * (0.46 + Math.sin(normY * Math.PI) * 0.08);
-            // Rippled ribcage ridges
+            // Smooth radial rippled ribcage ridges (zero seam discontinuity at x=0/z=0)
             const ribWave = Math.sin(normY * Math.PI * 7) * 0.012;
             if (normY > 0.25 && normY < 0.85) {
-                nx += Math.sign(x) * ribWave;
-                nz += Math.sign(z) * ribWave;
+                const rad = Math.hypot(nx, nz);
+                if (rad > 0.0001) {
+                    const scaleFactor = (rad + ribWave) / rad;
+                    nx *= scaleFactor;
+                    nz *= scaleFactor;
+                }
             }
             return [nx, y, nz];
         });
@@ -5181,7 +5700,12 @@
         // Upper arm extends from shoulder (0,0,0) forward/down along +Z to elbow (0,0,0.42)
         const upperArmGeo = sculptGeometry(new THREE.CylinderGeometry(0.105, 0.088, 0.42, 12, 4), (x, y, z) => {
             const bulge = Math.sin(((y + 0.21) / 0.42) * Math.PI) * 0.018;
-            return [x + Math.sign(x) * bulge, y, z + Math.sign(z) * bulge];
+            const rad = Math.hypot(x, z);
+            if (rad > 0.0001) {
+                const scaleFactor = (rad + bulge) / rad;
+                return [x * scaleFactor, y, z * scaleFactor];
+            }
+            return [x, y, z];
         });
         upperArmGeo.rotateX(Math.PI / 2);
         upperArmGeo.translate(0, 0, 0.21);
@@ -5408,51 +5932,228 @@
         const droidLaserBeamGeo = new THREE.BoxGeometry(0.022, 0.022, 1.0);
         droidLaserBeamGeo.translate(0, 0, 0.5);
 
+        // ---- 7. PRE-BAKED PER-BONE RIGID GEOMETRIES (Cuts draw calls ~55-70% per enemy) ----
+        function composeChildMatrix(pPos, pRot, cPos, cRot, cScale) {
+            const pm = new THREE.Matrix4().compose(
+                new THREE.Vector3(pPos[0], pPos[1], pPos[2]),
+                new THREE.Quaternion().setFromEuler(new THREE.Euler(pRot[0], pRot[1], pRot[2], 'XYZ')),
+                new THREE.Vector3(1, 1, 1)
+            );
+            const cm = new THREE.Matrix4().compose(
+                new THREE.Vector3(cPos[0], cPos[1], cPos[2]),
+                new THREE.Quaternion().setFromEuler(new THREE.Euler((cRot || [0, 0, 0])[0], (cRot || [0, 0, 0])[1], (cRot || [0, 0, 0])[2], 'XYZ')),
+                new THREE.Vector3(...(cScale || [1, 1, 1]))
+            );
+            return pm.multiply(cm);
+        }
+
+        // Shambler Droid baked per-bone rigid sub-parts
+        const sDroidTorsoArmorBaked = bakeRigidPart([
+            { geo: sDroidTorsoGeo },
+            { geo: sDroidChestPlateGeo, pos: [-0.255, 0.04, 0.22], rot: [0, 0.24, 0] },
+            { geo: sDroidChestPlateGeo, pos: [0.255, 0.04, 0.22], rot: [0, -0.24, 0] }
+        ]);
+        const sDroidTorsoSkinBaked = bakeRigidPart([
+            { geo: sDroidWaistPistonGeo, pos: [0, -0.34, 0] },
+            { geo: sDroidPowerCellGeo, pos: [-0.16, 0.06, -0.27] },
+            { geo: sDroidPowerCellGeo, pos: [0.16, 0.06, -0.27] },
+            { geo: neckCollarGeo, pos: [0, 0.45, 0.01] }
+        ]);
+        const sDroidTorsoSteelSpecs = [{ geo: sDroidCollarGuardGeo, pos: [0, 0.41, 0] }];
+        for (let b = 0; b < 4; b++) {
+            const ang = (b * Math.PI) / 2 + Math.PI / 4;
+            sDroidTorsoSteelSpecs.push({
+                geo: sDroidCageRibGeo,
+                pos: [Math.cos(ang) * 0.155, 0.04 + Math.sin(ang) * 0.155, 0.285],
+                rot: [0, 0, ang + Math.PI / 2]
+            });
+        }
+        const sDroidTorsoDarkSteelBaked = bakeRigidPart(sDroidTorsoSteelSpecs);
+        const sDroidTorsoRedBaked = bakeRigidPart([
+            { geo: sDroidChestTrimGeo, pos: [-0.155, 0.04, 0.285], rot: [0, 0.18, 0] },
+            { geo: sDroidChestTrimGeo, pos: [0.155, 0.04, 0.285], rot: [0, -0.18, 0] },
+            { geo: sDroidPowerRingGeo, pos: [-0.16, 0.06 - 0.15, -0.27] },
+            { geo: sDroidPowerRingGeo, pos: [-0.16, 0.06 + 0.15, -0.27] },
+            { geo: sDroidPowerRingGeo, pos: [0.16, 0.06 - 0.15, -0.27] },
+            { geo: sDroidPowerRingGeo, pos: [0.16, 0.06 + 0.15, -0.27] }
+        ]);
+        const sDroidTorsoBrightBaked = bakeRigidPart([
+            { geo: sDroidPowerRingGeo, pos: [-0.16, 0.06, -0.27] },
+            { geo: sDroidPowerRingGeo, pos: [0.16, 0.06, -0.27] }
+        ]);
+        const sDroidHeadArmorBaked = bakeRigidPart([
+            { geo: sDroidHeadGeo },
+            { geo: sDroidBrowFinGeo, pos: [-0.145, 0.155, 0.04], rot: [0, 0, 0.28] },
+            { geo: sDroidBrowFinGeo, pos: [0.145, 0.155, 0.04], rot: [0, 0, -0.28] }
+        ]);
+        const sDroidHeadSteelSpecs = [
+            { geo: sDroidBrowCowlGeo, pos: [0, 0.105, 0.165], rot: [0.16, 0, 0] },
+            { geo: sDroidEarFinGeo, pos: [-0.20, 0.02, -0.02] },
+            { geo: sDroidEarFinGeo, pos: [0.20, 0.02, -0.02] }
+        ];
+        for (let v = -2; v <= 2; v++) {
+            if (v !== 0) sDroidHeadSteelSpecs.push({ geo: sDroidVocoderBarGeo, pos: [v * 0.038, -0.105, 0.195] });
+        }
+        const sDroidHeadSteelBaked = bakeRigidPart(sDroidHeadSteelSpecs);
+        const sDroidHeadRedBaked = bakeRigidPart([
+            { geo: sDroidTempleSensorGeo, pos: [-0.17, 0.03, 0.11] },
+            { geo: sDroidTempleSensorGeo, pos: [0.17, 0.03, 0.11] },
+            { geo: sDroidVocoderBarGeo, pos: [0, -0.105, 0.195] }
+        ]);
+        const sDroidShoulderRedBaked = [
+            bakeRigidPart([
+                { geo: sDroidPauldronTrimGeo, pos: [-0.04, 0.09, 0], rot: [0, 0, 0.24] },
+                { geo: sDroidArmConduitGeo }
+            ]),
+            bakeRigidPart([
+                { geo: sDroidPauldronTrimGeo, pos: [0.04, 0.09, 0], rot: [0, 0, -0.24] },
+                { geo: sDroidArmConduitGeo }
+            ])
+        ];
+        const sDroidLeftForearmSteelBaked = bakeRigidPart([
+            { geo: sDroidElbowDrumGeo },
+            { geo: sDroidCleaverMountGeo, pos: [0, 0, 0.39] }
+        ]);
+        const sDroidLeftForearmArmorBaked = bakeRigidPart([
+            { geo: sDroidForearmGeo },
+            { geo: sDroidPincerProngGeo, pos: [-0.045, 0.02, 0.44], rot: [0, -0.14, 0] },
+            { geo: sDroidPincerProngGeo, pos: [0.045, 0.02, 0.44], rot: [0, 0.14, 0] }
+        ]);
+        const sDroidRightForearmSteelBaked = bakeRigidPart([
+            { geo: sDroidElbowDrumGeo },
+            { geo: sDroidCleaverMountGeo, pos: [0, 0, 0.39] },
+            { geo: sDroidCleaverBladeGeo, pos: [-0.036, 0, 0] },
+            { geo: sDroidCleaverBladeGeo, pos: [0.036, 0, 0] }
+        ]);
+        const sDroidRightForearmEdgeBaked = bakeRigidPart([
+            { geo: sDroidCleaverEdgeGeo, pos: [-0.036, 0, 0] },
+            { geo: sDroidCleaverEdgeGeo, pos: [0.036, 0, 0] }
+        ]);
+        const sDroidShinSteelBaked = bakeRigidPart([
+            { geo: sDroidKneeServoGeo },
+            { geo: sDroidMechBootGeo }
+        ]);
+
+        // Nexus Hunter Droid baked per-bone rigid sub-parts
+        const droidChestPlatesBaked = bakeRigidPart([
+            { geo: droidChestPlateGeo, pos: [-0.21, 0.04, 0.19], rot: [0, 0.26, 0] },
+            { geo: droidChestPlateGeo, pos: [0.21, 0.04, 0.19], rot: [0, -0.26, 0] }
+        ]);
+        const droidTorsoDarkTrimBaked = bakeRigidPart([
+            { geo: droidBackFinGeo, pos: [-0.24, 0.20, -0.26], rot: [0, -0.16, 0.24] },
+            { geo: droidBackFinGeo, pos: [0.24, 0.20, -0.26], rot: [0, 0.16, -0.24] },
+            { geo: neckCollarGeo, pos: [0, 0.42, 0] }
+        ]);
+        const droidAntennaBaked = bakeRigidPart([
+            { geo: droidAntennaGeo, pos: [-0.14, 0.10, -0.06], rot: [-0.48, 0, 0.24] },
+            { geo: droidAntennaGeo, pos: [0.14, 0.10, -0.06], rot: [-0.48, 0, -0.24] }
+        ]);
+        const droidLeftForearmDarkBaked = bakeRigidPart([
+            { geo: droidServoJointGeo },
+            { geo: droidArcBladeGeo, pos: [-0.034, 0, 0] },
+            { geo: droidArcBladeGeo, pos: [0.034, 0, 0] }
+        ]);
+        const droidLeftForearmEdgeBaked = bakeRigidPart([
+            { geo: droidArcBladeEdgeGeo, pos: [-0.034, 0, 0] },
+            { geo: droidArcBladeEdgeGeo, pos: [0.034, 0, 0] }
+        ]);
+        const droidRightBlasterRailsBaked = bakeRigidPart([
+            { geo: droidBlasterRailGeo, pos: [-0.068, 0.035, 0] },
+            { geo: droidBlasterRailGeo, pos: [0.068, 0.035, 0] }
+        ]);
+
+        // Runner, Stalker & Brute baked per-bone rigid sub-parts
+        const runnerRibsBaked = bakeRigidPart([
+            { geo: ribBoneArcGeo, pos: [0, 0.04 - 0.085, 0.14] },
+            { geo: ribBoneArcGeo, pos: [0, 0.04 + 0.085, 0.14] }
+        ]);
+        const runnerSpikesBaked = bakeRigidPart([0, 1, 2, 3].map(s => ({
+            geo: dorsalSpineSpikeGeo, pos: [0, 0.30 - s * 0.14, -0.22], rot: [-Math.PI * 0.42, 0, 0]
+        })));
+        const stalkerSpikesBaked = bakeRigidPart([0, 1, 2, 3, 4].map(s => ({
+            geo: dorsalSpineSpikeGeo, pos: [0, 0.30 - s * 0.14, -0.22], rot: [-Math.PI * 0.42, 0, 0], scale: [1.15, 1.45, 1.15]
+        })));
+        const stalkerQuillGlowsBaked = mergeGeometriesWithTransforms([0, 1, 2, 3, 4].map(s => ({
+            geo: stalkerQuillGlowGeo,
+            matrix: composeChildMatrix([0, 0.30 - s * 0.14, -0.22], [-Math.PI * 0.42, 0, 0], [0, 0.11 * 1.45, -0.045 * 1.15], [0, 0, 0], [1.15, 1.45, 1.15])
+        })));
+        const runnerEyesBaked = bakeRigidPart([
+            { geo: eyeOrbGeo, pos: [-0.092, 0.025, 0.215], rot: [0, -0.18, 0] },
+            { geo: eyeOrbGeo, pos: [0.092, 0.025, 0.215], rot: [0, 0.18, 0] }
+        ]);
+        const runnerUpperEyesBaked = bakeRigidPart([
+            { geo: runnerSecondaryEyeGeo, pos: [-0.12, 0.075, 0.195] },
+            { geo: runnerSecondaryEyeGeo, pos: [0.12, 0.075, 0.195] }
+        ]);
+        const runnerHornsBaked = bakeRigidPart([
+            { geo: runnerHornGeo, pos: [-0.11, 0.12, -0.04], rot: [-0.65, 0, 0.28] },
+            { geo: runnerHornGeo, pos: [0.11, 0.12, -0.04], rot: [-0.65, 0, -0.28] }
+        ]);
+        const stalkerHornsBaked = bakeRigidPart([
+            { geo: stalkerCrownHornGeo, pos: [-0.115, 0.12, -0.02], rot: [-0.72, 0, 0.42] },
+            { geo: stalkerCrownHornGeo, pos: [0.115, 0.12, -0.02], rot: [-0.72, 0, -0.42] }
+        ]);
+        const stalkerHeadGlowsBaked = mergeGeometriesWithTransforms([
+            { geo: stalkerThirdEyeGeo, matrix: new THREE.Matrix4().makeTranslation(0, 0.088, 0.205) },
+            { geo: stalkerQuillGlowGeo, matrix: composeChildMatrix([-0.115, 0.12, -0.02], [-0.72, 0, 0.42], [0, 0.34, -0.14], [0, 0, 0], [0.7, 0.7, 0.7]) },
+            { geo: stalkerQuillGlowGeo, matrix: composeChildMatrix([0.115, 0.12, -0.02], [-0.72, 0, -0.42], [0, 0.34, -0.14], [0, 0, 0], [0.7, 0.7, 0.7]) }
+        ]);
+        const runnerForearmSkinBaked = bakeRigidPart([
+            { geo: elbowJointGeo },
+            { geo: forearmGeo },
+            { geo: handPalmGeo, pos: [0, 0, 0.41] }
+        ]);
+        const runnerClawsBaked = bakeRigidPart([-1, 0, 1].map(c => ({
+            geo: clawFingerGeo, pos: [c * 0.032, 0.01, 0.44], rot: [0, c * 0.14, 0]
+        })));
+        const stalkerShinChitinBaked = bakeRigidPart([
+            { geo: kneePadGeo, pos: [0, 0, 0.06] },
+            { geo: stalkerHeelSpurGeo, pos: [0, -0.28, -0.10] }
+        ]);
+        const bruteTorsoArmorBaked = bakeRigidPart([
+            { geo: bruteSideBreastplateGeo, pos: [-0.26, 0.04, 0.22], rot: [0, 0.22, 0] },
+            { geo: bruteSideBreastplateGeo, pos: [0.26, 0.04, 0.22], rot: [0, -0.22, 0] },
+            { geo: bruteGorgetGeo, pos: [0, 0.36, 0.04] },
+            { geo: bruteBackPackGeo, pos: [0, 0.08, -0.26] }
+        ]);
+        const bruteExhaustBaked = bakeRigidPart([
+            { geo: bruteExhaustNozzleGeo, pos: [-0.18, 0.26, -0.36] },
+            { geo: bruteExhaustNozzleGeo, pos: [0.18, 0.26, -0.36] }
+        ]);
+        const bruteHeadArmorBaked = bakeRigidPart([
+            { geo: bruteHelmDomeGeo, pos: [0, 0.12, 0.0], rot: [0, Math.PI / 8, 0] },
+            { geo: bruteRespiratorGeo, pos: [-0.18, -0.10, 0.14], rot: [0, 0, Math.PI * 0.38] },
+            { geo: bruteRespiratorGeo, pos: [0.18, -0.10, 0.14], rot: [0, 0, -Math.PI * 0.38] }
+        ]);
+        const bruteForearmArmorBaked = bakeRigidPart([
+            { geo: bruteGauntletGeo },
+            { geo: bruteKnuckleGuardGeo, pos: [0, 0, 0.45] }
+        ]);
+        const bruteShinArmorBaked = bakeRigidPart([
+            { geo: kneePadGeo, pos: [0, 0, 0.06] },
+            { geo: bruteGreavePlateGeo },
+            { geo: combatBootGeo }
+        ]);
+
         function createZombieMesh(type) {
             const root = new THREE.Group();
             root.rotation.order = 'YXZ';
+            const flashMeshes = { armor: [], skin: [], clothes: [] };
+            const ownedMaterials = [];
 
             // ---- DEDICATED NEXUS HUNTER DROID BUILDER (Native to Map 04: Neon Nexus) ----
             if (type === 'droid') {
-                const skinMat = new THREE.MeshStandardMaterial({
-                    color: 0x1a2638,
-                    map: droidChassisTex,
-                    bumpMap: droidChassisTex,
-                    bumpScale: 0.022,
-                    roughness: 0.24,
-                    metalness: 0.86,
-                    emissive: 0x05161c
-                });
-                const clothesMat = new THREE.MeshStandardMaterial({
-                    color: 0x10081c,
-                    map: droidChassisTex,
-                    roughness: 0.28,
-                    metalness: 0.84,
-                    emissive: 0x080412
-                });
-                const armorMat = new THREE.MeshStandardMaterial({
-                    color: 0x180e28,
-                    map: droidChassisTex,
-                    bumpMap: droidChassisTex,
-                    bumpScale: 0.018,
-                    roughness: 0.22,
-                    metalness: 0.90,
-                    emissive: 0x061018
-                });
-                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
-                const coreMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-                const laserMat = new THREE.MeshBasicMaterial({
-                    color: 0xff0055,
-                    transparent: true,
-                    opacity: 0.72,
-                    blending: THREE.AdditiveBlending,
-                    depthWrite: false
-                });
+                const skinMat = ENEMY_MATS.droid.skin;
+                const clothesMat = ENEMY_MATS.droid.clothes;
+                const armorMat = ENEMY_MATS.droid.armor;
+                const eyeMat = ENEMY_MATS.droid.eye;
+                const coreMat = ENEMY_MATS.droid.core;
                 const scale = 1.06;
 
                 // 1. Hexagonal Waist-Pelvis & Anti-Grav Hover Repulsor Assembly
                 const pelvis = new THREE.Mesh(droidPelvisGeo, clothesMat);
                 pelvis.position.set(0, 0.88, 0);
+                flashMeshes.clothes.push(pelvis);
                 root.add(pelvis);
 
                 const hoverRing = new THREE.Mesh(droidHoverRingGeo, eyeMat);
@@ -5471,21 +6172,17 @@
                 root.add(torsoGroup);
 
                 const torso = new THREE.Mesh(droidTorsoGeo, armorMat);
+                flashMeshes.armor.push(torso);
                 torsoGroup.add(torso);
 
+                const chestPlates = new THREE.Mesh(droidChestPlatesBaked, skinMat);
+                flashMeshes.skin.push(chestPlates);
+                torsoGroup.add(chestPlates);
+
+                const dorsalTrim = new THREE.Mesh(droidTorsoDarkTrimBaked, droidDarkTrimMat);
+                torsoGroup.add(dorsalTrim);
+
                 for (let side = -1; side <= 1; side += 2) {
-                    const plate = new THREE.Mesh(droidChestPlateGeo, skinMat);
-                    plate.position.set(side * 0.21, 0.04, 0.19);
-                    plate.rotation.y = side * -0.26;
-                    torsoGroup.add(plate);
-
-                    // Swept-back cyberpunk server-blade dorsal wings echoing Map 04 Mainframe Towers
-                    const fin = new THREE.Mesh(droidBackFinGeo, droidDarkTrimMat);
-                    fin.position.set(side * 0.24, 0.20, -0.26);
-                    fin.rotation.z = -side * 0.24;
-                    fin.rotation.y = side * 0.16;
-                    torsoGroup.add(fin);
-
                     const finEdge = new THREE.Mesh(droidBackFinEdgeGeo, side < 0 ? droidCyanGlowMat : droidMagentaGlowMat);
                     finEdge.position.set(side * 0.24, 0.20, -0.43);
                     finEdge.rotation.z = -side * 0.24;
@@ -5514,10 +6211,6 @@
                 coreHitbox.userData.isCore = true;
                 torsoGroup.add(coreHitbox);
 
-                const neck = new THREE.Mesh(neckCollarGeo, droidDarkTrimMat);
-                neck.position.set(0, 0.42, 0);
-                torsoGroup.add(neck);
-
                 // 3. Faceted Hexagonal Sensor Head, Cyber-Cyan Optic Visor & Sweeping Targeting Scanner
                 const head = new THREE.Group();
                 head.position.set(0, 1.98, 0.04);
@@ -5526,6 +6219,7 @@
 
                 const craniumMesh = new THREE.Mesh(droidHeadGeo, armorMat);
                 craniumMesh.userData.isHead = true;
+                flashMeshes.armor.push(craniumMesh);
                 head.add(craniumMesh);
 
                 const visor = new THREE.Mesh(droidVisorBandGeo, eyeMat);
@@ -5538,17 +6232,16 @@
                 scannerEye.userData.isHead = true;
                 head.add(scannerEye);
 
-                for (let side = -1; side <= 1; side += 2) {
-                    const antenna = new THREE.Mesh(droidAntennaGeo, droidDarkTrimMat);
-                    antenna.position.set(side * 0.14, 0.10, -0.06);
-                    antenna.rotation.set(-0.48, 0, -side * 0.24);
-                    antenna.userData.isHead = true;
-                    head.add(antenna);
+                const antennaeMesh = new THREE.Mesh(droidAntennaBaked, droidDarkTrimMat);
+                antennaeMesh.userData.isHead = true;
+                head.add(antennaeMesh);
 
+                for (let side = -1; side <= 1; side += 2) {
                     const tip = new THREE.Mesh(droidAntennaTipGeo, side < 0 ? droidCyanGlowMat : droidMagentaGlowMat);
-                    tip.position.set(0, 0.34, 0);
+                    const tipMat = composeChildMatrix([side * 0.14, 0.10, -0.06], [-0.48, 0, -side * 0.24], [0, 0.34, 0]);
+                    tip.position.setFromMatrixPosition(tipMat);
                     tip.userData.isHead = true;
-                    antenna.add(tip);
+                    head.add(tip);
                 }
 
                 const headHitbox = new THREE.Mesh(headHitboxGeo, invisibleHitboxMat);
@@ -5568,6 +6261,7 @@
                     const pauldron = new THREE.Mesh(droidPauldronGeo, armorMat);
                     pauldron.position.set(side * 0.03, 0.05, 0);
                     pauldron.rotation.z = -side * 0.22;
+                    flashMeshes.armor.push(pauldron);
                     shoulderGroup.add(pauldron);
 
                     const pauldronTrim = new THREE.Mesh(droidPauldronTrimGeo, isLeft ? droidMagentaGlowMat : droidCyanGlowMat);
@@ -5576,6 +6270,7 @@
                     shoulderGroup.add(pauldronTrim);
 
                     const upperStrut = new THREE.Mesh(droidArmStrutGeo, skinMat);
+                    flashMeshes.skin.push(upperStrut);
                     shoulderGroup.add(upperStrut);
 
                     const upperConduit = new THREE.Mesh(droidArmConduitGeo, eyeMat);
@@ -5585,39 +6280,27 @@
                     forearmGroup.position.set(0, 0, 0.40);
                     shoulderGroup.add(forearmGroup);
 
-                    const elbowServo = new THREE.Mesh(droidServoJointGeo, droidDarkTrimMat);
-                    forearmGroup.add(elbowServo);
-
                     if (isLeft) {
-                        // Left Arm: Close-Quarters Cyber-Energy Arc Blade
                         const armCasing = new THREE.Mesh(droidArmStrutGeo, armorMat);
+                        flashMeshes.armor.push(armCasing);
                         forearmGroup.add(armCasing);
 
-                        for (let b = -1; b <= 1; b += 2) {
-                            const blade = new THREE.Mesh(droidArcBladeGeo, droidDarkTrimMat);
-                            blade.position.x = b * 0.034;
-                            forearmGroup.add(blade);
-
-                            const edge = new THREE.Mesh(droidArcBladeEdgeGeo, coreMat);
-                            edge.position.x = b * 0.034;
-                            forearmGroup.add(edge);
-                        }
+                        forearmGroup.add(new THREE.Mesh(droidLeftForearmDarkBaked, droidDarkTrimMat));
+                        forearmGroup.add(new THREE.Mesh(droidLeftForearmEdgeBaked, coreMat));
                     } else {
-                        // Right Arm: Twin-Rail Plasma Pulse Cannon + Lock-On Holographic Laser Beam
+                        forearmGroup.add(new THREE.Mesh(droidServoJointGeo, droidDarkTrimMat));
+
                         const blaster = new THREE.Mesh(droidBlasterBodyGeo, armorMat);
+                        flashMeshes.armor.push(blaster);
                         forearmGroup.add(blaster);
 
-                        for (let r = -1; r <= 1; r += 2) {
-                            const rail = new THREE.Mesh(droidBlasterRailGeo, eyeMat);
-                            rail.position.set(r * 0.068, 0.035, 0);
-                            forearmGroup.add(rail);
-                        }
+                        forearmGroup.add(new THREE.Mesh(droidRightBlasterRailsBaked, eyeMat));
 
                         muzzleCrystal = new THREE.Mesh(droidMuzzleCoreGeo, coreMat);
                         muzzleCrystal.position.set(0, 0, 0.56);
                         forearmGroup.add(muzzleCrystal);
 
-                        laserBeam = new THREE.Mesh(droidLaserBeamGeo, laserMat);
+                        laserBeam = new THREE.Mesh(droidLaserBeamGeo, droidLaserMat);
                         laserBeam.position.set(0, 0, 0.58);
                         laserBeam.visible = false;
                         laserBeam.raycast = () => {};
@@ -5638,20 +6321,20 @@
                     hipGroup.position.set(side * 0.21, 0.78, 0);
 
                     const thigh = new THREE.Mesh(droidThighGeo, armorMat);
+                    flashMeshes.armor.push(thigh);
                     hipGroup.add(thigh);
 
                     const shinGroup = new THREE.Group();
                     shinGroup.position.set(0, -0.38, 0);
                     hipGroup.add(shinGroup);
 
-                    const kneeServo = new THREE.Mesh(droidServoJointGeo, eyeMat);
-                    shinGroup.add(kneeServo);
+                    shinGroup.add(new THREE.Mesh(droidServoJointGeo, eyeMat));
 
                     const shin = new THREE.Mesh(droidShinGeo, skinMat);
+                    flashMeshes.skin.push(shin);
                     shinGroup.add(shin);
 
-                    const foot = new THREE.Mesh(droidHoverFootGeo, droidDarkTrimMat);
-                    shinGroup.add(foot);
+                    shinGroup.add(new THREE.Mesh(droidHoverFootGeo, droidDarkTrimMat));
 
                     const thrusterGlow = new THREE.Mesh(droidAntennaTipGeo, droidCyanGlowMat);
                     thrusterGlow.position.set(0, -0.46, 0.02);
@@ -5677,7 +6360,6 @@
                     hoverRing,
                     muzzleCrystal,
                     laserBeam,
-                    laserMat,
                     leftArm: leftArmRig.shoulderGroup,
                     rightArm: rightArmRig.shoulderGroup,
                     leftForearm: leftArmRig.forearmGroup,
@@ -5691,51 +6373,25 @@
                     armorMat,
                     eyeMat,
                     coreMat,
+                    flashMeshes,
+                    ownedMaterials,
                     scale
                 };
             }
 
             // ---- DEDICATED SHAMBLER DROID BUILDER (Menacing Combat Droid with Neon Red Eye & Electric Red Heart) ----
             if (type === 'shambler') {
-                const armorMat = new THREE.MeshStandardMaterial({
-                    color: 0x3b4252,
-                    map: shamblerArmorTex,
-                    bumpMap: shamblerArmorTex,
-                    bumpScale: 0.026,
-                    metalness: 0.78,
-                    roughness: 0.26,
-                    emissive: 0x160308
-                });
-                const skinMat = new THREE.MeshStandardMaterial({
-                    color: 0x252a34,
-                    map: shamblerFrameTex,
-                    bumpMap: shamblerFrameTex,
-                    bumpScale: 0.022,
-                    metalness: 0.74,
-                    roughness: 0.34,
-                    emissive: 0x0d0306
-                });
-                const clothesMat = new THREE.MeshStandardMaterial({
-                    color: 0x1a1d24,
-                    map: shamblerFrameTex,
-                    metalness: 0.76,
-                    roughness: 0.32,
-                    emissive: 0x0a0306
-                });
-                const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff002b });
-                const coreMat = new THREE.MeshBasicMaterial({ color: 0xff002b });
-                const eyeHaloMat = new THREE.MeshBasicMaterial({
-                    color: 0xff002b,
-                    transparent: true,
-                    opacity: 0.42,
-                    blending: THREE.AdditiveBlending,
-                    depthWrite: false
-                });
+                const armorMat = ENEMY_MATS.shambler.armor;
+                const skinMat = ENEMY_MATS.shambler.skin;
+                const clothesMat = ENEMY_MATS.shambler.clothes;
+                const eyeMat = ENEMY_MATS.shambler.eye;
+                const coreMat = ENEMY_MATS.shambler.core;
                 const scale = 1.04;
 
                 // 1. Armored Mech Pelvis & Hydraulic Waist Actuator
                 const pelvis = new THREE.Mesh(sDroidPelvisGeo, armorMat);
                 pelvis.position.set(0, 0.86, 0);
+                flashMeshes.armor.push(pelvis);
                 root.add(pelvis);
 
                 const torsoGroup = new THREE.Group();
@@ -5743,42 +6399,18 @@
                 torsoGroup.rotation.x = 0.08;
                 root.add(torsoGroup);
 
-                const waist = new THREE.Mesh(sDroidWaistPistonGeo, skinMat);
-                waist.position.set(0, -0.34, 0);
-                torsoGroup.add(waist);
-
                 // 2. Heavy Electric Droid Armor Chassis & Glowing Electric Red Heart Vault
-                const torso = new THREE.Mesh(sDroidTorsoGeo, armorMat);
-                torsoGroup.add(torso);
+                const torsoArmor = new THREE.Mesh(sDroidTorsoArmorBaked, armorMat);
+                flashMeshes.armor.push(torsoArmor);
+                torsoGroup.add(torsoArmor);
 
-                // Armored collar gorget with glowing crimson voltage bar
-                const collarGuard = new THREE.Mesh(sDroidCollarGuardGeo, sDroidDarkSteelMat);
-                collarGuard.position.set(0, 0.41, 0.0);
-                torsoGroup.add(collarGuard);
+                const torsoSkin = new THREE.Mesh(sDroidTorsoSkinBaked, skinMat);
+                flashMeshes.skin.push(torsoSkin);
+                torsoGroup.add(torsoSkin);
 
-                // Parted heavy angular chest armor plates framing the Electric Red Heart
-                for (let side = -1; side <= 1; side += 2) {
-                    const plate = new THREE.Mesh(sDroidChestPlateGeo, armorMat);
-                    plate.position.set(side * 0.255, 0.04, 0.22);
-                    plate.rotation.y = side * -0.24;
-                    torsoGroup.add(plate);
-
-                    const voltTrim = new THREE.Mesh(sDroidChestTrimGeo, sDroidElectricRedMat);
-                    voltTrim.position.set(side * 0.155, 0.04, 0.285);
-                    voltTrim.rotation.y = side * -0.18;
-                    torsoGroup.add(voltTrim);
-
-                    // Dorsal Electric Power-Cell Coils powering the chest heart
-                    const powerCell = new THREE.Mesh(sDroidPowerCellGeo, skinMat);
-                    powerCell.position.set(side * 0.16, 0.06, -0.27);
-                    torsoGroup.add(powerCell);
-
-                    for (let r = -1; r <= 1; r++) {
-                        const pRing = new THREE.Mesh(sDroidPowerRingGeo, r === 0 ? sDroidBrightArcMat : sDroidElectricRedMat);
-                        pRing.position.set(side * 0.16, 0.06 + r * 0.15, -0.27);
-                        torsoGroup.add(pRing);
-                    }
-                }
+                torsoGroup.add(new THREE.Mesh(sDroidTorsoDarkSteelBaked, sDroidDarkSteelMat));
+                torsoGroup.add(new THREE.Mesh(sDroidTorsoRedBaked, sDroidElectricRedMat));
+                torsoGroup.add(new THREE.Mesh(sDroidTorsoBrightBaked, sDroidBrightArcMat));
 
                 // Glowing Electric Red Heart Encased in Armored Electric Containment Cage
                 const heartCavity = new THREE.Mesh(sDroidHeartCavityGeo, sDroidCavityDarkMat);
@@ -5802,55 +6434,25 @@
                 electricRing2.rotation.x = 0.42;
                 torsoGroup.add(electricRing2);
 
-                // 4 Angled Electric Armor Containment Brackets clamping the glowing red heart without blocking its blaze
-                for (let b = 0; b < 4; b++) {
-                    const ang = (b * Math.PI) / 2 + Math.PI / 4;
-                    const rib = new THREE.Mesh(sDroidCageRibGeo, sDroidDarkSteelMat);
-                    rib.position.set(Math.cos(ang) * 0.155, 0.04 + Math.sin(ang) * 0.155, 0.285);
-                    rib.rotation.z = ang + Math.PI / 2;
-                    torsoGroup.add(rib);
-                }
-
-                const neck = new THREE.Mesh(neckCollarGeo, skinMat);
-                neck.position.set(0, 0.45, 0.01);
-                torsoGroup.add(neck);
-
                 // 3. Menacing Combat Droid Head with Single Blazing Neon Red Eye (userData.isHead = true)
                 const head = new THREE.Group();
                 head.position.set(0, 2.04, 0.04);
                 head.userData.isHead = true;
                 root.add(head);
 
-                const craniumMesh = new THREE.Mesh(sDroidHeadGeo, armorMat);
+                const craniumMesh = new THREE.Mesh(sDroidHeadArmorBaked, armorMat);
                 craniumMesh.userData.isHead = true;
+                flashMeshes.armor.push(craniumMesh);
                 head.add(craniumMesh);
 
-                // Heavy scowling armored brow cowl & side cheek ear-fins
-                const browCowl = new THREE.Mesh(sDroidBrowCowlGeo, sDroidDarkSteelMat);
-                browCowl.position.set(0, 0.105, 0.165);
-                browCowl.rotation.x = 0.16;
-                browCowl.userData.isHead = true;
-                head.add(browCowl);
+                const headSteelMesh = new THREE.Mesh(sDroidHeadSteelBaked, sDroidDarkSteelMat);
+                headSteelMesh.userData.isHead = true;
+                head.add(headSteelMesh);
 
-                for (let side = -1; side <= 1; side += 2) {
-                    const browFin = new THREE.Mesh(sDroidBrowFinGeo, armorMat);
-                    browFin.position.set(side * 0.145, 0.155, 0.04);
-                    browFin.rotation.z = -side * 0.28;
-                    browFin.userData.isHead = true;
-                    head.add(browFin);
+                const headRedMesh = new THREE.Mesh(sDroidHeadRedBaked, sDroidElectricRedMat);
+                headRedMesh.userData.isHead = true;
+                head.add(headRedMesh);
 
-                    const earFin = new THREE.Mesh(sDroidEarFinGeo, sDroidDarkSteelMat);
-                    earFin.position.set(side * 0.20, 0.02, -0.02);
-                    earFin.userData.isHead = true;
-                    head.add(earFin);
-
-                    const templeSensor = new THREE.Mesh(sDroidTempleSensorGeo, sDroidElectricRedMat);
-                    templeSensor.position.set(side * 0.17, 0.03, 0.11);
-                    templeSensor.userData.isHead = true;
-                    head.add(templeSensor);
-                }
-
-                // Deep recessed dark optic visor cavity
                 const opticVoid = new THREE.Mesh(sDroidOpticVoidGeo, sDroidCavityDarkMat);
                 opticVoid.position.set(0, 0.025, 0.185);
                 opticVoid.userData.isHead = true;
@@ -5876,18 +6478,10 @@
                 eyePupil.userData.isHead = true;
                 opticUnit.add(eyePupil);
 
-                const eyeHalo = new THREE.Mesh(sDroidEyeHaloGeo, eyeHaloMat);
+                const eyeHalo = new THREE.Mesh(sDroidEyeHaloGeo, sDroidEyeHaloMat);
                 eyeHalo.position.z = 0.018;
                 eyeHalo.raycast = () => {};
                 opticUnit.add(eyeHalo);
-
-                // Armored lower chin vocoder grille slits
-                for (let v = -2; v <= 2; v++) {
-                    const bar = new THREE.Mesh(sDroidVocoderBarGeo, v === 0 ? sDroidElectricRedMat : sDroidDarkSteelMat);
-                    bar.position.set(v * 0.038, -0.105, 0.195);
-                    bar.userData.isHead = true;
-                    head.add(bar);
-                }
 
                 const headHitbox = new THREE.Mesh(headHitboxGeo, invisibleHitboxMat);
                 headHitbox.position.set(0, 0.02, 0.02);
@@ -5903,12 +6497,10 @@
                     const pauldron = new THREE.Mesh(sDroidPauldronGeo, armorMat);
                     pauldron.position.set(side * 0.04, 0.06, 0);
                     pauldron.rotation.z = -side * 0.24;
+                    flashMeshes.armor.push(pauldron);
                     shoulderGroup.add(pauldron);
 
-                    const pauldronTrim = new THREE.Mesh(sDroidPauldronTrimGeo, sDroidElectricRedMat);
-                    pauldronTrim.position.set(side * 0.04, 0.09, 0);
-                    pauldronTrim.rotation.z = -side * 0.24;
-                    shoulderGroup.add(pauldronTrim);
+                    shoulderGroup.add(new THREE.Mesh(sDroidShoulderRedBaked[isLeft ? 0 : 1], sDroidElectricRedMat));
 
                     const pauldronFin = new THREE.Mesh(sDroidPauldronFinGeo, sDroidDarkSteelMat);
                     pauldronFin.position.set(side * 0.14, 0.17, -0.02);
@@ -5916,48 +6508,35 @@
                     shoulderGroup.add(pauldronFin);
 
                     const upperArm = new THREE.Mesh(sDroidUpperArmGeo, skinMat);
+                    flashMeshes.skin.push(upperArm);
                     shoulderGroup.add(upperArm);
-
-                    const upperConduit = new THREE.Mesh(sDroidArmConduitGeo, sDroidElectricRedMat);
-                    shoulderGroup.add(upperConduit);
 
                     const forearmGroup = new THREE.Group();
                     forearmGroup.position.set(0, 0, 0.42);
                     shoulderGroup.add(forearmGroup);
 
-                    const elbowDrum = new THREE.Mesh(sDroidElbowDrumGeo, sDroidDarkSteelMat);
-                    forearmGroup.add(elbowDrum);
-
-                    const forearm = new THREE.Mesh(sDroidForearmGeo, armorMat);
-                    forearmGroup.add(forearm);
-
                     const forearmConduit = new THREE.Mesh(sDroidArmConduitGeo, sDroidBrightArcMat);
                     forearmConduit.position.set(side * 0.04, -0.02, -0.02);
                     forearmGroup.add(forearmConduit);
 
-                    const wristMount = new THREE.Mesh(sDroidCleaverMountGeo, sDroidDarkSteelMat);
-                    wristMount.position.set(0, 0, 0.39);
-                    forearmGroup.add(wristMount);
-
                     if (isLeft) {
-                        // Left Arm: Electrified Triple-Prong Combat Pincer Gauntlet
-                        for (let p = -1; p <= 1; p++) {
-                            const prong = new THREE.Mesh(sDroidPincerProngGeo, p === 0 ? sDroidElectricRedMat : armorMat);
-                            prong.position.set(p * 0.045, p === 0 ? -0.02 : 0.02, 0.44);
-                            prong.rotation.y = p * 0.14;
-                            forearmGroup.add(prong);
-                        }
-                    } else {
-                        // Right Arm: Dual Parallel Electrified Red Plasma Shock-Cleaver Blades
-                        for (let b = -1; b <= 1; b += 2) {
-                            const blade = new THREE.Mesh(sDroidCleaverBladeGeo, sDroidDarkSteelMat);
-                            blade.position.x = b * 0.036;
-                            forearmGroup.add(blade);
+                        forearmGroup.add(new THREE.Mesh(sDroidLeftForearmSteelBaked, sDroidDarkSteelMat));
 
-                            const electricEdge = new THREE.Mesh(sDroidCleaverEdgeGeo, sDroidElectricRedMat);
-                            electricEdge.position.x = b * 0.036;
-                            forearmGroup.add(electricEdge);
-                        }
+                        const leftForearmArmor = new THREE.Mesh(sDroidLeftForearmArmorBaked, armorMat);
+                        flashMeshes.armor.push(leftForearmArmor);
+                        forearmGroup.add(leftForearmArmor);
+
+                        const centerProng = new THREE.Mesh(sDroidPincerProngGeo, sDroidElectricRedMat);
+                        centerProng.position.set(0, -0.02, 0.44);
+                        forearmGroup.add(centerProng);
+                    } else {
+                        forearmGroup.add(new THREE.Mesh(sDroidRightForearmSteelBaked, sDroidDarkSteelMat));
+
+                        const rightForearmArmor = new THREE.Mesh(sDroidForearmGeo, armorMat);
+                        flashMeshes.armor.push(rightForearmArmor);
+                        forearmGroup.add(rightForearmArmor);
+
+                        forearmGroup.add(new THREE.Mesh(sDroidRightForearmEdgeBaked, sDroidElectricRedMat));
                     }
 
                     // Combat-ready hydraulic guard posture
@@ -5980,6 +6559,7 @@
                     hipGroup.position.set(side * 0.21, 0.78, 0);
 
                     const thigh = new THREE.Mesh(sDroidThighGeo, armorMat);
+                    flashMeshes.armor.push(thigh);
                     hipGroup.add(thigh);
 
                     const thighVolt = new THREE.Mesh(sDroidLegVoltStripGeo, sDroidElectricRedMat);
@@ -5990,18 +6570,15 @@
                     shinGroup.position.set(0, -0.40, 0);
                     hipGroup.add(shinGroup);
 
-                    const kneeServo = new THREE.Mesh(sDroidKneeServoGeo, sDroidDarkSteelMat);
-                    shinGroup.add(kneeServo);
+                    shinGroup.add(new THREE.Mesh(sDroidShinSteelBaked, sDroidDarkSteelMat));
 
                     const shin = new THREE.Mesh(sDroidShinGeo, skinMat);
+                    flashMeshes.skin.push(shin);
                     shinGroup.add(shin);
 
                     const shinVolt = new THREE.Mesh(sDroidLegVoltStripGeo, sDroidBrightArcMat);
                     shinVolt.position.set(0, -0.18, 0.092);
                     shinGroup.add(shinVolt);
-
-                    const boot = new THREE.Mesh(sDroidMechBootGeo, sDroidDarkSteelMat);
-                    shinGroup.add(boot);
 
                     root.add(hipGroup);
                     return { hipGroup, shinGroup };
@@ -6022,7 +6599,6 @@
                     electricRing2,
                     opticUnit,
                     eyeHalo,
-                    eyeHaloMat,
                     leftArm: leftArmRig.shoulderGroup,
                     rightArm: rightArmRig.shoulderGroup,
                     leftForearm: leftArmRig.forearmGroup,
@@ -6036,77 +6612,67 @@
                     armorMat,
                     eyeMat,
                     coreMat,
+                    flashMeshes,
+                    ownedMaterials,
                     scale
                 };
             }
 
-            let skinColor = 0xc4162e;
-            let coatColor = 0x1c050a;
-            let eyeColor = 0xff0033;
-            let coreColor = 0xff1144;
-            let scale = 0.88;
-            let fleshTex = runnerFleshTex;
-            let armorMat = null;
-
-            if (type === 'runner') {
-                skinColor = 0xc4162e;
-                coatColor = 0x1c050a;
-                eyeColor = 0xff0033;
-                coreColor = 0xff1144;
-                scale = 0.88;
-                fleshTex = runnerFleshTex;
-            } else if (type === 'stalker') {
-                skinColor = 0x5b287c;
-                coatColor = 0x12071d;
-                eyeColor = 0xe879ff;
-                coreColor = 0xb400ff;
-                scale = 0.94;
-                fleshTex = stalkerFleshTex;
-            } else if (type === 'brute') {
-                skinColor = 0x453b4f;
-                coatColor = 0x240910;
-                eyeColor = 0xff7700;
-                coreColor = 0xff5500;
-                scale = 1.48;
-                fleshTex = bruteFleshTex;
-                armorMat = new THREE.MeshStandardMaterial({
-                    color: 0x3b0d18,
-                    map: bruteArmorTex,
-                    metalness: 0.78,
-                    roughness: 0.26,
-                    emissive: 0x000000
-                });
-            }
-
+            // ---- RUNNER, PHANTOM STALKER & ARMORED BRUTE ----
             const isRunnerFamily = (type === 'runner' || type === 'stalker');
-            const skinMat = new THREE.MeshStandardMaterial({
-                color: skinColor,
-                map: fleshTex,
-                bumpMap: fleshTex,
-                bumpScale: isRunnerFamily ? 0.036 : 0.022,
-                roughness: type === 'stalker' ? 0.34 : (type === 'runner' ? 0.42 : 0.68),
-                metalness: type === 'stalker' ? 0.26 : (type === 'runner' ? 0.18 : 0.08),
-                emissive: type === 'stalker' ? 0x1a062b : 0x000000,
-                transparent: type === 'stalker',
-                opacity: 1.0
-            });
-            const clothesMat = new THREE.MeshStandardMaterial({
-                color: coatColor,
-                map: hostileSuitTex,
-                bumpMap: hostileSuitTex,
-                bumpScale: 0.020,
-                roughness: type === 'stalker' ? 0.48 : 0.68,
-                metalness: type === 'stalker' ? 0.32 : 0.18,
-                emissive: type === 'stalker' ? 0x0c0318 : 0x000000,
-                transparent: type === 'stalker',
-                opacity: 1.0
-            });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
-            const coreMat = new THREE.MeshBasicMaterial({ color: coreColor });
+            const scale = type === 'brute' ? 1.48 : (type === 'stalker' ? 0.94 : 0.88);
+            const enrageEyeMeshes = [];
+            const enrageCoreMeshes = [];
+
+            let skinMat, clothesMat, armorMat = null, eyeMat, coreMat;
+            if (type === 'stalker') {
+                // Only Phantom Stalker uses per-instance skinMat/clothesMat for individual Phase-Shroud opacity
+                skinMat = new THREE.MeshStandardMaterial({
+                    color: 0x5b287c,
+                    map: stalkerFleshTex,
+                    bumpMap: stalkerFleshTex,
+                    bumpScale: 0.036,
+                    roughness: 0.34,
+                    metalness: 0.26,
+                    emissive: 0x1a062b,
+                    transparent: false,
+                    opacity: 1.0,
+                    depthWrite: true,
+                    depthTest: true,
+                    blending: THREE.NormalBlending,
+                    side: THREE.FrontSide
+                });
+                clothesMat = new THREE.MeshStandardMaterial({
+                    color: 0x12071d,
+                    map: hostileSuitTex,
+                    bumpMap: hostileSuitTex,
+                    bumpScale: 0.020,
+                    roughness: 0.48,
+                    metalness: 0.32,
+                    emissive: 0x0c0318,
+                    transparent: false,
+                    opacity: 1.0,
+                    depthWrite: true,
+                    depthTest: true,
+                    blending: THREE.NormalBlending,
+                    side: THREE.FrontSide
+                });
+                ownedMaterials.push(skinMat, clothesMat);
+                eyeMat = ENEMY_MATS.stalker.eye;
+                coreMat = ENEMY_MATS.stalker.core;
+            } else {
+                const matBank = ENEMY_MATS[type];
+                skinMat = matBank.skin;
+                clothesMat = matBank.clothes;
+                armorMat = matBank.armor || null;
+                eyeMat = matBank.eye;
+                coreMat = matBank.core;
+            }
 
             // 1. PELVIS & ARTICULATED UPPER TORSO GROUP
             const pelvis = new THREE.Mesh(hostilePelvisGeo, clothesMat);
             pelvis.position.set(0, 0.86, 0);
+            flashMeshes.clothes.push(pelvis);
             root.add(pelvis);
 
             const torsoGroup = new THREE.Group();
@@ -6117,75 +6683,60 @@
             const thoraxGeo = type === 'brute' ? bruteTorsoGeo : runnerTorsoGeo;
             const thoraxMat = type === 'brute' ? clothesMat : skinMat;
             const torso = new THREE.Mesh(thoraxGeo, thoraxMat);
+            if (type === 'brute') flashMeshes.clothes.push(torso);
+            else flashMeshes.skin.push(torso);
             torsoGroup.add(torso);
 
             const neck = new THREE.Mesh(neckCollarGeo, skinMat);
             neck.position.set(0, 0.44, 0.02);
+            flashMeshes.skin.push(neck);
             torsoGroup.add(neck);
 
             // 2. CHEST CORE / EXPOSED REACTOR CORE WEAKPOINT
             let coreMesh;
             let coreRing = null;
             if (type === 'brute') {
-                // Split Composite Ballistic Breastplates flanking the exposed central reactor core
-                const leftBreastplate = new THREE.Mesh(bruteSideBreastplateGeo, armorMat);
-                leftBreastplate.position.set(-0.26, 0.04, 0.22);
-                leftBreastplate.rotation.y = 0.22;
-                torsoGroup.add(leftBreastplate);
+                const torsoArmorMesh = new THREE.Mesh(bruteTorsoArmorBaked, armorMat);
+                flashMeshes.armor.push(torsoArmorMesh);
+                torsoGroup.add(torsoArmorMesh);
 
-                const rightBreastplate = new THREE.Mesh(bruteSideBreastplateGeo, armorMat);
-                rightBreastplate.position.set(0.26, 0.04, 0.22);
-                rightBreastplate.rotation.y = -0.22;
-                torsoGroup.add(rightBreastplate);
-
-                // Reinforced Armored Collar Gorget
-                const gorget = new THREE.Mesh(bruteGorgetGeo, armorMat);
-                gorget.position.set(0, 0.36, 0.04);
-                torsoGroup.add(gorget);
-
-                // Dorsal Cyber-Reactor Pack & Dual Plasma Exhaust Vents
-                const backPack = new THREE.Mesh(bruteBackPackGeo, armorMat);
-                backPack.position.set(0, 0.08, -0.26);
-                torsoGroup.add(backPack);
-
-                const leftExhaust = new THREE.Mesh(bruteExhaustNozzleGeo, coreMat);
-                leftExhaust.position.set(-0.18, 0.26, -0.36);
-                torsoGroup.add(leftExhaust);
-
-                const rightExhaust = new THREE.Mesh(bruteExhaustNozzleGeo, coreMat);
-                rightExhaust.position.set(0.18, 0.26, -0.36);
-                torsoGroup.add(rightExhaust);
+                const exhaustMesh = new THREE.Mesh(bruteExhaustBaked, coreMat);
+                enrageCoreMeshes.push(exhaustMesh);
+                torsoGroup.add(exhaustMesh);
 
                 // Glowing Exposed Reactor Core Weakpoint Assembly (Center Sternum)
                 const reactorHousing = new THREE.Mesh(bruteReactorHousingGeo, armorMat);
                 reactorHousing.position.set(0, 0.0, 0.29);
                 reactorHousing.userData.isCore = true;
+                flashMeshes.armor.push(reactorHousing);
                 torsoGroup.add(reactorHousing);
 
                 coreMesh = new THREE.Mesh(bruteReactorChamberGeo, coreMat);
                 coreMesh.position.set(0, 0.0, 0.31);
                 coreMesh.userData.isCore = true;
+                enrageCoreMeshes.push(coreMesh);
                 torsoGroup.add(coreMesh);
 
                 const reactorCrystal = new THREE.Mesh(bruteReactorCrystalGeo, eyeMat);
                 reactorCrystal.position.set(0, 0.0, 0.35);
                 reactorCrystal.userData.isCore = true;
+                enrageEyeMeshes.push(reactorCrystal);
                 torsoGroup.add(reactorCrystal);
 
                 coreRing = new THREE.Mesh(bruteReactorGyroGeo, eyeMat);
                 coreRing.position.set(0, 0.0, 0.35);
                 coreRing.userData.isCore = true;
+                enrageEyeMeshes.push(coreRing);
                 torsoGroup.add(coreRing);
 
-                // Dedicated front-facing weakpoint hitbox proxy so shots aimed at the glowing core always register isCore
                 const coreHitbox = new THREE.Mesh(bruteCoreHitboxGeo, invisibleHitboxMat);
                 coreHitbox.position.set(0, 0.0, 0.32);
                 coreHitbox.userData.isCore = true;
                 torsoGroup.add(coreHitbox);
             } else {
-                // Runner & Phantom Stalker Bioluminescent / Arterial Chest Core framed by exposed ribs
                 const coreBezel = new THREE.Mesh(bioCoreBezelGeo, clothesMat);
                 coreBezel.position.set(0, 0.04, 0.21);
+                flashMeshes.clothes.push(coreBezel);
                 torsoGroup.add(coreBezel);
 
                 coreMesh = new THREE.Mesh(bioCoreCrystalGeo, coreMat);
@@ -6193,32 +6744,20 @@
                 torsoGroup.add(coreMesh);
 
                 if (type === 'stalker') {
-                    // Spinning hexagonal ultraviolet bio-plasma ring framing the Stalker's chest core
                     coreRing = new THREE.Mesh(stalkerCoreRingGeo, eyeMat);
                     coreRing.position.set(0, 0.04, 0.242);
                     torsoGroup.add(coreRing);
                 }
 
-                // Exposed anatomical rib arcs curving over chest lesion
-                for (let r = -1; r <= 1; r += 2) {
-                    const rib = new THREE.Mesh(ribBoneArcGeo, type === 'stalker' ? stalkerChitinMat : runnerBoneMat);
-                    rib.position.set(0, 0.04 + r * 0.085, 0.14);
-                    torsoGroup.add(rib);
-                }
+                torsoGroup.add(new THREE.Mesh(runnerRibsBaked, type === 'stalker' ? stalkerChitinMat : runnerBoneMat));
 
-                // Predatory dorsal bone spikes along hunched spine (Stalker has taller plasma-tipped bio-quills!)
-                const spineCount = type === 'stalker' ? 5 : 4;
-                for (let s = 0; s < spineCount; s++) {
-                    const spike = new THREE.Mesh(dorsalSpineSpikeGeo, type === 'stalker' ? stalkerChitinMat : clothesMat);
-                    spike.position.set(0, 0.30 - s * 0.14, -0.22);
-                    spike.rotation.x = -Math.PI * 0.42;
-                    if (type === 'stalker') {
-                        spike.scale.set(1.15, 1.45, 1.15);
-                        const quillGlow = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
-                        quillGlow.position.set(0, 0.11, -0.045);
-                        spike.add(quillGlow);
-                    }
-                    torsoGroup.add(spike);
+                if (type === 'stalker') {
+                    torsoGroup.add(new THREE.Mesh(stalkerSpikesBaked, stalkerChitinMat));
+                    torsoGroup.add(new THREE.Mesh(stalkerQuillGlowsBaked, stalkerVioletGlowMat));
+                } else {
+                    const spikesMesh = new THREE.Mesh(runnerSpikesBaked, clothesMat);
+                    flashMeshes.clothes.push(spikesMesh);
+                    torsoGroup.add(spikesMesh);
                 }
             }
 
@@ -6236,116 +6775,61 @@
             const craniumGeo = type === 'brute' ? bruteCraniumGeo : runnerCraniumGeo;
             const craniumMesh = new THREE.Mesh(craniumGeo, skinMat);
             craniumMesh.userData.isHead = true;
+            flashMeshes.skin.push(craniumMesh);
             head.add(craniumMesh);
 
-            // Articulated Lower Mandible / Jaw
             const jaw = new THREE.Mesh(hostileJawGeo, type === 'brute' ? armorMat : skinMat);
             jaw.position.set(0, -0.08, 0.02);
             jaw.userData.isHead = true;
+            if (type === 'brute') flashMeshes.armor.push(jaw);
+            else flashMeshes.skin.push(jaw);
             head.add(jaw);
 
             const teeth = new THREE.Mesh(teethRidgeGeo, eyeMat);
             teeth.position.set(0, 0.01, 0.08);
             teeth.userData.isHead = true;
+            if (type === 'brute') enrageEyeMeshes.push(teeth);
             jaw.add(teeth);
 
             if (type === 'brute') {
-                // Heavy Faceted Juggernaut Helmet, Glowing Tactical Visor & Twin Respirators
-                const helm = new THREE.Mesh(bruteHelmDomeGeo, armorMat);
-                helm.position.set(0, 0.12, 0.0);
-                helm.rotation.y = Math.PI / 8;
-                helm.userData.isHead = true;
-                head.add(helm);
+                const headArmorMesh = new THREE.Mesh(bruteHeadArmorBaked, armorMat);
+                headArmorMesh.userData.isHead = true;
+                flashMeshes.armor.push(headArmorMesh);
+                head.add(headArmorMesh);
 
                 const helmCrest = new THREE.Mesh(bruteHelmCrestGeo, coreMat);
                 helmCrest.position.set(0, 0.25, -0.02);
                 helmCrest.userData.isHead = true;
+                enrageCoreMeshes.push(helmCrest);
                 head.add(helmCrest);
 
                 const visor = new THREE.Mesh(bruteVisorSlitGeo, eyeMat);
                 visor.position.set(0, 0.04, 0.02);
                 visor.userData.isHead = true;
+                enrageEyeMeshes.push(visor);
                 head.add(visor);
-
-                const leftResp = new THREE.Mesh(bruteRespiratorGeo, armorMat);
-                leftResp.position.set(-0.18, -0.10, 0.14);
-                leftResp.rotation.z = Math.PI * 0.38;
-                leftResp.userData.isHead = true;
-                head.add(leftResp);
-
-                const rightResp = new THREE.Mesh(bruteRespiratorGeo, armorMat);
-                rightResp.position.set(0.18, -0.10, 0.14);
-                rightResp.rotation.z = -Math.PI * 0.38;
-                rightResp.userData.isHead = true;
-                head.add(rightResp);
             } else {
-                // Runner & Stalker Glowing Bioluminescent Eyes in sunken orbital sockets
-                const leftEye = new THREE.Mesh(eyeOrbGeo, eyeMat);
-                leftEye.position.set(-0.092, 0.025, 0.215);
-                leftEye.rotation.y = -0.18;
-                leftEye.userData.isHead = true;
-                head.add(leftEye);
+                const eyesMesh = new THREE.Mesh(runnerEyesBaked, eyeMat);
+                eyesMesh.userData.isHead = true;
+                head.add(eyesMesh);
 
-                const rightEye = new THREE.Mesh(eyeOrbGeo, eyeMat);
-                rightEye.position.set(0.092, 0.025, 0.215);
-                rightEye.rotation.y = 0.18;
-                rightEye.userData.isHead = true;
-                head.add(rightEye);
-
-                // Runner & Stalker secondary predatory photoreceptor eyes & swept cranial horns
-                const leftUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
-                leftUpperEye.position.set(-0.12, 0.075, 0.195);
-                leftUpperEye.userData.isHead = true;
-                head.add(leftUpperEye);
-
-                const rightUpperEye = new THREE.Mesh(runnerSecondaryEyeGeo, coreMat);
-                rightUpperEye.position.set(0.12, 0.075, 0.195);
-                rightUpperEye.userData.isHead = true;
-                head.add(rightUpperEye);
+                const upperEyesMesh = new THREE.Mesh(runnerUpperEyesBaked, coreMat);
+                upperEyesMesh.userData.isHead = true;
+                head.add(upperEyesMesh);
 
                 if (type === 'stalker') {
-                    // Stalker Unique Vertical Third Forehead Optic Slit + Elongated Twin Whip-Horns
-                    const thirdEye = new THREE.Mesh(stalkerThirdEyeGeo, stalkerVioletGlowMat);
-                    thirdEye.position.set(0, 0.088, 0.205);
-                    thirdEye.userData.isHead = true;
-                    head.add(thirdEye);
+                    const headGlows = new THREE.Mesh(stalkerHeadGlowsBaked, stalkerVioletGlowMat);
+                    headGlows.userData.isHead = true;
+                    head.add(headGlows);
 
-                    const leftWhipHorn = new THREE.Mesh(stalkerCrownHornGeo, stalkerChitinMat);
-                    leftWhipHorn.position.set(-0.115, 0.12, -0.02);
-                    leftWhipHorn.rotation.set(-0.72, 0, 0.42);
-                    leftWhipHorn.userData.isHead = true;
-                    head.add(leftWhipHorn);
-
-                    const rightWhipHorn = new THREE.Mesh(stalkerCrownHornGeo, stalkerChitinMat);
-                    rightWhipHorn.position.set(0.115, 0.12, -0.02);
-                    rightWhipHorn.rotation.set(-0.72, 0, -0.42);
-                    rightWhipHorn.userData.isHead = true;
-                    head.add(rightWhipHorn);
-
-                    // Glowing bio-violet horn-tip nodes
-                    const leftTip = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
-                    leftTip.position.set(0, 0.34, -0.14);
-                    leftTip.scale.setScalar(0.7);
-                    leftTip.userData.isHead = true;
-                    leftWhipHorn.add(leftTip);
-
-                    const rightTip = new THREE.Mesh(stalkerQuillGlowGeo, stalkerVioletGlowMat);
-                    rightTip.position.set(0, 0.34, -0.14);
-                    rightTip.scale.setScalar(0.7);
-                    rightTip.userData.isHead = true;
-                    rightWhipHorn.add(rightTip);
+                    const whipHorns = new THREE.Mesh(stalkerHornsBaked, stalkerChitinMat);
+                    whipHorns.userData.isHead = true;
+                    head.add(whipHorns);
                 } else {
-                    const leftHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
-                    leftHorn.position.set(-0.11, 0.12, -0.04);
-                    leftHorn.rotation.set(-0.65, 0, 0.28);
-                    leftHorn.userData.isHead = true;
-                    head.add(leftHorn);
-
-                    const rightHorn = new THREE.Mesh(runnerHornGeo, clothesMat);
-                    rightHorn.position.set(0.11, 0.12, -0.04);
-                    rightHorn.rotation.set(-0.65, 0, -0.28);
-                    rightHorn.userData.isHead = true;
-                    head.add(rightHorn);
+                    const hornsMesh = new THREE.Mesh(runnerHornsBaked, clothesMat);
+                    hornsMesh.userData.isHead = true;
+                    flashMeshes.clothes.push(hornsMesh);
+                    head.add(hornsMesh);
                 }
             }
 
@@ -6365,26 +6849,29 @@
                 shoulderGroup.position.set(side * shoulderX, shoulderY, shoulderZ);
 
                 const deltoid = new THREE.Mesh(deltoidCapGeo, isRunnerFamily ? skinMat : clothesMat);
+                if (isRunnerFamily) flashMeshes.skin.push(deltoid);
+                else flashMeshes.clothes.push(deltoid);
                 shoulderGroup.add(deltoid);
 
                 if (type === 'brute') {
-                    // Heavy Layered Juggernaut Pauldron with neon hazard trim
                     const pauldron = new THREE.Mesh(brutePauldronGeo, armorMat);
                     pauldron.position.set(side * 0.06, 0.06, 0);
                     pauldron.rotation.z = -side * 0.35;
+                    flashMeshes.armor.push(pauldron);
                     shoulderGroup.add(pauldron);
 
                     const pauldronRim = new THREE.Mesh(brutePauldronRimGeo, coreMat);
                     pauldronRim.position.set(side * 0.06, 0.02, 0);
                     pauldronRim.rotation.y = side * 0.25;
+                    enrageCoreMeshes.push(pauldronRim);
                     shoulderGroup.add(pauldronRim);
                 } else if (type === 'runner') {
                     const shoulderSpur = new THREE.Mesh(dorsalSpineSpikeGeo, clothesMat);
                     shoulderSpur.position.set(side * 0.06, 0.12, -0.02);
                     shoulderSpur.rotation.z = -side * 0.45;
+                    flashMeshes.clothes.push(shoulderSpur);
                     shoulderGroup.add(shoulderSpur);
                 } else if (type === 'stalker') {
-                    // Flared Cobra/Mantis Scapular Shoulder Crest Fins + Plasma Node
                     const frill = new THREE.Mesh(stalkerShoulderFrillGeo, stalkerChitinMat);
                     frill.position.set(side * 0.08, 0.10, -0.04);
                     frill.rotation.set(-0.35, 0, -side * 0.58);
@@ -6397,50 +6884,39 @@
                 }
 
                 const upperArm = new THREE.Mesh(upperArmGeo, skinMat);
+                flashMeshes.skin.push(upperArm);
                 shoulderGroup.add(upperArm);
 
                 const forearmGroup = new THREE.Group();
                 forearmGroup.position.set(0, 0, 0.42);
                 shoulderGroup.add(forearmGroup);
 
-                const elbow = new THREE.Mesh(elbowJointGeo, skinMat);
-                forearmGroup.add(elbow);
-
                 if (type === 'brute') {
-                    // Massive Hydraulic Power-Gauntlet & Plasma Knuckle Crusher
-                    const gauntlet = new THREE.Mesh(bruteGauntletGeo, armorMat);
-                    forearmGroup.add(gauntlet);
+                    const elbow = new THREE.Mesh(elbowJointGeo, skinMat);
+                    flashMeshes.skin.push(elbow);
+                    forearmGroup.add(elbow);
+
+                    const gauntletMesh = new THREE.Mesh(bruteForearmArmorBaked, armorMat);
+                    flashMeshes.armor.push(gauntletMesh);
+                    forearmGroup.add(gauntletMesh);
 
                     const plasmaStrip = new THREE.Mesh(bruteGauntletPlasmaStripGeo, coreMat);
                     plasmaStrip.position.set(side * 0.12, 0.04, 0.22);
+                    enrageCoreMeshes.push(plasmaStrip);
                     forearmGroup.add(plasmaStrip);
-
-                    const knuckles = new THREE.Mesh(bruteKnuckleGuardGeo, armorMat);
-                    knuckles.position.set(0, 0, 0.45);
-                    forearmGroup.add(knuckles);
                 } else {
-                    const forearm = new THREE.Mesh(forearmGeo, skinMat);
-                    forearmGroup.add(forearm);
+                    const forearmSkin = new THREE.Mesh(runnerForearmSkinBaked, skinMat);
+                    flashMeshes.skin.push(forearmSkin);
+                    forearmGroup.add(forearmSkin);
 
-                    const palm = new THREE.Mesh(handPalmGeo, skinMat);
-                    palm.position.set(0, 0, 0.41);
-                    forearmGroup.add(palm);
-
-                    // 3 Articulated Razor Claws per hand
-                    for (let c = -1; c <= 1; c++) {
-                        const claw = new THREE.Mesh(clawFingerGeo, coreMat);
-                        claw.position.set(c * 0.032, 0.01, 0.44);
-                        claw.rotation.y = c * 0.14;
-                        forearmGroup.add(claw);
-                    }
+                    forearmGroup.add(new THREE.Mesh(runnerClawsBaked, coreMat));
 
                     if (type === 'runner') {
-                        // Swept-back Forearm Scythe Bone-Blade
                         const scythe = new THREE.Mesh(runnerScytheBladeGeo, clothesMat);
                         scythe.position.x = side * 0.055;
+                        flashMeshes.clothes.push(scythe);
                         forearmGroup.add(scythe);
                     } else if (type === 'stalker') {
-                        // Elongated Twin-Edge Mantis Scythe Blade with Searing Neon-Violet Plasma Edge
                         const mantisBlade = new THREE.Mesh(stalkerMantisBladeGeo, stalkerChitinMat);
                         mantisBlade.position.x = side * 0.06;
                         forearmGroup.add(mantisBlade);
@@ -6466,31 +6942,38 @@
                 hipGroup.position.set(side * hipX, 0.78, 0);
 
                 const thigh = new THREE.Mesh(thighGeo, isRunnerFamily ? skinMat : clothesMat);
+                if (isRunnerFamily) flashMeshes.skin.push(thigh);
+                else flashMeshes.clothes.push(thigh);
                 hipGroup.add(thigh);
 
                 const shinGroup = new THREE.Group();
                 shinGroup.position.set(0, -0.40, 0);
                 hipGroup.add(shinGroup);
 
-                const kneePad = new THREE.Mesh(kneePadGeo, armorMat ? armorMat : (type === 'stalker' ? stalkerChitinMat : clothesMat));
-                kneePad.position.set(0, 0, 0.06);
-                shinGroup.add(kneePad);
-
                 const shin = new THREE.Mesh(shinGeo, isRunnerFamily ? skinMat : clothesMat);
+                if (isRunnerFamily) flashMeshes.skin.push(shin);
+                else flashMeshes.clothes.push(shin);
                 shinGroup.add(shin);
 
                 if (type === 'brute') {
-                    const greave = new THREE.Mesh(bruteGreavePlateGeo, armorMat);
-                    shinGroup.add(greave);
+                    const bruteShinArmor = new THREE.Mesh(bruteShinArmorBaked, armorMat);
+                    flashMeshes.armor.push(bruteShinArmor);
+                    shinGroup.add(bruteShinArmor);
                 } else if (type === 'stalker') {
-                    // Curved Raptor Heel-Spur on Stalker Shins
-                    const heelSpur = new THREE.Mesh(stalkerHeelSpurGeo, stalkerChitinMat);
-                    heelSpur.position.set(0, -0.28, -0.10);
-                    shinGroup.add(heelSpur);
-                }
+                    shinGroup.add(new THREE.Mesh(stalkerShinChitinBaked, stalkerChitinMat));
+                    const boot = new THREE.Mesh(combatBootGeo, clothesMat);
+                    flashMeshes.clothes.push(boot);
+                    shinGroup.add(boot);
+                } else {
+                    const kneePad = new THREE.Mesh(kneePadGeo, clothesMat);
+                    kneePad.position.set(0, 0, 0.06);
+                    flashMeshes.clothes.push(kneePad);
+                    shinGroup.add(kneePad);
 
-                const boot = new THREE.Mesh(combatBootGeo, armorMat ? armorMat : clothesMat);
-                shinGroup.add(boot);
+                    const boot = new THREE.Mesh(combatBootGeo, clothesMat);
+                    flashMeshes.clothes.push(boot);
+                    shinGroup.add(boot);
+                }
 
                 root.add(hipGroup);
                 return { hipGroup, shinGroup };
@@ -6521,6 +7004,10 @@
                 armorMat,
                 eyeMat,
                 coreMat,
+                flashMeshes,
+                enrageEyeMeshes,
+                enrageCoreMeshes,
+                ownedMaterials,
                 scale
             };
         }
@@ -6530,14 +7017,10 @@
             if (z.mesh) {
                 scene.remove(z.mesh);
             }
-            if (z.parts) {
-                if (z.parts.skinMat) z.parts.skinMat.dispose();
-                if (z.parts.clothesMat) z.parts.clothesMat.dispose();
-                if (z.parts.armorMat) z.parts.armorMat.dispose();
-                if (z.parts.eyeMat) z.parts.eyeMat.dispose();
-                if (z.parts.coreMat) z.parts.coreMat.dispose();
-                if (z.parts.laserMat) z.parts.laserMat.dispose();
-                if (z.parts.eyeHaloMat) z.parts.eyeHaloMat.dispose();
+            if (z.parts && z.parts.ownedMaterials) {
+                for (let i = 0; i < z.parts.ownedMaterials.length; i++) {
+                    z.parts.ownedMaterials[i].dispose();
+                }
             }
         }
 
@@ -6547,14 +7030,15 @@
         const bloodGeo = new THREE.BoxGeometry(0.11, 0.11, 0.11);
         const jewelSparkleGeo = new THREE.OctahedronGeometry(0.12, 0);
 
-        // Pre-allocated Blood Particle Pool
+        // Pre-allocated Blood Particle Pool (depthWrite: false avoids sorting cutouts over cloaked Stalkers)
         const BLOOD_POOL_SIZE = 80;
         const bloodPool = [];
         for (let i = 0; i < BLOOD_POOL_SIZE; i++) {
             const mat = new THREE.MeshBasicMaterial({
                 color: i % 2 === 0 ? 0xff0033 : 0x800015,
                 transparent: true,
-                opacity: 1
+                opacity: 1,
+                depthWrite: false
             });
             const mesh = new THREE.Mesh(bloodGeo, mat);
             mesh.visible = false;
@@ -6603,14 +7087,15 @@
             }
         }
 
-        // Pre-allocated Jewel Sparkle Particle Pool
+        // Pre-allocated Jewel Sparkle Particle Pool (depthWrite: false)
         const SPARKLE_POOL_SIZE = 30;
         const sparklePool = [];
         for (let i = 0; i < SPARKLE_POOL_SIZE; i++) {
             const mat = new THREE.MeshBasicMaterial({
                 color: i % 2 === 0 ? 0x00ffcc : 0xffffff,
                 transparent: true,
-                opacity: 1
+                opacity: 1,
+                depthWrite: false
             });
             const mesh = new THREE.Mesh(jewelSparkleGeo, mat);
             mesh.visible = false;
@@ -7041,16 +7526,7 @@
          * 7. GAME STATE, SETTINGS & COMBAT LOGIC
          ********************************************************************/
         const MAX_AMMO = 15;
-
-        // Tactical Settings (Improvement 4 + Pro Mobile FPS Settings)
-        const userSettings = {
-            mouseSens: safeStorage.getFloat('mr_mouse_sens', 1.0, 0.4, 2.6),
-            invertY: safeStorage.getItem('mr_invert_y', 'false') === 'true',
-            touchSens: safeStorage.getFloat('mr_touch_sens', 1.0, 0.5, 2.5),
-            touchAimAssist: safeStorage.getItem('mr_touch_aim_assist', 'true') !== 'false',
-            touchAutoFire: safeStorage.getItem('mr_touch_autofire', 'true') !== 'false',
-            masterVol: safeStorage.getFloat('mr_master_vol', 1.0, 0, 1)
-        };
+        const PLAYER_RADIUS = 0.85;
 
         const state = {
             mode: 'TITLE',
@@ -7061,6 +7537,9 @@
             isReloading: false,
             reloadTimer: 0,
             autoReloadTimer: 0, // Issue 16 Fix: Pausable frame-based reload
+            shootCooldownTimer: 0,
+            crosshairSpreadTimer: 0,
+            healthBarGlowTimer: 0,
             score: 0,
             kills: 0,
             headshots: 0,
@@ -7075,6 +7554,8 @@
             // Intermission Breather (Improvement 6)
             isIntermission: false,
             intermissionTimer: 0,
+            lastIntermissionSec: -1,
+            lastIntermissionMapIdx: -1,
 
             // Map Rotation & Random Map Mode
             mapMode: safeStorage.getEnum('mr_map_mode', VALID_MAP_MODES, 'cycle'),
@@ -7095,14 +7576,15 @@
             isLeftMouseDown: false, // Improvement 1: Desktop hold-to-fire
             isTouchMode: false,
             touchInteracted: false,
+            touchTargetHovered: false,
             isTouchFiring: false,
             turn180Remaining: 0,
             joystickX: 0,
             joystickY: 0,
             joystickSprint: false,
-            touchSprint: false,
-            touchStrafeX: 0
+            touchSprint: false
         };
+        stateInitialized = true;
 
         const keys = {
             KeyW: false,
@@ -7185,9 +7667,14 @@
         const settingTouchAimAssist = document.getElementById('setting-touch-aim-assist');
         const settingTouchAutoFire = document.getElementById('setting-touch-autofire');
         const settingMasterVol = document.getElementById('setting-master-vol');
+        const settingShowPerf = document.getElementById('setting-show-perf');
         const valMouseSens = document.getElementById('val-mouse-sens');
         const valTouchSens = document.getElementById('val-touch-sens');
         const valMasterVol = document.getElementById('val-master-vol');
+        const perfHud = document.getElementById('perf-hud');
+        const perfFpsEl = document.getElementById('perf-fps');
+        const perfMsEl = document.getElementById('perf-ms');
+        const perfDcEl = document.getElementById('perf-dc');
 
         // Zero-allocation scratch structures
         const _forward = new THREE.Vector3();
@@ -7199,10 +7686,10 @@
         const _knockDir = new THREE.Vector3();
         const _muzzlePos = new THREE.Vector3();
         const _tracerEnd = new THREE.Vector3();
+        const _raySphere = new THREE.Sphere();
         const _raycastTargets = [];
 
         let lastPauseTime = 0;
-        let fireInterval = null;
         let _lastStaminaRounded = -1;
         let _lastStaminaTextVal = '';
         let joystickTouchId = null;
@@ -7227,7 +7714,6 @@
             state.joystickY = 0;
             state.joystickSprint = false;
             state.touchSprint = false;
-            state.touchStrafeX = 0;
             joystickTouchId = null;
             aimTouchId = null;
             fireTouchId = null;
@@ -7247,10 +7733,6 @@
             }
             if (joystickKnob) {
                 joystickKnob.style.transform = 'translate(-50%, -50%)';
-            }
-            if (fireInterval) {
-                clearInterval(fireInterval);
-                fireInterval = null;
             }
         }
 
@@ -7282,14 +7764,36 @@
             if (pauseMap && activeMap) pauseMap.textContent = activeMap.shortLabel;
         }
 
+        function clearOverlayTimers() {
+            clearTimeout(damageOverlay._timer);
+            damageOverlay.style.opacity = '0';
+            if (healOverlay) {
+                clearTimeout(healOverlay._timer);
+                healOverlay.style.opacity = '0';
+            }
+            if (damagePointer) {
+                clearTimeout(damagePointer._timer);
+                damagePointer.style.opacity = '0';
+            }
+            clearTimeout(hitmarker._timer);
+            hitmarker.style.opacity = '0';
+            clearTimeout(killBanner._timeout);
+            killBanner.style.opacity = '0';
+            state.crosshairSpreadTimer = 0;
+            state.healthBarGlowTimer = 0;
+            if (hudHealthBar) hudHealthBar.style.boxShadow = '0 0 12px #ff0033';
+        }
+
         function pauseGame() {
             if (state.mode !== 'PLAYING' || state.isPaused) return;
             state.isPaused = true;
             lastPauseTime = performance.now();
+            lastTime = null;
             resetKeys();
             state.isDraggingLook = false;
             updatePauseTelemetry();
             sound.duckAmbient(true);
+            sound.suspend();
             resumeLockPrompt.classList.remove('hidden');
             if (document.pointerLockElement) {
                 document.exitPointerLock();
@@ -7298,15 +7802,13 @@
 
         function resumeGame() {
             if (state.mode !== 'PLAYING' || !state.isPaused) return;
-            if (sound.ctx && sound.ctx.state === 'suspended') {
-                sound.ctx.resume().catch(() => { });
-            }
+            sound.resume();
             sound.duckAmbient(false);
             state.isPaused = false;
             resetKeys();
             state.isDraggingLook = false;
             resumeLockPrompt.classList.add('hidden');
-            lastTime = performance.now();
+            lastTime = null;
             requestGamePointerLock();
         }
 
@@ -7314,7 +7816,11 @@
             state.mode = 'TITLE';
             state.isPaused = false;
             state.isIntermission = false;
+            state.lastIntermissionSec = -1;
+            state.lastIntermissionMapIdx = -1;
+            lastTime = null;
             sound.duckAmbient(false);
+            sound.resume();
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
@@ -7327,10 +7833,12 @@
             clearBulletTracers();
             clearDroidBolts();
             removeHealthJewel();
+            clearOverlayTimers();
 
             weaponGroup.visible = false;
             muzzleFlashGroup.visible = false;
             muzzleLight.intensity = 0;
+            vmMuzzleLight.intensity = 0;
             setCrosshairSpread(0);
 
             gameoverScreen.classList.add('hidden');
@@ -7339,8 +7847,6 @@
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
             reloadPrompt.classList.add('hidden');
-            damageOverlay.style.opacity = '0';
-            if (healOverlay) healOverlay.style.opacity = '0';
             refreshHighScoresUI();
             titleScreen.classList.remove('hidden');
         }
@@ -7374,8 +7880,9 @@
         function removeHealthJewel() {
             if (!healthJewel) return;
             scene.remove(healthJewel.group);
+            // Keep visible=true permanently so NUM_POINT_LIGHTS never changes mid-combat
             persistentJewelLight.intensity = 0;
-            persistentJewelLight.visible = false;
+            persistentJewelLight.position.set(0, -100, 0);
 
             healthJewel.group.traverse(child => {
                 if (child.isMesh || child.isLineSegments) {
@@ -7451,7 +7958,7 @@
 
             const coreGeo = new THREE.OctahedronGeometry(0.36, 0);
             coreGeo.scale(0.9, 1.3, 0.9);
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 });
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8, depthWrite: false });
             const coreMesh = new THREE.Mesh(coreGeo, coreMat);
             diamondMesh.add(coreMesh);
 
@@ -7471,7 +7978,8 @@
                 color: 0x00ffcc,
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.65
+                opacity: 0.65,
+                depthWrite: false
             });
             const floorRing = new THREE.Mesh(floorRingGeo, floorRingMat);
             floorRing.rotation.x = -Math.PI / 2;
@@ -7566,9 +8074,7 @@
             updateHUD();
 
             hudHealthBar.style.boxShadow = '0 0 22px #00ffcc';
-            setTimeout(() => {
-                hudHealthBar.style.boxShadow = '0 0 12px #ff0033';
-            }, 600);
+            state.healthBarGlowTimer = 0.60;
 
             sound.playHealthPickup();
             showKillFeed('+50% VITAL INTEGRITY RESTORED!', true);
@@ -7610,7 +8116,7 @@
 
         function ensurePlayerSafePosition() {
             resolveArenaCollisions(camera.position, 1.25);
-            resolveArenaCollisions(camera.position, 0.85);
+            resolveArenaCollisions(camera.position, PLAYER_RADIUS);
         }
 
         function updateMapUI() {
@@ -7737,7 +8243,7 @@
                 }
                 return candidates[Math.floor(Math.random() * candidates.length)];
             }
-            // Cycle mode: Wave 1 = Map 1 (0), Wave 2 = Map 2 (1), Wave 3 = Map 3 (2), Wave 4 = Map 1 (0)...
+            // Cycle mode: Wave 1 = Map 1 (0), Wave 2 = Map 2 (1), Wave 3 = Map 3 (2), Wave 4 = Map 4 (3), Wave 5 = Map 5 (4), Wave 6 = Map 1 (0)...
             return (waveNumber - 1) % ARENA_MAPS.length;
         }
 
@@ -7759,6 +8265,48 @@
             titleEl.textContent = titleText;
             wrapper.append(subEl, titleEl);
             waveBannerContainer.replaceChildren(wrapper);
+        }
+
+        function renderIntermissionBanner(secLeft, upcomingIdx, upcomingMap) {
+            if (!waveBannerContainer) return;
+            const mapLabelText = `DEPLOYING TO ${upcomingMap.fullName}`;
+            const countText = `NEXT IN ${secLeft}S`;
+            let countEl = document.getElementById('intermission-countdown');
+            let mapEl = document.getElementById('intermission-map-label');
+
+            if (!countEl || !mapEl) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'intermission-banner';
+
+                mapEl = document.createElement('div');
+                mapEl.id = 'intermission-map-label';
+                mapEl.className = 'font-neon text-[10px] sm:text-xs tracking-[0.28em] text-rose-300 bg-red-950/75 border border-red-600/60 px-3 py-0.5 rounded-full inline-block mb-1 uppercase font-bold shadow-[0_0_12px_rgba(255,0,51,0.35)]';
+                mapEl.textContent = mapLabelText;
+
+                const subEl = document.createElement('div');
+                subEl.className = 'font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold';
+                subEl.textContent = 'SECTOR PURGED // TACTICAL RESUPPLY';
+
+                countEl = document.createElement('div');
+                countEl.id = 'intermission-countdown';
+                countEl.className = 'font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase';
+                countEl.textContent = countText;
+
+                wrapper.append(mapEl, subEl, countEl);
+                waveBannerContainer.replaceChildren(wrapper);
+                state.lastIntermissionSec = secLeft;
+                state.lastIntermissionMapIdx = upcomingIdx;
+                return;
+            }
+
+            if (state.lastIntermissionSec !== secLeft) {
+                countEl.textContent = countText;
+                state.lastIntermissionSec = secLeft;
+            }
+            if (state.lastIntermissionMapIdx !== upcomingIdx) {
+                mapEl.textContent = mapLabelText;
+                state.lastIntermissionMapIdx = upcomingIdx;
+            }
         }
 
         function announceWave(waveNumber) {
@@ -7792,8 +8340,14 @@
         }
 
         function startWave(waveNumber) {
+            if (waveNumber > 1 && zombies.length > 0) {
+                zombies.forEach(disposeZombie);
+                zombies.length = 0;
+            }
             state.wave = waveNumber;
             state.isIntermission = false;
+            state.lastIntermissionSec = -1;
+            state.lastIntermissionMapIdx = -1;
             state.bruteAnnouncedThisWave = false;
             state.stalkerAnnouncedThisWave = false;
             state.droidAnnouncedThisWave = false;
@@ -7886,6 +8440,7 @@
 
         function startGame() {
             sound.init();
+            sound.resume();
 
             zombies.forEach(disposeZombie);
             zombies.length = 0;
@@ -7893,6 +8448,7 @@
             clearBulletTracers();
             clearDroidBolts();
             removeHealthJewel();
+            clearOverlayTimers();
 
             camera.position.set(0, 1.75, 0);
             camera.rotation.set(0, 0, 0);
@@ -7903,11 +8459,14 @@
             weaponGroup.visible = true;
             muzzleFlashGroup.visible = false;
             muzzleLight.intensity = 0;
+            vmMuzzleLight.intensity = 0;
             setCrosshairSpread(0);
 
             state.mode = 'PLAYING';
             state.isPaused = false;
             state.isIntermission = false;
+            state.lastIntermissionSec = -1;
+            state.lastIntermissionMapIdx = -1;
             resetKeys();
             state.isDraggingLook = false;
             state.health = 100;
@@ -7916,6 +8475,7 @@
             state.isReloading = false;
             state.reloadTimer = 0;
             state.autoReloadTimer = 0;
+            state.shootCooldownTimer = 0;
             state.score = 0;
             state.kills = 0;
             state.headshots = 0;
@@ -7929,12 +8489,13 @@
             hud.classList.remove('hidden');
             if (mobileControls) mobileControls.classList.remove('hidden');
             updateMobileControlsVisibility();
+            updatePerfHudVisibility();
             resumeLockPrompt.classList.add('hidden');
             reloadPrompt.classList.add('hidden');
 
             startWave(1);
             updateHUD();
-            lastTime = performance.now();
+            lastTime = null;
             requestGamePointerLock();
         }
 
@@ -7942,6 +8503,9 @@
             state.mode = 'GAMEOVER';
             state.isPaused = false;
             state.isIntermission = false;
+            state.lastIntermissionSec = -1;
+            state.lastIntermissionMapIdx = -1;
+            lastTime = null;
             resetKeys();
             state.isDraggingLook = false;
             if (document.pointerLockElement) {
@@ -7949,9 +8513,11 @@
             }
             clearDroidBolts();
             removeHealthJewel();
+            clearOverlayTimers();
             weaponGroup.visible = false;
             muzzleFlashGroup.visible = false;
             muzzleLight.intensity = 0;
+            vmMuzzleLight.intensity = 0;
             setCrosshairSpread(0);
             hud.classList.add('hidden');
             if (mobileControls) mobileControls.classList.add('hidden');
@@ -8048,10 +8614,33 @@
         const raycaster = new THREE.Raycaster();
         const screenCenter = new THREE.Vector2(0, 0);
 
-        function shootWeapon() {
+        function performWeaponRaycast(maxEnemyDist = Infinity) {
+            camera.updateMatrixWorld(true);
+            raycaster.setFromCamera(screenCenter, camera);
+
+            _raycastTargets.length = 0;
+            for (let i = 0; i < shootableWalls.length; i++) {
+                _raycastTargets.push(shootableWalls[i]);
+            }
+            const maxDistSq = maxEnemyDist < Infinity ? maxEnemyDist * maxEnemyDist : Infinity;
+            for (let i = 0; i < zombies.length; i++) {
+                const z = zombies[i];
+                if (z.dying) continue;
+                const s = z.parts.scale || 1;
+                _raySphere.center.set(z.mesh.position.x, z.mesh.position.y + 1.15 * s, z.mesh.position.z);
+                _raySphere.radius = 1.45 * s;
+                if (raycaster.ray.intersectSphere(_raySphere, _tracerEnd)) {
+                    if (maxDistSq === Infinity || _tracerEnd.distanceToSquared(camera.position) <= maxDistSq) {
+                        _raycastTargets.push(z.mesh);
+                    }
+                }
+            }
+            return raycaster.intersectObjects(_raycastTargets, true);
+        }
+
+        function shootWeapon(precomputedIntersects = null) {
             if (state.mode !== 'PLAYING' || state.isPaused) return;
-            const now = performance.now();
-            if (now - state.lastShootTime < 135) return;
+            if (state.shootCooldownTimer > 0) return;
 
             if (state.isReloading) return;
 
@@ -8061,7 +8650,8 @@
                 return;
             }
 
-            state.lastShootTime = now;
+            state.shootCooldownTimer = 0.135;
+            state.lastShootTime = performance.now();
             state.ammo--;
             sound.playGunshot();
 
@@ -8072,7 +8662,7 @@
             triggerMuzzleFlash();
 
             setCrosshairSpread(10);
-            setTimeout(() => setCrosshairSpread(0), 90);
+            state.crosshairSpreadTimer = 0.09;
 
             updateHUD();
 
@@ -8081,21 +8671,10 @@
                 state.autoReloadTimer = 0.22;
             }
 
-            camera.updateMatrixWorld(true);
-            raycaster.setFromCamera(screenCenter, camera);
-
-            _raycastTargets.length = 0;
-            for (let i = 0; i < shootableWalls.length; i++) {
-                _raycastTargets.push(shootableWalls[i]);
-            }
-            for (let i = 0; i < zombies.length; i++) {
-                if (!zombies[i].dying) {
-                    _raycastTargets.push(zombies[i].mesh);
-                }
-            }
-
-            const intersects = raycaster.intersectObjects(_raycastTargets, true);
+            const intersects = precomputedIntersects || performWeaponRaycast();
+            viewmodelCamera.updateMatrixWorld(true);
             muzzleFlashGroup.getWorldPosition(_muzzlePos);
+            _muzzlePos.applyMatrix4(camera.matrixWorld);
             raycaster.ray.at(60, _tracerEnd);
 
             if (intersects.length > 0) {
@@ -8150,25 +8729,10 @@
 
                     hitZombie.hp -= damage;
                     hitZombie.hitFlashTimer = 0.12;
-                    if (hitZombie.type === 'droid') {
-                        hitZombie.parts.skinMat.emissive.setHex(0x00f5d4);
-                        hitZombie.parts.clothesMat.emissive.setHex(0xff0055);
-                        if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0x00b8a0);
-                    } else if (hitZombie.type === 'shambler') {
-                        hitZombie.parts.skinMat.emissive.setHex(0xff002b);
-                        hitZombie.parts.clothesMat.emissive.setHex(0xaa001f);
-                        if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0xff2244);
-                    } else if (hitZombie.type === 'stalker') {
-                        hitZombie.parts.skinMat.emissive.setHex(0xe879ff);
-                        hitZombie.parts.clothesMat.emissive.setHex(0x7a00cc);
+                    setZombieHitFlash(hitZombie, true);
+                    if (hitZombie.type === 'stalker') {
                         // Non-lethal hit snaps Stalker out of Phase-Shroud cloak immediately
                         hitZombie.phaseTimer = 0;
-                        hitZombie.parts.skinMat.opacity = 1.0;
-                        hitZombie.parts.clothesMat.opacity = 1.0;
-                    } else {
-                        hitZombie.parts.skinMat.emissive.setHex(0xff0033);
-                        hitZombie.parts.clothesMat.emissive.setHex(0x88001b);
-                        if (hitZombie.parts.armorMat) hitZombie.parts.armorMat.emissive.setHex(0xaa2200);
                     }
 
                     _knockDir.subVectors(hitZombie.mesh.position, camera.position).setY(0).normalize();
@@ -8176,6 +8740,7 @@
                         ? (hitZombie.type === 'brute' ? 0.35 : (hitZombie.type === 'droid' ? 0.45 : 0.75))
                         : (hitZombie.type === 'brute' ? 0.12 : (hitZombie.type === 'droid' ? 0.18 : 0.32));
                     hitZombie.mesh.position.addScaledVector(_knockDir, knockPower);
+                    resolveArenaCollisions(hitZombie.mesh.position, 0.75 * hitZombie.parts.scale);
 
                     // Poise, Stagger & Reactive Specialist Responses
                     if (hitZombie.type === 'brute') {
@@ -8244,8 +8809,7 @@
                         if (hitZombie.parts.hoverRing) hitZombie.parts.hoverRing.visible = false;
                         if (hitZombie.parts.eyeHalo) hitZombie.parts.eyeHalo.visible = false;
                         if (hitZombie.type === 'stalker') {
-                            hitZombie.parts.skinMat.opacity = 1.0;
-                            hitZombie.parts.clothesMat.opacity = 1.0;
+                            setStalkerOpacity(hitZombie, 1.0);
                         }
                         state.kills++;
                         let killScore = 100;
@@ -8467,11 +9031,6 @@
                 const opt = btn.getAttribute('data-sprint-opt');
                 if (opt) setSprintBinding(opt);
             });
-            btn.addEventListener('touchstart', (e) => {
-                e.stopPropagation();
-                const opt = btn.getAttribute('data-sprint-opt');
-                if (opt) setSprintBinding(opt);
-            }, { passive: true });
         });
 
         updateSprintOptionUI();
@@ -8482,11 +9041,6 @@
                 const mode = btn.getAttribute('data-map-mode');
                 if (mode) setMapMode(mode);
             });
-            btn.addEventListener('touchstart', (e) => {
-                e.stopPropagation();
-                const mode = btn.getAttribute('data-map-mode');
-                if (mode) setMapMode(mode);
-            }, { passive: true });
         });
 
         document.querySelectorAll('.map-preview-btn').forEach(btn => {
@@ -8495,15 +9049,79 @@
                 const idx = parseInt(btn.getAttribute('data-map-preview'), 10);
                 if (Number.isFinite(idx)) setActiveMap(idx, false);
             });
-            btn.addEventListener('touchstart', (e) => {
-                e.stopPropagation();
-                const idx = parseInt(btn.getAttribute('data-map-preview'), 10);
-                if (Number.isFinite(idx)) setActiveMap(idx, false);
-            }, { passive: true });
         });
 
-        // Initialize Map 01 on load
+        function updateRenderQualityUI() {
+            const q = userSettings.renderQuality || 'ultra';
+            const label = document.getElementById('setting-quality-label');
+            if (label) {
+                label.textContent = q === 'performance' ? 'PERFORMANCE' : (q === 'high' ? 'HIGH' : 'ULTRA');
+            }
+            document.querySelectorAll('.render-quality-btn').forEach(btn => {
+                if (btn.getAttribute('data-render-quality') === q) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        function setRenderQuality(quality) {
+            const safeQ = VALID_RENDER_QUALITIES.includes(quality) ? quality : 'ultra';
+            userSettings.renderQuality = safeQ;
+            safeStorage.setItem('mr_render_quality', safeQ);
+            applyRenderQuality();
+            updateRenderQualityUI();
+        }
+
+        function updatePerfHudVisibility() {
+            if (!perfHud) return;
+            if (userSettings.showPerfHud && state.mode === 'PLAYING') {
+                perfHud.classList.remove('hidden');
+            } else {
+                perfHud.classList.add('hidden');
+            }
+        }
+
+        document.querySelectorAll('.render-quality-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const q = btn.getAttribute('data-render-quality');
+                if (q) setRenderQuality(q);
+            });
+        });
+
+        updateRenderQualityUI();
+
+        // Initialize Map 01 on load and pre-warm WebGL shader programs to eliminate first-encounter hitching
         setActiveMap(0, false);
+
+        function prewarmShaders() {
+            try {
+                const prevVis = [];
+                for (let i = 0; i < ARENA_MAPS.length; i++) {
+                    prevVis.push(ARENA_MAPS[i].group.visible);
+                    ARENA_MAPS[i].group.visible = true;
+                }
+                const dummyTypes = ['shambler', 'runner', 'stalker', 'brute', 'droid'];
+                const tempRoots = [];
+                for (let i = 0; i < dummyTypes.length; i++) {
+                    const p = createZombieMesh(dummyTypes[i]);
+                    p.root.position.set(0, -100, 0);
+                    scene.add(p.root);
+                    tempRoots.push(p);
+                }
+                weaponGroup.visible = true;
+                renderer.compile(scene, camera);
+                renderer.compile(viewmodelScene, viewmodelCamera);
+                weaponGroup.visible = false;
+
+                for (let i = 0; i < tempRoots.length; i++) {
+                    disposeZombie({ mesh: tempRoots[i].root, parts: tempRoots[i] });
+                }
+                for (let i = 0; i < ARENA_MAPS.length; i++) {
+                    ARENA_MAPS[i].group.visible = prevVis[i];
+                }
+            } catch (e) { }
+        }
+        prewarmShaders();
 
         // 8b. PRO MOBILE & IPAD DUAL-THUMB FPS TOUCH CONTROLS
         function isMobileDevice() {
@@ -8914,6 +9532,8 @@
             if (settingTouchAutoFire) settingTouchAutoFire.checked = userSettings.touchAutoFire;
             settingMasterVol.value = userSettings.masterVol;
             valMasterVol.textContent = `${Math.round(userSettings.masterVol * 100)}%`;
+            if (settingShowPerf) settingShowPerf.checked = userSettings.showPerfHud;
+            updateRenderQualityUI();
             settingsModal.classList.remove('hidden');
         }
 
@@ -8932,6 +9552,7 @@
             if (settingTouchAimAssist) userSettings.touchAimAssist = Boolean(settingTouchAimAssist.checked);
             if (settingTouchAutoFire) userSettings.touchAutoFire = Boolean(settingTouchAutoFire.checked);
             userSettings.masterVol = Number.isFinite(rawVol) ? Math.min(1, Math.max(0, rawVol)) : 1.0;
+            if (settingShowPerf) userSettings.showPerfHud = Boolean(settingShowPerf.checked);
 
             safeStorage.setItem('mr_mouse_sens', userSettings.mouseSens);
             safeStorage.setItem('mr_invert_y', userSettings.invertY);
@@ -8939,8 +9560,11 @@
             safeStorage.setItem('mr_touch_aim_assist', userSettings.touchAimAssist);
             safeStorage.setItem('mr_touch_autofire', userSettings.touchAutoFire);
             safeStorage.setItem('mr_master_vol', userSettings.masterVol);
+            safeStorage.setItem('mr_show_fps', userSettings.showPerfHud);
 
             updateAutoFireHudPill();
+            updatePerfHudVisibility();
+            applyRenderQuality();
             sound.setMasterVolume(userSettings.masterVol);
             closeSettingsModal();
         }
@@ -8995,12 +9619,27 @@
             }
         });
 
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (state.mode === 'PLAYING' && !state.isPaused) {
+                    pauseGame();
+                } else {
+                    sound.suspend();
+                }
+            } else if (state.mode === 'TITLE' || (state.mode === 'PLAYING' && !state.isPaused)) {
+                sound.resume();
+            }
+        });
+
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            const isMobile = isMobileDevice() || state.touchInteracted;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2.0));
+            viewmodelCamera.aspect = w / h;
+            viewmodelCamera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            applyRenderQuality();
         });
 
         /********************************************************************
@@ -9038,10 +9677,55 @@
             pos.z = THREE.MathUtils.clamp(pos.z, -ARENA_LIMIT, ARENA_LIMIT);
         }
 
-        let lastTime = performance.now();
+        let lastTime = null;
+        let _perfFrames = 0;
+        let _perfAccum = 0;
+        let _perfMsAccum = 0;
+
+        // Exponential frame-rate-independent smoothing helper
+        function damp(current, target, lambda, dt) {
+            return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
+        }
+
+        // Segment-vs-Circle swept impact parameter t in [0, 1] (-1 if no hit)
+        function segmentCircleHitT(ax, az, bx, bz, cx, cz, r) {
+            const dx = bx - ax;
+            const dz = bz - az;
+            const fx = ax - cx;
+            const fz = az - cz;
+            if (fx * fx + fz * fz <= r * r) return 0;
+            const a = dx * dx + dz * dz;
+            if (a < 1e-8) return -1;
+            const b = 2 * (fx * dx + fz * dz);
+            const c = fx * fx + fz * fz - r * r;
+            const disc = b * b - 4 * a * c;
+            if (disc < 0) return -1;
+            const sqrtDisc = Math.sqrt(disc);
+            const t1 = (-b - sqrtDisc) / (2 * a);
+            const t2 = (-b + sqrtDisc) / (2 * a);
+            if (t1 >= 0 && t1 <= 1) return t1;
+            if (t2 >= 0 && t2 <= 1) return t2;
+            return -1;
+        }
+
+        // Dual-pass renderer: world scene first, then isolated first-person viewmodel pass
+        function renderFrame() {
+            if (contextLost) return 0;
+            renderer.clear();
+            renderer.render(scene, camera);
+            let calls = renderer.info.render.calls;
+            if (state.mode === 'PLAYING' && weaponGroup.visible) {
+                renderer.clearDepth();
+                renderer.render(viewmodelScene, viewmodelCamera);
+                calls += renderer.info.render.calls;
+            }
+            return calls;
+        }
 
         function animate(now) {
             requestAnimationFrame(animate);
+            if (contextLost) return;
+            const frameCpuStart = performance.now();
 
             const activeArenaMap = ARENA_MAPS[state.currentMapIndex];
             if (activeArenaMap && typeof activeArenaMap.update === 'function') {
@@ -9049,24 +9733,42 @@
             }
 
             if (state.mode !== 'PLAYING') {
+                lastTime = now;
                 const t = now * 0.00025;
                 camera.position.set(Math.cos(t) * 18, 3.5, Math.sin(t) * 18);
                 camera.lookAt(0, 1.5, 0);
-                renderer.render(scene, camera);
+                renderFrame();
                 return;
             }
 
             if (state.isPaused) {
                 lastTime = now;
-                renderer.render(scene, camera);
+                renderFrame();
                 return;
             }
 
-            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            const rawDt = lastTime === null ? 0.016 : (now - lastTime) / 1000;
+            const dt = Math.max(0, Math.min(rawDt, 0.05));
             lastTime = now;
 
+            if (state.shootCooldownTimer > 0) {
+                state.shootCooldownTimer = Math.max(0, state.shootCooldownTimer - dt);
+            }
+            if (state.crosshairSpreadTimer > 0) {
+                state.crosshairSpreadTimer -= dt;
+                if (state.crosshairSpreadTimer <= 0) {
+                    setCrosshairSpread(0);
+                }
+            }
+            if (state.healthBarGlowTimer > 0) {
+                state.healthBarGlowTimer -= dt;
+                if (state.healthBarGlowTimer <= 0 && hudHealthBar) {
+                    hudHealthBar.style.boxShadow = '';
+                }
+            }
+
             // Desktop Automatic Hold-to-Fire (Improvement 1)
-            if (state.isLeftMouseDown && !state.isTouchMode && !state.isReloading && state.ammo > 0) {
+            if (state.isLeftMouseDown && !state.isTouchMode && !state.isReloading && state.ammo > 0 && state.shootCooldownTimer <= 0) {
                 shootWeapon();
             }
 
@@ -9121,35 +9823,26 @@
                         state.isTouchFiring
                     );
                     if (userSettings.touchAimAssist && isActivelyControlling) {
-                        camera.rotation.y += bestDeltaYaw * Math.min(1, dt * 3.6);
+                        const yawRate = 1 - Math.exp(-3.6 * dt);
+                        const pitchRate = 1 - Math.exp(-2.4 * dt);
+                        camera.rotation.y += bestDeltaYaw * yawRate;
                         camera.rotation.x = Math.max(
                             -Math.PI / 2.2,
-                            Math.min(Math.PI / 2.2, camera.rotation.x + bestDeltaPitch * Math.min(1, dt * 2.4))
+                            Math.min(Math.PI / 2.2, camera.rotation.x + bestDeltaPitch * pitchRate)
                         );
                     }
                 }
 
                 // Touch Hold-to-Fire & Target Acquisition Auto-Fire
-                if (!state.isReloading && state.ammo > 0) {
+                if (!state.isReloading && state.ammo > 0 && state.shootCooldownTimer <= 0) {
                     if (state.isTouchFiring) {
                         shootWeapon();
-                    } else if (userSettings.touchAutoFire && state.touchTargetHovered && (now - state.lastShootTime >= 135)) {
-                        camera.updateMatrixWorld(true);
-                        raycaster.setFromCamera(screenCenter, camera);
-                        _raycastTargets.length = 0;
-                        for (let i = 0; i < shootableWalls.length; i++) {
-                            _raycastTargets.push(shootableWalls[i]);
-                        }
-                        for (let i = 0; i < zombies.length; i++) {
-                            if (!zombies[i].dying) {
-                                _raycastTargets.push(zombies[i].mesh);
-                            }
-                        }
-                        const hits = raycaster.intersectObjects(_raycastTargets, true);
+                    } else if (userSettings.touchAutoFire && state.touchTargetHovered) {
+                        const hits = performWeaponRaycast(38);
                         if (hits.length > 0 && hits[0].distance <= 38) {
                             const hitZ = hits[0].object.userData.zombie;
                             if (hitZ && !hitZ.dying) {
-                                shootWeapon();
+                                shootWeapon(hits);
                             }
                         }
                     }
@@ -9236,7 +9929,7 @@
                 playerVelX = _moveDir.x * moveSpeed;
                 playerVelZ = _moveDir.z * moveSpeed;
                 camera.position.addScaledVector(_moveDir, moveSpeed * dt);
-                resolveArenaCollisions(camera.position, 0.85);
+                resolveArenaCollisions(camera.position, PLAYER_RADIUS);
                 state.bobTimer += dt * (wantsSprint ? 15 : 10) * speedFactor;
             } else {
                 state.bobTimer += dt * 2;
@@ -9263,8 +9956,8 @@
                 }
             }
 
-            state.recoilOffset = THREE.MathUtils.lerp(state.recoilOffset, 0, dt * 16);
-            state.recoilPitch = THREE.MathUtils.lerp(state.recoilPitch, 0, dt * 14);
+            state.recoilOffset = damp(state.recoilOffset, 0, 16, dt);
+            state.recoilPitch = damp(state.recoilPitch, 0, 14, dt);
 
             const reloadDip = state.isReloading ? Math.sin((1 - state.reloadTimer / 1.15) * Math.PI) * 0.22 : 0;
             weaponGroup.position.x = WEAPON_BASE_POS.x + Math.cos(state.bobTimer * 0.5) * 0.012;
@@ -9293,13 +9986,7 @@
                     ? (state.wave % ARENA_MAPS.length)
                     : (state.nextWaveMapIndex !== null ? state.nextWaveMapIndex : ((state.currentMapIndex + 1) % ARENA_MAPS.length));
                 const upcomingMap = ARENA_MAPS[upcomingIdx] || ARENA_MAPS[0];
-                renderWaveBanner(
-                    'font-neon text-xs sm:text-sm tracking-[0.3em] text-emerald-400 uppercase font-bold',
-                    'SECTOR PURGED // TACTICAL RESUPPLY',
-                    'font-neon neon-title text-2xl sm:text-4xl font-black tracking-widest uppercase',
-                    `NEXT IN ${secLeft}S`,
-                    `DEPLOYING TO ${upcomingMap.fullName}`
-                );
+                renderIntermissionBanner(secLeft, upcomingIdx, upcomingMap);
                 if (state.intermissionTimer <= 0) {
                     state.isIntermission = false;
                     sound.duckAmbient(false);
@@ -9317,6 +10004,8 @@
                 // Trigger 3.5s Breather Intermission before next wave
                 state.isIntermission = true;
                 state.intermissionTimer = 3.5;
+                state.lastIntermissionSec = null;
+                state.lastIntermissionMapIdx = null;
                 if (state.mapMode === 'random') {
                     const candidates = [];
                     for (let i = 0; i < ARENA_MAPS.length; i++) {
@@ -9336,22 +10025,7 @@
                 if (z.hitFlashTimer > 0) {
                     z.hitFlashTimer -= dt;
                     if (z.hitFlashTimer <= 0) {
-                        z.parts.skinMat.emissive.setHex(
-                            z.type === 'shambler' ? 0x0d0306
-                                : (z.type === 'stalker' ? 0x1a062b
-                                    : (z.type === 'droid' ? 0x05161c : 0x000000))
-                        );
-                        z.parts.clothesMat.emissive.setHex(
-                            z.type === 'shambler' ? 0x0a0306
-                                : (z.type === 'stalker' ? 0x0c0318
-                                    : (z.type === 'droid' ? 0x080412 : 0x000000))
-                        );
-                        if (z.parts.armorMat) {
-                            z.parts.armorMat.emissive.setHex(
-                                z.type === 'shambler' ? 0x160308
-                                    : (z.type === 'droid' ? 0x061018 : 0x000000)
-                            );
-                        }
+                        setZombieHitFlash(z, false);
                     }
                 }
 
@@ -9405,14 +10079,13 @@
                         z.parts.electricRing2.rotation.z -= dt * (6.2 + cardiacBeat * 12);
                         z.parts.electricRing2.rotation.y += dt * 3.1;
                     }
-                    if (z.parts.eyeHalo && z.parts.eyeHaloMat) {
+                    if (z.parts.eyeHalo) {
                         const eyeFlare = 1.0 + cardiacBeat * 0.85 + (z.state === 'CHASE' ? 0.14 : 0);
                         z.parts.eyeHalo.scale.setScalar(eyeFlare);
-                        z.parts.eyeHaloMat.opacity = Math.min(0.82, 0.36 + cardiacBeat * 0.9 + (z.state === 'CHASE' ? 0.14 : 0));
                     }
                     if (z.parts.opticUnit) {
                         const eyeScanX = z.state === 'WANDER' ? Math.sin(now * 0.004 + z.weaveOffset) * 0.048 : 0;
-                        z.parts.opticUnit.position.x = THREE.MathUtils.lerp(z.parts.opticUnit.position.x, eyeScanX, dt * 10);
+                        z.parts.opticUnit.position.x = damp(z.parts.opticUnit.position.x, eyeScanX, 10, dt);
                     }
                 } else {
                     if (z.parts.coreMesh) {
@@ -9436,7 +10109,7 @@
                         const scanTargetX = (z.droidChargeTimer > 0 || z.droidBurstShots > 0)
                             ? 0
                             : Math.sin(now * 0.0065 + z.weaveOffset) * 0.135;
-                        z.parts.scannerEye.position.x = THREE.MathUtils.lerp(z.parts.scannerEye.position.x, scanTargetX, dt * 12);
+                        z.parts.scannerEye.position.x = damp(z.parts.scannerEye.position.x, scanTargetX, 12, dt);
                     }
                 }
 
@@ -9452,6 +10125,16 @@
                 if (z.staggerCooldown > 0) z.staggerCooldown -= dt;
                 if (z.evadeCooldown > 0) z.evadeCooldown -= dt;
 
+                // Ensure Phantom Stalker uncloaks cleanly even when staggered, alerted, or wandering
+                if (z.type === 'stalker') {
+                    if (z.state !== 'CHASE' || z.staggerTimer > 0 || z.hitFlashTimer > 0 || z.blinkTelegraphTimer > 0 || z.blinkTimer > 0 || z.evadeTimer > 0) {
+                        z.phaseTimer = 0;
+                    }
+                    if (z.staggerTimer > 0 || z.state !== 'CHASE') {
+                        setStalkerOpacity(z, damp(z.parts.skinMat.opacity, 1.0, 10, dt));
+                    }
+                }
+
                 // Bullet Stagger & Flinch recoil
                 if (z.staggerTimer > 0) {
                     z.staggerTimer -= dt;
@@ -9461,17 +10144,17 @@
                         z.staggerPush = Math.max(0, z.staggerPush - dt * 3.5);
                         resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
                     }
-                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, -0.42, dt * 12);
-                    if (z.parts.torso) z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, -0.16, dt * 10);
-                    if (z.parts.jaw) z.parts.jaw.rotation.x = THREE.MathUtils.lerp(z.parts.jaw.rotation.x, 0.36, dt * 12);
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0.58, dt * 10);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, 0.48, dt * 10);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.92, dt * 10);
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.88, dt * 10);
+                    z.parts.head.rotation.x = damp(z.parts.head.rotation.x, -0.42, 12, dt);
+                    if (z.parts.torso) z.parts.torso.rotation.x = damp(z.parts.torso.rotation.x, -0.16, 10, dt);
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = damp(z.parts.jaw.rotation.x, 0.36, 12, dt);
+                    z.parts.leftArm.rotation.x = damp(z.parts.leftArm.rotation.x, 0.58, 10, dt);
+                    z.parts.rightArm.rotation.x = damp(z.parts.rightArm.rotation.x, 0.48, 10, dt);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = damp(z.parts.leftForearm.rotation.x, -0.92, 10, dt);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = damp(z.parts.rightForearm.rotation.x, -0.88, 10, dt);
                     continue;
                 } else {
                     const baseHeadPitch = z.type === 'stalker' ? -0.15 : (z.type === 'runner' ? -0.12 : 0);
-                    z.parts.head.rotation.x = THREE.MathUtils.lerp(z.parts.head.rotation.x, baseHeadPitch, dt * 6);
+                    z.parts.head.rotation.x = damp(z.parts.head.rotation.x, baseHeadPitch, 6, dt);
                 }
 
                 // Awareness: Spot or Smell player
@@ -9501,12 +10184,12 @@
                 if (z.state === 'ALERT') {
                     z.alertTimer -= dt;
                     z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
-                    z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
-                    if (z.parts.jaw) z.parts.jaw.rotation.x = THREE.MathUtils.lerp(z.parts.jaw.rotation.x, 0.42, dt * 12);
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0.48, dt * 10);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, 0.34, dt * 10);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.68, dt * 10);
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, -0.74, dt * 10);
+                    z.parts.head.rotation.y = damp(z.parts.head.rotation.y, 0, 8, dt);
+                    if (z.parts.jaw) z.parts.jaw.rotation.x = damp(z.parts.jaw.rotation.x, 0.42, 12, dt);
+                    z.parts.leftArm.rotation.x = damp(z.parts.leftArm.rotation.x, 0.48, 10, dt);
+                    z.parts.rightArm.rotation.x = damp(z.parts.rightArm.rotation.x, 0.34, 10, dt);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = damp(z.parts.leftForearm.rotation.x, -0.68, 10, dt);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = damp(z.parts.rightForearm.rotation.x, -0.74, 10, dt);
                     if (z.alertTimer <= 0) {
                         z.state = 'CHASE';
                     }
@@ -9517,8 +10200,7 @@
                 if (z.type === 'brute' && !z.isEnraged && z.hp < z.maxHp * 0.5) {
                     z.isEnraged = true;
                     z.speed = Math.max(6.2, z.baseSpeed * 1.45);
-                    z.parts.eyeMat.color.setHex(0xff0000);
-                    z.parts.coreMat.color.setHex(0xff2200);
+                    applyBruteEnrageMaterials(z);
                     showKillFeed('WARNING: BRUTE BERSERK RAGE!');
                     sound.playZombieGroan(0.5);
                 }
@@ -9549,7 +10231,7 @@
                             z.parts.head.rotation.y = Math.sin(now * 0.003 + z.walkCycle) * 0.45;
                         }
                     } else {
-                        z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 6);
+                        z.parts.head.rotation.y = damp(z.parts.head.rotation.y, 0, 6, dt);
                         const dx = z.wanderTarget.x - z.mesh.position.x;
                         const dz = z.wanderTarget.z - z.mesh.position.z;
                         const wDist = Math.hypot(dx, dz);
@@ -9563,7 +10245,7 @@
                         }
                     }
                 } else if (z.state === 'CHASE') {
-                    z.parts.head.rotation.y = THREE.MathUtils.lerp(z.parts.head.rotation.y, 0, dt * 8);
+                    z.parts.head.rotation.y = damp(z.parts.head.rotation.y, 0, 8, dt);
 
                     if (z.type === 'stalker') {
                         // PHANTOM STALKER AI: Flanking Orbit, Phase-Shroud Cloak, Telegraphed Phase-Leap & Reactive Evade
@@ -9632,8 +10314,7 @@
                             z.phaseCooldown = 3.6 + Math.random() * 1.6;
                         }
                         const targetOpacity = z.phaseTimer > 0 ? 0.32 : 1.0;
-                        z.parts.skinMat.opacity = THREE.MathUtils.lerp(z.parts.skinMat.opacity, targetOpacity, dt * 8);
-                        z.parts.clothesMat.opacity = THREE.MathUtils.lerp(z.parts.clothesMat.opacity, targetOpacity, dt * 8);
+                        setStalkerOpacity(z, damp(z.parts.skinMat.opacity, targetOpacity, 8, dt));
                     } else if (z.type === 'droid') {
                         // NEXUS HUNTER DROID AI: Cover-Flanking Pursuit, Hover-Strafe & Laser-Telegraphed Plasma Burst
                         _sideDir.set(-_toPlayerDir.z, 0, _toPlayerDir.x);
@@ -9709,8 +10390,8 @@
                                 }
                                 if (z.parts.laserBeam) {
                                     z.parts.laserBeam.visible = true;
-                                    z.parts.laserBeam.scale.set(1.0 + chargePct * 0.5, 1.0 + chargePct * 0.5, Math.min(dist, 28) / z.parts.scale);
-                                    if (z.parts.laserMat) z.parts.laserMat.opacity = 0.35 + chargePct * 0.55;
+                                    const widthScale = 1.0 + chargePct * 0.65;
+                                    z.parts.laserBeam.scale.set(widthScale, widthScale, Math.min(dist, 28) / z.parts.scale);
                                 }
                                 if (z.droidChargeTimer <= 0) {
                                     z.droidBurstShots = 2;
@@ -9829,36 +10510,6 @@
                     resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
                 }
 
-                // Player-vs-Zombie Physical Body Collision (Improvement 7 Fix)
-                const zombieRadius = 0.55 * z.parts.scale;
-                const playerRadius = 0.55;
-                const combinedRadius = playerRadius + zombieRadius;
-                if (dist < combinedRadius && dist > 0.001) {
-                    const overlap = combinedRadius - dist;
-                    camera.position.addScaledVector(_toPlayerDir, overlap * 0.65);
-                    z.mesh.position.addScaledVector(_toPlayerDir, -overlap * 0.35);
-                    resolveArenaCollisions(camera.position, playerRadius);
-                    resolveArenaCollisions(z.mesh.position, zombieRadius);
-                }
-
-                // Flocking Separation (Issue 12 Fix: Clamp 'other' zombie within arena collisions)
-                for (let j = i - 1; j >= 0; j--) {
-                    const other = zombies[j];
-                    if (other.dying) continue;
-                    const dx = z.mesh.position.x - other.mesh.position.x;
-                    const dz = z.mesh.position.z - other.mesh.position.z;
-                    const d = Math.hypot(dx, dz);
-                    const minDist = (z.parts.scale + other.parts.scale) * 0.65;
-                    if (d < minDist && d > 0.001) {
-                        const push = (minDist - d) * 0.55;
-                        z.mesh.position.x += (dx / d) * push;
-                        z.mesh.position.z += (dz / d) * push;
-                        other.mesh.position.x -= (dx / d) * push;
-                        other.mesh.position.z -= (dz / d) * push;
-                        resolveArenaCollisions(other.mesh.position, 0.75 * other.parts.scale);
-                    }
-                }
-
                 // Multi-Joint Skeletal Limb, Torso & Jaw Animation
                 const animPace = z.state === 'WANDER' ? 1.4
                     : (z.type === 'runner' ? 3.8
@@ -9893,52 +10544,52 @@
                     // Nexus Hunter Droid Hover-Skimming & Aiming Animation
                     const isAiming = (z.droidChargeTimer > 0 || z.droidBurstShots > 0);
                     const bankTarget = curSpeed > 0.2 ? (-z.strafeDir * 0.14) : 0;
-                    z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, isAiming ? 0 : bankTarget, dt * 7);
+                    z.mesh.rotation.z = damp(z.mesh.rotation.z, isAiming ? 0 : bankTarget, 7, dt);
 
                     // Reverse-jointed hover-stabilizer legs subtly tuck during aerial glide
                     const glideSway = Math.sin(now * 0.004 + z.weaveOffset) * 0.12;
-                    z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0.28 + glideSway, dt * 8);
-                    z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0.28 - glideSway, dt * 8);
-                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, 0.42, dt * 8);
-                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, 0.42, dt * 8);
+                    z.parts.leftLeg.rotation.x = damp(z.parts.leftLeg.rotation.x, 0.28 + glideSway, 8, dt);
+                    z.parts.rightLeg.rotation.x = damp(z.parts.rightLeg.rotation.x, 0.28 - glideSway, 8, dt);
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = damp(z.parts.leftShin.rotation.x, 0.42, 8, dt);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = damp(z.parts.rightShin.rotation.x, 0.42, 8, dt);
 
                     // Right Arm locks level forward when charging/firing plasma railgun
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, isAiming ? 0.0 : 0.24, dt * 12);
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, isAiming ? 0.0 : -0.22, dt * 12);
+                    z.parts.rightArm.rotation.x = damp(z.parts.rightArm.rotation.x, isAiming ? 0.0 : 0.24, 12, dt);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = damp(z.parts.rightForearm.rotation.x, isAiming ? 0.0 : -0.22, 12, dt);
 
                     // Left Arc-Blade arm held in sleek cyber-assassin guard stance
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, 0.42 + glideSway * 0.6, dt * 8);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, -0.52, dt * 8);
+                    z.parts.leftArm.rotation.x = damp(z.parts.leftArm.rotation.x, 0.42 + glideSway * 0.6, 8, dt);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = damp(z.parts.leftForearm.rotation.x, -0.52, 8, dt);
 
                     if (z.parts.torso) {
-                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, curSpeed > 0.2 ? 0.16 : 0.06, dt * 8);
-                        z.parts.torso.rotation.y = THREE.MathUtils.lerp(z.parts.torso.rotation.y, isAiming ? -0.10 : 0, dt * 8);
+                        z.parts.torso.rotation.x = damp(z.parts.torso.rotation.x, curSpeed > 0.2 ? 0.16 : 0.06, 8, dt);
+                        z.parts.torso.rotation.y = damp(z.parts.torso.rotation.y, isAiming ? -0.10 : 0, 8, dt);
                     }
                 } else if (curSpeed === 0) {
-                    z.parts.leftLeg.rotation.x = THREE.MathUtils.lerp(z.parts.leftLeg.rotation.x, 0, dt * 8);
-                    z.parts.rightLeg.rotation.x = THREE.MathUtils.lerp(z.parts.rightLeg.rotation.x, 0, dt * 8);
-                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = THREE.MathUtils.lerp(z.parts.leftShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, dt * 8);
-                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = THREE.MathUtils.lerp(z.parts.rightShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, dt * 8);
+                    z.parts.leftLeg.rotation.x = damp(z.parts.leftLeg.rotation.x, 0, 8, dt);
+                    z.parts.rightLeg.rotation.x = damp(z.parts.rightLeg.rotation.x, 0, 8, dt);
+                    if (z.parts.leftShin) z.parts.leftShin.rotation.x = damp(z.parts.leftShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, 8, dt);
+                    if (z.parts.rightShin) z.parts.rightShin.rotation.x = damp(z.parts.rightShin.rotation.x, z.blinkTelegraphTimer > 0 ? 0.55 : 0.08, 8, dt);
                     const idleLeftUpper = z.type === 'shambler' ? 0.68 : (z.blinkTelegraphTimer > 0 ? 0.22 : 0.62);
                     const idleRightUpper = z.type === 'shambler' ? 0.60 : (z.blinkTelegraphTimer > 0 ? 0.22 : 0.62);
                     const idleLeftForearm = z.type === 'shambler' ? -0.72 : (z.blinkTelegraphTimer > 0 ? -1.05 : -0.68);
                     const idleRightForearm = z.type === 'shambler' ? -0.68 : (z.blinkTelegraphTimer > 0 ? -1.05 : -0.68);
-                    z.parts.leftArm.rotation.x = THREE.MathUtils.lerp(z.parts.leftArm.rotation.x, idleLeftUpper, dt * 8);
-                    z.parts.rightArm.rotation.x = THREE.MathUtils.lerp(z.parts.rightArm.rotation.x, idleRightUpper, dt * 8);
-                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = THREE.MathUtils.lerp(z.parts.leftForearm.rotation.x, idleLeftForearm, dt * 8);
-                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = THREE.MathUtils.lerp(z.parts.rightForearm.rotation.x, idleRightForearm, dt * 8);
+                    z.parts.leftArm.rotation.x = damp(z.parts.leftArm.rotation.x, idleLeftUpper, 8, dt);
+                    z.parts.rightArm.rotation.x = damp(z.parts.rightArm.rotation.x, idleRightUpper, 8, dt);
+                    if (z.parts.leftForearm) z.parts.leftForearm.rotation.x = damp(z.parts.leftForearm.rotation.x, idleLeftForearm, 8, dt);
+                    if (z.parts.rightForearm) z.parts.rightForearm.rotation.x = damp(z.parts.rightForearm.rotation.x, idleRightForearm, 8, dt);
                     if (z.parts.torso) {
                         const baseLean = z.blinkTelegraphTimer > 0 ? 0.56
                             : (z.type === 'stalker' ? 0.34
                                 : (z.type === 'runner' ? 0.28
                                     : (z.type === 'shambler' ? 0.08 : 0.08)));
-                        z.parts.torso.rotation.x = THREE.MathUtils.lerp(z.parts.torso.rotation.x, baseLean, dt * 8);
-                        z.parts.torso.rotation.y = THREE.MathUtils.lerp(z.parts.torso.rotation.y, 0, dt * 6);
+                        z.parts.torso.rotation.x = damp(z.parts.torso.rotation.x, baseLean, 8, dt);
+                        z.parts.torso.rotation.y = damp(z.parts.torso.rotation.y, 0, 6, dt);
                     }
                     if (z.parts.jaw) {
                         z.parts.jaw.rotation.x = z.blinkTelegraphTimer > 0 ? 0.48 : (0.12 + Math.abs(Math.sin(now * 0.003 + z.weaveOffset)) * 0.16);
                     }
-                    z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, 0, dt * 8);
+                    z.mesh.rotation.z = damp(z.mesh.rotation.z, 0, 8, dt);
                 } else {
                     const strideAmp = (z.type === 'runner' || z.type === 'stalker') ? 0.86 : (z.type === 'brute' ? 0.58 : 0.68);
                     const sinWalk = Math.sin(z.walkCycle);
@@ -9978,7 +10629,7 @@
                         if (z.parts.jaw) z.parts.jaw.rotation.x = isLeaping ? 0.46 : (0.12 + Math.abs(sinWalk) * 0.16);
                         z.parts.head.rotation.z = Math.sin(z.walkCycle * 0.5) * 0.14;
                         const leanDir = z.evadeTimer > 0 ? z.evadeDir : z.flankDir;
-                        z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, -leanDir * (isLeaping ? 0.22 : 0.10), dt * 8);
+                        z.mesh.rotation.z = damp(z.mesh.rotation.z, -leanDir * (isLeaping ? 0.22 : 0.10), 8, dt);
                     } else if (z.type === 'brute') {
                         z.parts.leftArm.rotation.x = 0.72 - sinWalk * 0.36;
                         z.parts.rightArm.rotation.x = 0.72 + sinWalk * 0.36;
@@ -10001,8 +10652,8 @@
                             z.parts.torso.rotation.x = 0.10 + Math.abs(sinWalk) * 0.04;
                             z.parts.torso.rotation.y = -sinWalk * 0.12;
                         }
-                        z.parts.head.rotation.z = THREE.MathUtils.lerp(z.parts.head.rotation.z, isJuking ? (-z.jukeDir * 0.10) : 0, dt * 10);
-                        z.mesh.rotation.z = THREE.MathUtils.lerp(z.mesh.rotation.z, isJuking ? (-z.jukeDir * 0.14) : (Math.cos(z.walkCycle) * 0.03), dt * 10);
+                        z.parts.head.rotation.z = damp(z.parts.head.rotation.z, isJuking ? (-z.jukeDir * 0.10) : 0, 10, dt);
+                        z.mesh.rotation.z = damp(z.mesh.rotation.z, isJuking ? (-z.jukeDir * 0.14) : (Math.cos(z.walkCycle) * 0.03), 10, dt);
                     }
                 }
 
@@ -10079,7 +10730,75 @@
                 }
             }
 
-            // 4b. Update Pooled Nexus Hunter Droid Plasma Bolts (Zero Allocation)
+            // 4a. Pass 1: Frame-Rate-Independent Flocking Separation (Clamp both enemies)
+            const sepRate = 1 - Math.exp(-48 * dt);
+            for (let i = 0; i < zombies.length; i++) {
+                const z = zombies[i];
+                if (z.dying) continue;
+                for (let j = i + 1; j < zombies.length; j++) {
+                    const other = zombies[j];
+                    if (other.dying) continue;
+                    const dx = z.mesh.position.x - other.mesh.position.x;
+                    const dz = z.mesh.position.z - other.mesh.position.z;
+                    const d = Math.hypot(dx, dz);
+                    const minDist = (z.parts.scale + other.parts.scale) * 0.65;
+                    if (d < minDist) {
+                        let nx = 1;
+                        let nz = 0;
+                        if (d > 0.001) {
+                            nx = dx / d;
+                            nz = dz / d;
+                        } else {
+                            const angle = ((i * 7 + j * 13) % 16) * (Math.PI / 8);
+                            nx = Math.cos(angle);
+                            nz = Math.sin(angle);
+                        }
+                        const push = (minDist - d) * 0.55 * sepRate;
+                        z.mesh.position.x += nx * push;
+                        z.mesh.position.z += nz * push;
+                        other.mesh.position.x -= nx * push;
+                        other.mesh.position.z -= nz * push;
+                        resolveArenaCollisions(z.mesh.position, 0.75 * z.parts.scale);
+                        resolveArenaCollisions(other.mesh.position, 0.75 * other.parts.scale);
+                    }
+                }
+            }
+
+            // Pass 2: Hard Player-vs-Enemy Separation AFTER Flocking (Prevents near-plane camera clipping)
+            for (let i = 0; i < zombies.length; i++) {
+                const z = zombies[i];
+                if (z.dying) continue;
+                const zombieRadius = 0.55 * z.parts.scale;
+                const combinedRadius = PLAYER_RADIUS + zombieRadius;
+                let dx = camera.position.x - z.mesh.position.x;
+                let dz = camera.position.z - z.mesh.position.z;
+                let d = Math.hypot(dx, dz);
+                if (d < combinedRadius) {
+                    const nx = d > 0.001 ? dx / d : 0;
+                    const nz = d > 0.001 ? dz / d : 1;
+                    const overlap = combinedRadius - d;
+                    camera.position.x += nx * overlap * 0.55;
+                    camera.position.z += nz * overlap * 0.55;
+                    z.mesh.position.x -= nx * overlap * 0.45;
+                    z.mesh.position.z -= nz * overlap * 0.45;
+                    resolveArenaCollisions(camera.position, PLAYER_RADIUS);
+                    resolveArenaCollisions(z.mesh.position, zombieRadius);
+
+                    dx = camera.position.x - z.mesh.position.x;
+                    dz = camera.position.z - z.mesh.position.z;
+                    d = Math.hypot(dx, dz);
+                    if (d < combinedRadius) {
+                        const rem = combinedRadius - d;
+                        const pnx = d > 0.001 ? dx / d : nx;
+                        const pnz = d > 0.001 ? dz / d : nz;
+                        z.mesh.position.x -= pnx * rem;
+                        z.mesh.position.z -= pnz * rem;
+                        resolveArenaCollisions(z.mesh.position, zombieRadius);
+                    }
+                }
+            }
+
+            // 4b. Update Pooled Nexus Hunter Droid Plasma Bolts (Zero Allocation + Swept Impact)
             for (let i = 0; i < DROID_BOLT_POOL_SIZE; i++) {
                 const b = droidBoltPool[i];
                 if (!b.active) continue;
@@ -10089,36 +10808,61 @@
                     b.mesh.visible = false;
                     continue;
                 }
+                const prevX = b.mesh.position.x;
+                const prevY = b.mesh.position.y;
+                const prevZ = b.mesh.position.z;
                 b.mesh.position.addScaledVector(b.velocity, dt);
                 const bx = b.mesh.position.x;
                 const by = b.mesh.position.y;
                 const bz = b.mesh.position.z;
 
-                // Arena wall & cyber pillar collision
-                let hitEnv = (Math.abs(bx) > ARENA_LIMIT || Math.abs(bz) > ARENA_LIMIT || by < 0.08);
-                if (!hitEnv) {
-                    for (let j = 0; j < obstacles.length; j++) {
-                        const obs = obstacles[j];
-                        const dx = bx - obs.x;
-                        const dz = bz - obs.z;
-                        const r = obs.radius + 0.24;
-                        if (dx * dx + dz * dz < r * r) {
-                            hitEnv = true;
-                            break;
-                        }
+                // Earliest parametric arena wall, floor & pillar collision
+                let minEnvT = Infinity;
+                if (prevY >= 0.08 && by < 0.08 && prevY !== by) {
+                    minEnvT = Math.min(minEnvT, (0.08 - prevY) / (by - prevY));
+                } else if (by < 0.08) {
+                    minEnvT = 0;
+                }
+                if (Math.abs(bx) > ARENA_LIMIT) {
+                    const bound = bx > 0 ? ARENA_LIMIT : -ARENA_LIMIT;
+                    const tWall = prevX !== bx ? Math.max(0, Math.min(1, (bound - prevX) / (bx - prevX))) : 0;
+                    minEnvT = Math.min(minEnvT, tWall);
+                }
+                if (Math.abs(bz) > ARENA_LIMIT) {
+                    const bound = bz > 0 ? ARENA_LIMIT : -ARENA_LIMIT;
+                    const tWall = prevZ !== bz ? Math.max(0, Math.min(1, (bound - prevZ) / (bz - prevZ))) : 0;
+                    minEnvT = Math.min(minEnvT, tWall);
+                }
+                for (let j = 0; j < obstacles.length; j++) {
+                    const obs = obstacles[j];
+                    const tObs = segmentCircleHitT(prevX, prevZ, bx, bz, obs.x, obs.z, obs.radius + 0.24);
+                    if (tObs >= 0 && tObs < minEnvT) {
+                        minEnvT = tObs;
                     }
                 }
-                if (hitEnv) {
+
+                // Swept player impact check
+                let playerHitT = segmentCircleHitT(prevX, prevZ, bx, bz, camera.position.x, camera.position.z, 0.72);
+                if (playerHitT >= 0) {
+                    const hitY = prevY + (by - prevY) * playerHitT;
+                    if (hitY <= 0.25 || hitY >= 2.35) {
+                        playerHitT = -1;
+                    }
+                }
+
+                if (minEnvT <= 1.0 && (playerHitT < 0 || minEnvT <= playerHitT)) {
+                    b.mesh.position.set(
+                        prevX + (bx - prevX) * minEnvT,
+                        prevY + (by - prevY) * minEnvT,
+                        prevZ + (bz - prevZ) * minEnvT
+                    );
                     spawnBloodParticles(b.mesh.position, 6, false, 'droid');
                     b.active = false;
                     b.mesh.visible = false;
                     continue;
                 }
 
-                // Player impact check
-                const pdx = bx - camera.position.x;
-                const pdz = bz - camera.position.z;
-                if (pdx * pdx + pdz * pdz < 0.72 * 0.72 && by > 0.25 && by < 2.35) {
+                if (playerHitT >= 0) {
                     b.active = false;
                     b.mesh.visible = false;
                     state.health -= b.damage;
@@ -10153,8 +10897,9 @@
                 p.mesh.position.addScaledVector(p.velocity, dt);
                 if (p.mesh.position.y < 0.05) {
                     p.mesh.position.y = 0.05;
-                    p.velocity.x *= 0.8;
-                    p.velocity.z *= 0.8;
+                    const floorDrag = Math.exp(-13.4 * dt);
+                    p.velocity.x *= floorDrag;
+                    p.velocity.z *= floorDrag;
                 }
                 p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
             }
@@ -10184,7 +10929,7 @@
                 }
                 const lifeRatio = Math.max(0, s.life / s.maxLife);
                 // Rapid aerodynamic drag & gravity on propellant sparks
-                const drag = Math.max(0, 1 - dt * 14);
+                const drag = Math.exp(-14 * dt);
                 s.velocity.multiplyScalar(drag);
                 s.velocity.y -= 6.5 * dt;
                 s.mesh.position.addScaledVector(s.velocity, dt);
@@ -10209,12 +10954,32 @@
                 }
             }
 
-            renderer.render(scene, camera);
+            const frameDC = renderFrame();
+            const frameWorkMs = performance.now() - frameCpuStart;
+
+            if (userSettings.showPerfHud && perfHud) {
+                _perfFrames++;
+                _perfAccum += dt;
+                _perfMsAccum += frameWorkMs;
+                if (_perfAccum >= 0.25) {
+                    const fpsVal = Math.round(_perfFrames / _perfAccum);
+                    const msVal = (_perfMsAccum / _perfFrames).toFixed(1);
+                    if (perfFpsEl) perfFpsEl.textContent = String(fpsVal);
+                    if (perfMsEl) perfMsEl.textContent = msVal;
+                    if (perfDcEl) perfDcEl.textContent = String(frameDC);
+                    _perfFrames = 0;
+                    _perfAccum = 0;
+                    _perfMsAccum = 0;
+                }
+            }
         }
 
-        window.onload = function () {
+        if (document.readyState === 'complete') {
             requestAnimationFrame(animate);
-        };
+        } else {
+            window.addEventListener('load', () => requestAnimationFrame(animate), { once: true });
+        }
+    })();
     </script>
 </body>
 

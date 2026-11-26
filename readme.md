@@ -26,8 +26,8 @@ Designed specifically for effortless static hosting, the entire game—including
 * **Poise & Stagger Mechanics:** Standard infected stagger under heavy fire, while Armored Brutes possess heavy frontal poise and stagger cooldowns, preventing continuous fire stagger-locks.
 * **Obstacle-Safe Spawning:** Intelligent coordinate rejection algorithms and fallback nodes prevent zombies and pick-ups from ever embedding inside arena pillars or spawning directly on the player.
 * **Neon Diamond Health Jewels:** From Wave 3 onward, rare crystalline health jewels have a 65% chance to appear per level. Projecting an ethereal cyan vertical beacon and gyroscopic orbital rings, collecting a jewel replenishes `+50%` Vital Integrity accompanied by harmonic chimes and radiant sparkle bursts.
-* **Zero-Allocation 60 FPS Engine:** Pre-allocated particle pools, pooled bullet tracer buffers, pre-created lighting rigs, and reusable scratch vectors prevent memory leaks and garbage collection stutters during prolonged survival.
-* **Configurable Tactical Settings:** Real-time settings modal supporting mouse look sensitivity, Y-axis inversion, touch sensitivity, and master audio synth volume.
+* **High-Refresh-Rate Frame-Rate-Independent Engine:** Exponential `dt` smoothing (`damp`), static arena and per-bone enemy geometry batching, dedicated dual-pass first-person viewmodel rendering, pre-allocated object pools, and shared GPU material registries keep combat responsive and tear-free on high-refresh-rate displays (`120Hz`–`240Hz+`).
+* **Configurable Tactical & Render Settings:** Real-time settings modal supporting Render Quality presets (`Ultra`, `High`, `Performance`) with adaptive DPR and texture anisotropy scaling, optional live Performance Telemetry HUD (`FPS`, frame render `ms`, and Draw Calls `DC`), mouse look sensitivity, Y-axis inversion, touch sensitivity/aim assist/auto-fire, arena map rotation mode, and master audio synth volume.
 
 ---
 
@@ -97,11 +97,11 @@ Players can choose between two arena rotation modes on the **Title Screen**, **P
 
 ## 🛠️ Technical Architecture & Optimizations
 
-* **3D Rendering (`Three.js r128`):** Uses `THREE.PerspectiveCamera` with `YXZ` Euler rotation order for gimbal-lock-free FPS aiming, `THREE.FogExp2` for depth culling, and `THREE.Raycaster` for instant hitscan ballistics.
-* **Pre-Allocated Object & Buffer Pooling:** Eliminates garbage collection stutters by pooling 80 blood particle meshes, 30 heal sparkle meshes, and 8 reusable bullet tracer buffer geometries.
-* **Zero-Allocation Math Pipeline:** Eliminates per-frame heap allocations by utilizing reusable scratch vectors (`_forward`, `_right`, `_moveDir`, `_toPlayer`, `_toPlayerDir`, `_sideDir`, `_knockDir`, `_muzzlePos`, `_tracerEnd`) and pre-allocated raycast candidate arrays.
-* **Persistent Scene Lighting Architecture:** The pickup point light remains permanently attached to the scene graph with zero-cost intensity toggles, preventing WebGL shader program recompilation hitching during jewel spawn and collection.
-* **Safe Storage Sandbox Resilience:** Encapsulated `safeStorage` helpers wrap all `localStorage` access in safe exception handlers to prevent script termination in sandboxed iframes (e.g. itch.io).
+* **3D Rendering (`Three.js r128`):** Uses `THREE.PerspectiveCamera` with `YXZ` Euler rotation order for gimbal-lock-free FPS aiming, deep `THREE.FogExp2` with local crimson `playerLight` and per-map `arenaBeacons` for pitch-black neon horror atmosphere, and a dual-pass isolated viewmodel camera (`viewmodelScene` / `viewmodelCamera`) to eliminate weapon clipping.
+* **Draw-Call Batching & Shader Pre-Warming:** `batchStaticMapGroup()` merges static arena geometry per material across all five maps, `bakeRigidPart()` consolidates rigid enemy limb sub-parts onto shared bone pivots, `ENEMY_MATS` shares opaque GPU materials (with depth-correct `transparent: false, depthWrite: true` outside Phantom Stalker cloaking), and `prewarmShaders()` pre-compiles all maps, enemy archetypes, and the viewmodel pass at startup.
+* **Pre-Allocated Pooling & Frame-Rate-Independent Simulation:** Pre-allocated particle, tracer, and Hunter Droid bolt pools combine with reusable scratch math vectors, sphere-culled raycasting (`performWeaponRaycast`), post-flocking player separation, continuous swept projectile impact checks (`segmentCircleHitT`), and exponential `damp()` integration.
+* **Persistent Scene Lighting Architecture:** The pickup point light (`persistentJewelLight`) remains permanently attached with `visible = true` and zero-cost intensity updates, eliminating WebGL shader recompilation hitches during jewel spawn and collection.
+* **Safe Storage & Audio Lifecycle Resilience:** Encapsulated `safeStorage` wrappers guard `localStorage` in sandboxed iframes, while `visibilitychange` handlers automatically suspend Web Audio and pause combat safely when tabs lose focus.
 * **Sound Synthesis (`Web Audio API`):**
   * *Ambient Drone:* Dual detuned sawtooth/triangle oscillators (`46.25 Hz` and `49.0 Hz`) routed through a low-pass BiquadFilter modulated by a `0.18 Hz` LFO.
   * *Gunshots:* Exponentially decaying white-noise buffers paired with a pitch-dropping sine wave kick (`190 Hz` $\rightarrow$ `38 Hz`).
